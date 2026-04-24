@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <Copyright>Copyright © Ian Brown 2012-2018</Copyright>
-        <TargetFramework>net6.0-windows10.0.22000.0</TargetFramework>
+        <TargetFramework>net10.0-windows10.0.22000.0</TargetFramework>
         <LangVersion>latest</LangVersion>
         <OutputType>WinExe</OutputType>
         <UseWindowsForms>True</UseWindowsForms>
@@ -14,8 +14,8 @@
         <StartupObject>WorldExplorer.App</StartupObject>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="HelixToolkit.Core.Wpf" Version="2.20.2" />
-        <PackageReference Include="SharpGLTF.Toolkit" Version="1.0.0-alpha0022" />
+        <PackageReference Include="HelixToolkit.Core.Wpf" Version="2.27.3" />
+        <PackageReference Include="SharpGLTF.Toolkit" Version="1.0.6" />
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\JetBlackEngineLib\JetBlackEngineLib.csproj" />
