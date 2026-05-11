@@ -1,4 +1,4 @@
-﻿/*  Copyright (C) 2012 Ian Brown
+/*  Copyright (C) 2012 Ian Brown
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,9 +18,12 @@ using HelixToolkit.Wpf;
 using JetBlackEngineLib.Data.Animation;
 using JetBlackEngineLib.Data.Models;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Forms;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
 using WorldExplorer.DataExporters;
@@ -49,12 +52,27 @@ public class ModelViewModel : BaseViewModel
 
     private Model? _vifModel;
 
+    // Set by SetCompositeModel for DDF entities that bundle multiple
+    // (mesh, texture) pairs. When non-null, UpdateModel rebuilds the visual
+    // as one ModelVisual3D per part so each keeps its own texture across
+    // animation frames and the normals toggle. Cleared by the VifModel
+    // setter (single-mesh path).
+    private IList<(Model vif, BitmapSource? texture)>? _parts;
+
+    private readonly System.Windows.Threading.DispatcherTimer _playTimer = new()
+        { Interval = TimeSpan.FromMilliseconds(16.66f) };
+    private bool _isPlaying;
+
     public AnimData? AnimData
     {
         get => _animData;
         set
         {
             _animData = value;
+            // Stop playback whenever the clip changes — otherwise the timer
+            // would keep advancing into the new clip's frame range from a
+            // stale index.
+            IsPlaying = false;
             CurrentFrame = 0;
             UpdateModel(false);
             OnPropertyChanged(nameof(AnimData));
@@ -62,7 +80,33 @@ public class ModelViewModel : BaseViewModel
         }
     }
 
+    /// <summary>Animation playback state. Setting it starts/stops the tick timer.</summary>
+    public bool IsPlaying
+    {
+        get => _isPlaying;
+        set
+        {
+            if (_isPlaying == value) return;
+            _isPlaying = value;
+            if (_isPlaying) _playTimer.Start(); else _playTimer.Stop();
+            OnPropertyChanged(nameof(IsPlaying));
+            OnPropertyChanged(nameof(PlayButtonLabel));
+        }
+    }
+
+    public string PlayButtonLabel => _isPlaying ? "Pause" : "Play";
+
+    public void TogglePlay() => IsPlaying = !_isPlaying;
+
     public WriteableBitmap? Texture { get; set; }
+
+    /// <summary>
+    /// Composite parts (per-mesh + per-texture) for DDF entities. Null when
+    /// a single mesh is loaded. Exposed so the export path can emit one
+    /// material per part instead of merging everything under a single
+    /// (possibly null) <see cref="Texture"/>.
+    /// </summary>
+    public IList<(Model vif, BitmapSource? texture)>? Parts => _parts;
 
     public Model? VifModel
     {
@@ -70,10 +114,18 @@ public class ModelViewModel : BaseViewModel
         set
         {
             _vifModel = value;
+            // Single-mesh assignment drops any prior composite parts; otherwise
+            // UpdateModel would still rebuild from stale parts.
+            _parts = null;
             UpdateModel(true);
             OnPropertyChanged(nameof(VifModel));
         }
     }
+
+    /// <summary>Force a rebuild of the visual without altering VifModel/parts.
+    /// Used by the normals checkbox so toggling it preserves per-part textures
+    /// of a composite DDF entity.</summary>
+    public void RefreshModel() => UpdateModel(false);
 
     public int MaximumFrame
     {
@@ -109,16 +161,33 @@ public class ModelViewModel : BaseViewModel
         {
             _model = value;
 
+            // Always remove the previous container; only add the new one if non-null.
+            // Without the unconditional remove, clearing the selection (Model = null)
+            // leaves the previous mesh on screen.
+            _modelView.viewport.Children.Remove(_modelView.modelObject);
             if (_model != null)
             {
-                InfoText = $"Model Bounds: {_model.Content.Bounds}";
-                _modelView.viewport.Children.Remove(_modelView.modelObject);
+                // Composite containers (multi-mesh entities) have Content == null
+                // and use Children instead — union the child bounds in that case.
+                var bounds = _model.Content?.Bounds;
+                if (bounds == null)
+                {
+                    var rect = Rect3D.Empty;
+                    foreach (var child in _model.Children)
+                    {
+                        if (child is ModelVisual3D mv && mv.Content != null)
+                            rect.Union(mv.Content.Bounds);
+                    }
+                    bounds = rect;
+                }
+                InfoText = $"Model Bounds: {bounds}";
                 _modelView.modelObject = _model;
                 _modelView.viewport.Children.Add(_modelView.modelObject);
             }
             else
             {
                 InfoText = null;
+                _modelView.modelObject = new ModelVisual3D();
             }
 
             OnPropertyChanged(nameof(Model));
@@ -149,29 +218,96 @@ public class ModelViewModel : BaseViewModel
     public ModelViewModel(MainWindowViewModel mainViewWindow) : base(mainViewWindow)
     {
         _modelView = MainViewModel.MainWindow.modelView;
+        _playTimer.Tick += (_, _) =>
+        {
+            var max = MaximumFrame;
+            if (max <= 0) { IsPlaying = false; return; }
+            CurrentFrame = (CurrentFrame + 1) % (max + 1);
+        };
+    }
+
+    /// <summary>
+    /// Render multiple meshes as a single composite model — used for DDF
+    /// entities (cat 0 in particular) where one entity bundles several
+    /// (mesh, texture) pairs (e.g. body + hair). Each part keeps its own
+    /// texture material instead of being merged into one geometry. The
+    /// underlying VifModel is set to the union of all mesh lists so camera
+    /// framing and the export hooks see the whole composite.
+    /// </summary>
+    public void SetCompositeModel(IList<(Model vif, BitmapSource? texture)> parts)
+    {
+        // Reset animation state without invoking the AnimData setter — that
+        // would call UpdateModel before _parts is in place and emit an empty
+        // single-mesh frame.
+        _animData = null;
+        _currentFrame = 0;
+
+        if (parts.Count == 0)
+        {
+            _parts = null;
+            VifModel = null;
+            OnPropertyChanged(nameof(AnimData));
+            OnPropertyChanged(nameof(MaximumFrame));
+            return;
+        }
+
+        _parts = parts;
+        // Combined VifModel for bone counting (animation match check) and
+        // ShowExportForPosedModel.
+        var allMeshes = parts.SelectMany(p => p.vif.MeshList).ToList();
+        _vifModel = new Model(allMeshes);
+
+        UpdateModel(false);
+        OnPropertyChanged(nameof(VifModel));
+        OnPropertyChanged(nameof(AnimData));
+        OnPropertyChanged(nameof(MaximumFrame));
     }
 
     private void UpdateModel(bool updateCamera)
     {
-        if (_vifModel != null)
+        if (_vifModel == null)
         {
-            var newModel =
-                (GeometryModel3D)Conversions.CreateModel3D(_vifModel.MeshList, Texture, _animData, CurrentFrame);
-            ModelVisual3D container = new() {Content = newModel};
+            Model = null;
+            return;
+        }
 
-            if (_modelView.normalsBox.IsChecked.GetValueOrDefault())
+        var showNormals = _modelView.normalsBox.IsChecked.GetValueOrDefault();
+        ModelVisual3D container = new();
+
+        if (_parts != null)
+        {
+            // Composite (DDF entity) — one GeometryModel3D per part keeps each
+            // part's paired texture; any current pose/frame is applied per
+            // part so animations work on the entity preview model.
+            foreach (var (vif, tex) in _parts)
             {
-                MeshNormalsVisual3D normal = new() {Mesh = (MeshGeometry3D)newModel.Geometry};
-
-                container.Children.Add(normal);
+                var partGeom = (GeometryModel3D)Conversions.CreateModel3D(
+                    vif.MeshList, tex, _animData, CurrentFrame);
+                container.Children.Add(new ModelVisual3D { Content = partGeom });
+                if (showNormals)
+                {
+                    container.Children.Add(new MeshNormalsVisual3D
+                        { Mesh = (MeshGeometry3D)partGeom.Geometry });
+                }
             }
-
-            Model = container;
-
-            if (updateCamera && _model != null)
+        }
+        else
+        {
+            var newModel = (GeometryModel3D)Conversions.CreateModel3D(
+                _vifModel.MeshList, Texture, _animData, CurrentFrame);
+            container.Content = newModel;
+            if (showNormals)
             {
-                UpdateCamera(_model);
+                container.Children.Add(new MeshNormalsVisual3D
+                    { Mesh = (MeshGeometry3D)newModel.Geometry });
             }
+        }
+
+        Model = container;
+
+        if (updateCamera && _model != null && _model.Content != null)
+        {
+            UpdateCamera(_model);
         }
     }
 
@@ -215,6 +351,16 @@ public class ModelViewModel : BaseViewModel
         }
 
         var ext = Path.GetExtension(dialog.FileName).ToUpperInvariant();
+
+        // Composite DDF entities have per-part textures that the single
+        // `Texture` property doesn't carry. Route them through the parts-aware
+        // GLTF path so each mesh keeps its own material.
+        if (ext == ".GLTF" && Parts != null)
+        {
+            new VifGltfExporter().SavePartsToFile(dialog.FileName, Parts, AnimData, CurrentFrame, 1.0);
+            return;
+        }
+
         IVifExporter? exporter = ext switch
         {
             ".OBJ" => new VifObjExporter(),

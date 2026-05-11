@@ -1,4 +1,4 @@
-﻿/*  Copyright (C) 2012 Ian Brown
+/*  Copyright (C) 2012 Ian Brown
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,36 +18,43 @@ namespace JetBlackEngineLib.Data.Textures;
 
 public class PalEntry
 {
-    private const int TransparentThreshold = 0x80;
     public byte A;
     public byte B;
     public byte G;
     public byte R;
 
+    /// <summary>
+    /// When true, every decoded pixel is forced to alpha 0xFF. Toggled by the
+    /// "Force opaque textures" setting; applies to both PS2 and Xbox paths.
+    /// </summary>
+    public static bool ForceOpaque;
+
     public int Argb()
     {
-        // Note to reviewers: I have no memory of this place
+        // PS2 palette alpha is 0..0x80 where 0x80 is the engine's "fully
+        // transparent" sentinel (used as a colorkey on HUD cutouts) and
+        // 0x00..0x7F is the visible opacity ramp. Expand 0..0x7F into the
+        // standard 0..0xFF range so semi-transparent pixels look right.
+        byte alpha;
+        if (ForceOpaque) alpha = 0xFF;
+        else if (A == 0x80) alpha = 0;
+        else alpha = (byte)Math.Min(A * 2, 0xFF);
+        return (alpha << 24) |
+               ((R << 16) & 0xFF0000) |
+               ((G << 8) & 0xFF00) |
+               (B & 0xFF);
+    }
 
-        // in ps2 0x80 is fully transparent and 0 is opaque.
-        // in java 0 is transparent and 0xFF is opaque.
-
-        var convertedAlpha = (byte)(256 - (byte)(A * 2));
-
-        var javaA = A == 0 ? 255 : (byte)(256 - (byte)(A * 2));
-
-        //if (convertedAlpha < TransparentThreshold)
-        {
-            convertedAlpha = (byte)(255 - A);
-        }
-
-
-        //java_a = (byte)0xFF;
-
-        var argb = (convertedAlpha << 24) |
-                   ((R << 16) & 0xFF0000) |
-                   ((G << 8) & 0xFF00) |
-                   (B & 0xFF);
-        return argb;
+    /// <summary>
+    /// For palettes whose alpha is already in 0..0xFF (Xbox).
+    /// </summary>
+    public int ArgbDirect()
+    {
+        var alpha = ForceOpaque ? (byte)0xFF : A;
+        return (alpha << 24) |
+               ((R << 16) & 0xFF0000) |
+               ((G << 8) & 0xFF00) |
+               (B & 0xFF);
     }
 
     public static PalEntry[] ReadPalette(ReadOnlySpan<byte> fileData, int palW, int palH)

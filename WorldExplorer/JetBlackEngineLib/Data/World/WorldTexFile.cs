@@ -1,4 +1,4 @@
-﻿using JetBlackEngineLib.Data.Textures;
+using JetBlackEngineLib.Data.Textures;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -19,10 +19,19 @@ public class WorldTexFile
     private readonly Dictionary<int, WriteableBitmap> _texMap = new();
 
     public WorldTexFile(EngineVersion engineVersion, string filepath)
+        : this(engineVersion, File.ReadAllBytes(filepath), Path.GetFileName(filepath))
+    {
+    }
+
+    /// <summary>
+    /// In-memory ctor — used when the texture data lives inside a CLP entry
+    /// (BoS) rather than as a loose level texture file (BGDA).
+    /// </summary>
+    public WorldTexFile(EngineVersion engineVersion, byte[] data, string fileName)
     {
         EngineVersion = engineVersion;
-        FileData = File.ReadAllBytes(filepath);
-        FileName = Path.GetFileName(filepath);
+        FileData = data;
+        FileName = fileName;
 
         if (EngineVersion is EngineVersion.ReturnToArms or EngineVersion.JusticeLeagueHeroes)
         {
@@ -75,13 +84,12 @@ public class WorldTexFile
 
     public WriteableBitmap? GetBitmap(int chunkStartOffset, int textureNumber)
     {
-        var numTexturesInChunk = DataUtil.GetLeInt(FileData, chunkStartOffset);
-        if (textureNumber > numTexturesInChunk)
-        {
-            return null;
-        }
-
-        var offset = chunkStartOffset + (textureNumber * 0x40);
+        // textureNumber is the byte offset within the chunk to the descriptor.
+        // PS2 BGDA uses stride 0x40 (descriptors at 0x40, 0x80, 0xC0, …);
+        // BoS Xbox uses stride 0x38 (descriptors at 0x40, 0x78, 0xB0, 0xE8, …).
+        // Both store the byte offset directly in the element's TextureNum.
+        var offset = chunkStartOffset + textureNumber;
+        if (offset + 0x40 > FileData.Length) return null;
         if (_texMap.TryGetValue(offset, out var tex))
         {
             return tex;
@@ -96,13 +104,57 @@ public class WorldTexFile
 
     public WriteableBitmap? Decode(int offset, int chunkStartOffset)
     {
-        // Dark Alliance encodes pointers as offsets from the entry in the texture entry table.
-        // Return to arms (more sensibly) encodes pointers as offsets from the current chunk loaded from the disc.
-        var deltaOffset = EngineVersion.DarkAlliance == EngineVersion ? offset : chunkStartOffset;
+        // Dark Alliance and BoS encode pointers as offsets from the entry in
+        // the texture entry table. Return to Arms encodes them as offsets from
+        // the current chunk loaded from the disc.
+        var deltaOffset = EngineVersion is EngineVersion.DarkAlliance or EngineVersion.BrotherhoodOfSteel
+            ? offset : chunkStartOffset;
 
+        // Three descriptor variants observed in BoS atlas chunks:
+        //   PS2     (+0x10 != 0): w@+0, h@+2, compressedDataOffset@+0x10. Used by PS2 BoS.
+        //   XboxFull(+0x04==0x10C, +0x08 != 0): w@+0, h@+2, offset@+0x08.
+        //                          ~15% of Xbox BoS descriptors.
+        //   XboxCompact (+0x10==0, +0x08==0, +0x00 != 0): offset@+0x00, w/h
+        //                          INHERITED from the most recent XboxFull
+        //                          descriptor in the same chunk. ~15% of
+        //                          Xbox BoS descriptors. These look like
+        //                          mip/LOD aliases sharing dimensions with
+        //                          the prior full descriptor.
         var pixelWidth = DataUtil.GetLeUShort(FileData, offset);
         var pixelHeight = DataUtil.GetLeUShort(FileData, offset + 2);
+        var d04 = DataUtil.GetLeInt(FileData, offset + 4);
         var header10 = DataUtil.GetLeInt(FileData, offset + 0x10);
+        if (header10 == 0)
+        {
+            var d08 = DataUtil.GetLeInt(FileData, offset + 0x08);
+            if (d04 == 0x10C)
+            {
+                // XboxFull layout
+                header10 = d08;
+            }
+            else if (d04 == 0 && d08 == 0)
+            {
+                // Possibly XboxCompact: only +0x00 holds the offset.
+                // Walk back to find the previous full descriptor to inherit
+                // width/height from. Stop at chunkStartOffset (which holds
+                // the chunk's u32 numTexturesInChunk).
+                header10 = DataUtil.GetLeInt(FileData, offset);
+                var prev = offset - 0x40;
+                pixelWidth = 0;
+                pixelHeight = 0;
+                while (prev > chunkStartOffset)
+                {
+                    if (DataUtil.GetLeInt(FileData, prev + 4) == 0x10C)
+                    {
+                        pixelWidth = DataUtil.GetLeUShort(FileData, prev);
+                        pixelHeight = DataUtil.GetLeUShort(FileData, prev + 2);
+                        break;
+                    }
+                    prev -= 0x40;
+                }
+                if (pixelWidth == 0 || pixelHeight == 0) return null;
+            }
+        }
         // Unused for now
         // var compressedDataLen = DataUtil.getLEInt(FileData, offset + 0x14);
         var compressedDataOffset = header10 + deltaOffset;
@@ -235,6 +287,10 @@ public class WorldTexFile
             var pBackBuffer = image.BackBuffer;
             var xpos = (xBlock * 16) + x;
             var ypos = (yBlock * 16) + y;
+            // Malformed chunk data can index past the padded bitmap bounds.
+            // AccessViolationException from Marshal.WriteInt32 is uncatchable,
+            // so we bounds-check here instead of relying on try/catch.
+            if (xpos < 0 || ypos < 0 || xpos >= image.PixelWidth || ypos >= image.PixelHeight) continue;
             var p = pBackBuffer + (ypos * image.BackBufferStride) + (xpos * 4);
             Marshal.WriteInt32(p, pixel.Argb());
         }

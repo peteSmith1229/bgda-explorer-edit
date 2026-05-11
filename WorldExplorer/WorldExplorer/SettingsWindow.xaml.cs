@@ -1,4 +1,5 @@
 ﻿using JetBlackEngineLib;
+using JetBlackEngineLib.Data.Textures;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -28,6 +29,10 @@ public partial class SettingsWindow : Window
         {
             Content = "Justice League Heroes", DataContext = EngineVersion.JusticeLeagueHeroes
         });
+        engineVersionBox.Items.Add(new ComboBoxItem
+        {
+            Content = "Fallout: Brotherhood of Steel", DataContext = EngineVersion.BrotherhoodOfSteel
+        });
 
         // Select the correct item
         var engineVersion = App.Settings.Get<EngineVersion>("Core.EngineVersion");
@@ -41,6 +46,7 @@ public partial class SettingsWindow : Window
         }
 
         dataPathTextblock.Text = App.Settings.Get("Files.DataPath", "");
+        forceOpaqueCheckBox.IsChecked = App.Settings.Get("Textures.ForceOpaque", false);
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e)
@@ -53,6 +59,8 @@ public partial class SettingsWindow : Window
     {
         App.Settings["Files.DataPath"] = dataPathTextblock.Text;
         App.Settings["Core.EngineVersion"] = GetVersionFromBox();
+        App.Settings["Textures.ForceOpaque"] = forceOpaqueCheckBox.IsChecked == true;
+        PalEntry.ForceOpaque = forceOpaqueCheckBox.IsChecked == true;
 
         App.SaveSettings();
         DialogResult = true;

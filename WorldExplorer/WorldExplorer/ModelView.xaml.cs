@@ -51,8 +51,14 @@ public partial class ModelView
     {
         if (DataContext is ModelViewModel vm)
         {
-            // Force Update
-            vm.VifModel = vm.VifModel;
+            // Rebuild the visual in place. Reassigning VifModel here would
+            // drop a composite DDF entity's per-part textures.
+            vm.RefreshModel();
         }
+    }
+
+    private void playButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is ModelViewModel vm) vm.TogglePlay();
     }
 }

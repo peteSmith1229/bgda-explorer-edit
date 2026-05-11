@@ -1,0 +1,315 @@
+using System.Windows;
+using System.Windows.Media.Media3D;
+using JetBlackEngineLib.Data.Animation;
+
+namespace JetBlackEngineLib.Data.Models;
+
+/// <summary>
+/// Decodes Xbox-platform BoS mesh entries.
+///
+/// Header:
+///   +0x10  byte  flags (bit 0x20 = stride 38; other bits = blend modes)
+///   +0x12  byte  primary-batch strip count (drives the palette split)
+///   +0x13  byte  variant byte — usually 0xFF, but legitimate skinned meshes
+///                also use 0x00, 0x01, 0x03, 0x08, 0x16. Not a discriminator.
+///   +0x14  u32   zero pad — this IS the PS2-vs-Xbox discriminator (PS2 VIF
+///                always has nonzero data here)
+///   +0x18  u32   data-section offset; u32 there is vertex-stream byte size,
+///                vertices follow immediately
+///   +0x1C  u32   index-buffer start offset
+///   +0x20  u32   vertex count
+///   +0x24  byte[64]  primary bone palette (slot → skeleton bone, 0xFF = unused)
+///   +0x64  byte[64]  secondary bone palette (overlays primary)
+///   +0xAC  u32[]     cumulative index-buffer offsets per strip
+///
+/// Topology: triangle strip with degenerate-triangle restart bridges
+/// (a == b or b == c marks a discardable bridge).
+///
+/// Vertex stream (stride 16/32/38):
+///   +0..5   int16[3]  position (/16)
+///   +6..11  int16[3]  normal (/32767)
+///   +12..15 int16[2]  texcoord (pixel * pow2 scale, see UvDivisor)
+///   +16..19 float     palette_slot1 * 4  (v1.x; ARL A0., v1.x → c[A0+10..A0+13])
+///   +20..23 float     bone1 weight
+///   +24..27 float     palette_slot2 * 4
+///   +28..31 float     bone2 weight (0 when single-bone)
+///   +32..37 int16[3]  (38-byte only) tangent — ignored
+/// </summary>
+public static class XboxMeshDecoder
+{
+    public static bool LooksLikeXboxMesh(ReadOnlySpan<byte> data)
+    {
+        if (data.Length < 0x40) return false;
+        if (DataUtil.GetLeInt(data, 0x14) != 0) return false;
+        var dataOff = DataUtil.GetLeInt(data, 0x18);
+        if (dataOff <= 0x20 || dataOff >= data.Length) return false;
+        var vertCount = DataUtil.GetLeInt(data, 0x20);
+        if (vertCount <= 0 || vertCount > 0x100000) return false;
+        var idxOff = DataUtil.GetLeInt(data, 0x1C);
+        if (idxOff < 0x24 || idxOff >= dataOff || ((dataOff - idxOff) & 1) != 0) return false;
+        return true;
+    }
+
+    /// <summary>
+    /// Decode a BoS-Xbox world-file mesh referenced via a 16-byte indirection
+    /// table at <paramref name="tableOffset"/> with fields (vertexPtr,
+    /// vertexCount, indexPtr, indexCount). Returns null if the table doesn't
+    /// validate.
+    /// </summary>
+    public static Mesh? DecodeWorldMesh(ReadOnlySpan<byte> fileData, int tableOffset, int texturePixelWidth, int texturePixelHeight)
+    {
+        if (tableOffset < 0 || tableOffset + 16 > fileData.Length) return null;
+        var vertexPtr = DataUtil.GetLeInt(fileData, tableOffset + 0);
+        var vertexCount = DataUtil.GetLeInt(fileData, tableOffset + 4);
+        var indexPtr = DataUtil.GetLeInt(fileData, tableOffset + 8);
+        var indexCount = DataUtil.GetLeInt(fileData, tableOffset + 12);
+
+        if (vertexCount <= 0 || vertexCount > 0x100000) return null;
+        if (vertexPtr < 0 || vertexPtr + 4 + vertexCount * 16 > fileData.Length) return null;
+        if (indexCount <= 0) return null;
+        if (indexPtr < 0 || indexPtr + indexCount * 2 > fileData.Length) return null;
+
+        // u32 byte-size prefix sanity-checks the format.
+        var sizePrefix = DataUtil.GetLeInt(fileData, vertexPtr);
+        if (sizePrefix != vertexCount * 16) return null;
+
+        var positions = new List<Point3D>(vertexCount);
+        var normals = new List<Vector3D>(vertexCount);
+        var uvs = new List<Point>(vertexCount);
+        var weights = new List<VertexWeight>();
+
+        DecodeVertexStream(fileData, vertexPtr + 4, vertexCount, 16,
+            texturePixelWidth, texturePixelHeight, positions, normals, uvs);
+
+        var triangleIndices = WalkTriangleStrip(fileData, indexPtr, indexCount, vertexCount);
+        AlignWindingToNormals(triangleIndices, positions, normals);
+        return new Mesh(normals, positions, uvs, triangleIndices, weights);
+    }
+
+    public static List<Mesh> Decode(ReadOnlySpan<byte> data, int texturePixelWidth, int texturePixelHeight)
+    {
+        var meshes = new List<Mesh>();
+        if (!LooksLikeXboxMesh(data)) return meshes;
+
+        var dataOff = DataUtil.GetLeInt(data, 0x18);
+        var idxOff = DataUtil.GetLeInt(data, 0x1C);
+        var vertCount = DataUtil.GetLeInt(data, 0x20);
+
+        // u32 at dataOff is the vertex-stream byte size; vertices follow.
+        // Stride (16/32/38) is derived from the trailing byte count.
+        var vertStreamStart = dataOff + 4;
+        var streamBytes = data.Length - vertStreamStart;
+        if (vertCount == 0 || streamBytes <= 0 || streamBytes % vertCount != 0) return meshes;
+        var stride = streamBytes / vertCount;
+        if (stride < 16) return meshes;
+
+        var positions = new List<Point3D>(vertCount);
+        var normals = new List<Vector3D>(vertCount);
+        var uvs = new List<Point>(vertCount);
+        var weights = new List<VertexWeight>();
+
+        DecodeVertexStream(data, vertStreamStart, vertCount, stride,
+            texturePixelWidth, texturePixelHeight, positions, normals, uvs);
+
+        // Engine draws the mesh in two batches with two palettes: primary at
+        // +0x24 for indices [0, split), secondary at +0x64 (overlays primary,
+        // 0xFF slots keep primary's value) for indices [split, end).
+        const int primaryPaletteOffset = 0x24;
+        const int secondaryPaletteOffset = 0x64;
+        const int paletteSlots = 64;
+        var indexCount = (dataOff - idxOff) / 2;
+        var splitIndex = ComputeBatchSplit(data, idxOff, indexCount);
+        var perVertexUsesSecondary = ClassifyVerticesByBatch(
+            data, idxOff, indexCount, vertCount, splitIndex);
+
+        DecodeSkinning(data, vertStreamStart, vertCount, stride, weights,
+            primaryPaletteOffset, secondaryPaletteOffset, paletteSlots,
+            perVertexUsesSecondary);
+
+        var triangleIndices = WalkTriangleStrip(data, idxOff, indexCount, vertCount);
+        AlignWindingToNormals(triangleIndices, positions, normals);
+
+        meshes.Add(new Mesh(normals, positions, uvs, triangleIndices, weights));
+        return meshes;
+    }
+
+    // Split point in the index buffer between the primary and secondary draw
+    // batches. v47 = byte at +0x12; the (v47+1)-th u32 in the strip table at
+    // +0xAC is the first index of the secondary batch.
+    private static int ComputeBatchSplit(ReadOnlySpan<byte> data, int idxOff, int indexCount)
+    {
+        var primaryStripCount = data[0x12];
+        var splitEntryOffset = 0xAC + 4 * (primaryStripCount + 1);
+        if (splitEntryOffset < 0 || splitEntryOffset + 4 > idxOff) return indexCount;
+        var split = DataUtil.GetLeInt(data, splitEntryOffset);
+        if (split < 0 || split > indexCount) return indexCount;
+        return split;
+    }
+
+    // Mark each vertex as secondary-only when no primary index references it.
+    // Shared verts stay primary since the engine draws primary first.
+    private static bool[] ClassifyVerticesByBatch(
+        ReadOnlySpan<byte> data, int idxOff, int indexCount, int vertCount, int splitIndex)
+    {
+        var usesSecondary = new bool[vertCount];
+        if (splitIndex >= indexCount) return usesSecondary;
+        var primaryHits = new bool[vertCount];
+        for (var i = 0; i < indexCount; i++)
+        {
+            int idx = data[idxOff + i * 2] | (data[idxOff + i * 2 + 1] << 8);
+            if (idx >= vertCount) continue;
+            if (i < splitIndex) primaryHits[idx] = true;
+            else if (!primaryHits[idx]) usesSecondary[idx] = true;
+        }
+        return usesSecondary;
+    }
+
+    // Emit one VertexWeight per vertex from the skinning lane (v1, +16..+31).
+    // Stride < 32 has no skinning lane (world meshes), leaving the list empty.
+    private static void DecodeSkinning(ReadOnlySpan<byte> data, int streamStart,
+        int vertCount, int stride, List<VertexWeight> weights,
+        int primaryPaletteOffset, int secondaryPaletteOffset, int paletteSlots,
+        bool[] perVertexUsesSecondary)
+    {
+        if (stride < 32) return;
+        weights.Capacity = vertCount;
+        for (var i = 0; i < vertCount; i++)
+        {
+            var p = streamStart + i * stride;
+            var f0 = ReadFloat(data, p + 16);
+            var f1 = ReadFloat(data, p + 20);
+            var f2 = ReadFloat(data, p + 24);
+            var f3 = ReadFloat(data, p + 28);
+
+            var useSecondary = perVertexUsesSecondary[i];
+            VertexWeight vw = new()
+            {
+                startVertex = i,
+                endVertex = i,
+                bone1 = LookupPalette(data, primaryPaletteOffset, secondaryPaletteOffset,
+                    paletteSlots, f0, useSecondary),
+                // Conversions.CreateModel3D normalizes weight1/(weight1+weight2),
+                // so the scale just needs to match the PS2 0..255 convention.
+                boneWeight1 = (int)Math.Round(f1 * 255.0),
+                bone3 = 0xFF,
+                bone4 = 0xFF,
+            };
+            if (f3 > 0.0)
+            {
+                vw.bone2 = LookupPalette(data, primaryPaletteOffset, secondaryPaletteOffset,
+                    paletteSlots, f2, useSecondary);
+                vw.boneWeight2 = (int)Math.Round(f3 * 255.0);
+            }
+            else
+            {
+                // Conversions.cs branches on bone2 == 0xFF for single-bone.
+                vw.bone2 = 0xFF;
+                vw.boneWeight2 = 0;
+            }
+            weights.Add(vw);
+        }
+    }
+
+    // Resolve a palette slot to a skeleton bone. Secondary-batch verts read
+    // the overlay; 0xFF overlay slots fall through to primary (the engine
+    // doesn't re-upload them, so primary's matrix stays live).
+    private static int LookupPalette(ReadOnlySpan<byte> data,
+        int primaryPaletteOffset, int secondaryPaletteOffset, int paletteSlots,
+        float slotTimesFour, bool useSecondary)
+    {
+        var slot = (int)Math.Round(slotTimesFour / 4.0);
+        if (slot < 0 || slot >= paletteSlots) return 0;
+        if (useSecondary)
+        {
+            var overlay = data[secondaryPaletteOffset + slot];
+            if (overlay != 0xFF) return overlay;
+        }
+        var bone = data[primaryPaletteOffset + slot];
+        // Bone 0 (root) fallback avoids emitting the 0xFF bone2-sentinel.
+        return bone == 0xFF ? 0 : bone;
+    }
+
+    private static float ReadFloat(ReadOnlySpan<byte> data, int off)
+        => BitConverter.Int32BitsToSingle(
+            data[off] | (data[off + 1] << 8) | (data[off + 2] << 16) | (data[off + 3] << 24));
+
+    // Pos/normal/uv occupy the same first 16 bytes regardless of stride.
+    private static void DecodeVertexStream(
+        ReadOnlySpan<byte> data, int streamStart, int vertCount, int stride,
+        int texturePixelWidth, int texturePixelHeight,
+        List<Point3D> positions, List<Vector3D> normals, List<Point> uvs)
+    {
+        var uDiv = UvDivisor(texturePixelWidth);
+        var vDiv = UvDivisor(texturePixelHeight);
+        for (var i = 0; i < vertCount; i++)
+        {
+            var p = streamStart + i * stride;
+            var px = (short)(data[p + 0] | (data[p + 1] << 8));
+            var py = (short)(data[p + 2] | (data[p + 3] << 8));
+            var pz = (short)(data[p + 4] | (data[p + 5] << 8));
+            var nx = (short)(data[p + 6] | (data[p + 7] << 8));
+            var ny = (short)(data[p + 8] | (data[p + 9] << 8));
+            var nz = (short)(data[p + 10] | (data[p + 11] << 8));
+            var u  = (short)(data[p + 12] | (data[p + 13] << 8));
+            var v  = (short)(data[p + 14] | (data[p + 15] << 8));
+            positions.Add(new Point3D(px / 16.0, py / 16.0, pz / 16.0));
+            normals.Add(new Vector3D(nx / 32767.0, ny / 32767.0, nz / 32767.0));
+            uvs.Add(new Point(u / uDiv, v / vDiv));
+        }
+    }
+
+    // Sub-strip bridges don't always preserve winding parity; flip any
+    // triangle whose face normal opposes its average vertex normal.
+    private static void AlignWindingToNormals(List<int> tris, IList<Point3D> positions, IList<Vector3D> normals)
+    {
+        for (var t = 0; t + 2 < tris.Count; t += 3)
+        {
+            var ia = tris[t]; var ib = tris[t + 1]; var ic = tris[t + 2];
+            var pa = positions[ia]; var pb = positions[ib]; var pc = positions[ic];
+            var faceNormal = Vector3D.CrossProduct(pb - pa, pc - pa);
+            var avgNormal = (normals[ia] + normals[ib] + normals[ic]);
+            if (Vector3D.DotProduct(faceNormal, avgNormal) < 0)
+            {
+                tris[t] = ib;
+                tris[t + 1] = ia;
+            }
+        }
+    }
+
+    // UVs are stored per axis as pixel * scale, where scale is the largest
+    // power of 2 such that dim * scale <= 32768.
+    private static double UvDivisor(int dim)
+    {
+        if (dim <= 0) return 32768.0;
+        var scale = 1;
+        while (scale * 2 * dim <= 32768) scale <<= 1;
+        return scale * (double)dim;
+    }
+
+    // Winding parity is sub-strip-local: reset on each degenerate-triangle
+    // bridge so every sub-strip's first real triangle is at even winding.
+    private static List<int> WalkTriangleStrip(ReadOnlySpan<byte> data, int indexPtr, int indexCount, int vertexCount)
+    {
+        var result = new List<int>();
+        var subStripPos = 0;
+        for (var i = 0; i + 2 < indexCount; i++)
+        {
+            var off = indexPtr + i * 2;
+            int a = data[off + 0] | (data[off + 1] << 8);
+            int b = data[off + 2] | (data[off + 3] << 8);
+            int c = data[off + 4] | (data[off + 5] << 8);
+            if (a >= vertexCount || b >= vertexCount || c >= vertexCount) { subStripPos = 0; continue; }
+            if (a == b || b == c || a == c) { subStripPos = 0; continue; }
+            if ((subStripPos & 1) == 0)
+            {
+                result.Add(a); result.Add(b); result.Add(c);
+            }
+            else
+            {
+                result.Add(b); result.Add(a); result.Add(c);
+            }
+            subStripPos++;
+        }
+        return result;
+    }
+}

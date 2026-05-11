@@ -33,6 +33,9 @@ public class TexDecoder
 
     public static WriteableBitmap? Decode(ReadOnlySpan<byte> data)
     {
+        // Xbox BoS uses a different TEX layout — see XboxTexDecoder.
+        if (XboxTexDecoder.LooksLikeXboxTex(data)) return XboxTexDecoder.Decode(data);
+
         GsMemory gsMem = new();
 
         var length = DataUtil.GetLeShort(data, 6) * 16;
@@ -218,10 +221,13 @@ public class TexDecoder
             return null;
         }
 
+        // Bgra32 (not Bgr32): PalEntry.Argb() writes a real alpha byte, and
+        // dropping it strips colorkey transparency — HUD elements and
+        // character cutouts (e.g. torn cloth) end up fully opaque otherwise.
         var image = new WriteableBitmap(
             finalW, finalH,
             96, 96,
-            PixelFormats.Bgr32,
+            PixelFormats.Bgra32,
             null);
         image.Lock();
         if (pixels != null)

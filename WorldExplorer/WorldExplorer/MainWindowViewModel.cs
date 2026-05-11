@@ -1,4 +1,4 @@
-﻿/*  Copyright (C) 2012 Ian Brown
+/*  Copyright (C) 2012 Ian Brown
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ using JetBlackEngineLib.Data.Textures;
 using JetBlackEngineLib.Data.World;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
@@ -128,6 +129,14 @@ public class MainWindowViewModel : INotifyPropertyChanged
             {
                 OnHdrDatChildElementSelected((HdrDatChildTreeViewItem)_selectedNode);
             }
+            else if (_selectedNode is SdbTreeViewModel sdbNode)
+            {
+                OnSdbSelected(sdbNode);
+            }
+            else if (_selectedNode is DdfEntityTreeViewModel entityNode)
+            {
+                OnDdfEntitySelected(entityNode);
+            }
 
             OnPropertyChanged(nameof(SelectedNode));
         }
@@ -183,6 +192,313 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// Selecting a DDF entity:
+    ///   - Renders all of its Mesh assets in the model viewport (each mesh
+    ///     keeps its DDF-paired texture). Multi-mesh entities — most commonly
+    ///     cat-0 characters with separate body and hair — show every part
+    ///     instead of the first one only.
+    ///   - Writes a structured record dump to the Log tab so parameter-only
+    ///     categories (cat 5 emitters, cat 9 AI, cat 10 lights, cat 11 beam
+    ///     effects) and the per-entity floats on asset-bearing categories are
+    ///     legible. The log is populated regardless of whether the viewport
+    ///     has anything to render.
+    ///   - Clears the viewport when nothing renderable is available, so the
+    ///     previous entity's model doesn't linger.
+    /// </summary>
+    private void OnDdfEntitySelected(DdfEntityTreeViewModel entityNode)
+    {
+        if (World == null) return;
+        var entity = entityNode.Entity;
+
+        // Cat-8 (level/container) entities point at a per-level world-layout
+        // file via their Other-role asset (type-5 slot). When we can find
+        // those bytes in a loaded CLP, decode them with the BGDA1 world
+        // decoder (BoS reuses that layout) and route to the Level tab.
+        if (entity.CategoryCode == 8)
+        {
+            if (TryRenderCat8World(entity))
+            {
+                LogText = DumpEntityRecord(entity);
+                return;
+            }
+        }
+
+        // Collect every Mesh asset that resolves to a loaded CLP entry.
+        // Cat 12 (debris) records list 4 interchangeable mesh variants; render
+        // only the first to keep the view legible — the parser already pairs
+        // every cat-12 mesh to the same texture, so picking any one looks the
+        // same as picking the canonical first variant.
+        var meshParts = new List<(JetBlackEngineLib.Data.Models.Model vif, BitmapSource? texture)>();
+        var renderedLabels = new List<string>();
+        var firstMeshOnly = entity.CategoryCode == 12;
+        var decodeErrors = new List<string>();
+        foreach (var asset in entity.Assets)
+        {
+            if (asset.Role != DdfFile.AssetRole.Mesh) continue;
+            if (!World.AssetIndex.TryGetValue(asset.Hash, out var loc)) continue;
+            var clp = loc.Clp;
+            if (!clp.Directory.TryGetValue(loc.EntryLabel, out var meshEntry)) continue;
+
+            // Wrap per-asset decode so a single bad asset (e.g. a format the
+            // current decoder doesn't recognize) lands in the log instead of
+            // aborting the rest of the entity's meshes.
+            try
+            {
+                BitmapSource? texture = null;
+                // Same mesh hash can appear in multiple entities with
+                // different paired textures (cyrus skins, bottle-cap
+                // variants, etc.), so prefer the per-entity pairing the
+                // DDF parser already recorded. The parser stores it in two
+                // directions depending on category: cat-12 (debris) puts
+                // the shared-texture hash on the mesh asset; other
+                // categories put the mesh hash on the texture asset.
+                LmpFile.EntryInfo? pairedTex = null;
+                LmpFile pairedTexClp = clp;
+                uint? entityPairedTexHash = asset.PairedHash;
+                if (entityPairedTexHash == null)
+                {
+                    foreach (var other in entity.Assets)
+                    {
+                        if (other.Role != DdfFile.AssetRole.Texture) continue;
+                        if (other.PairedHash != asset.Hash) continue;
+                        entityPairedTexHash = other.Hash;
+                        break;
+                    }
+                }
+                if (entityPairedTexHash is uint pairedHash
+                    && World.AssetIndex.TryGetValue(pairedHash, out var texLoc)
+                    && texLoc.Clp.Directory.TryGetValue(texLoc.EntryLabel, out var texEntry))
+                {
+                    pairedTex = texEntry;
+                    pairedTexClp = texLoc.Clp;
+                }
+                pairedTex ??= FindSiblingTex(clp, loc.EntryLabel);
+                if (pairedTex != null)
+                {
+                    try
+                    {
+                        texture = TexDecoder.Decode(pairedTexClp.FileData.AsSpan().Slice(pairedTex.StartOffset, pairedTex.Length));
+                    }
+                    catch (Exception ex)
+                    {
+                        decodeErrors.Add($"  TEX decode of paired texture for {loc.EntryLabel} failed: {ex.GetType().Name}: {ex.Message}");
+                    }
+                }
+
+                var uvW = texture?.PixelWidth ?? 256;
+                var uvH = texture?.PixelHeight ?? 256;
+                var vif = new JetBlackEngineLib.Data.Models.Model(VifDecoder.Decode(
+                    new StringLogger(),
+                    clp.FileData.AsSpan().Slice(meshEntry.StartOffset, meshEntry.Length),
+                    uvW, uvH));
+
+                meshParts.Add((vif, texture));
+                renderedLabels.Add(loc.EntryLabel);
+                if (firstMeshOnly) break;
+            }
+            catch (Exception ex)
+            {
+                decodeErrors.Add($"  VIF decode of {loc.EntryLabel} failed: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        if (meshParts.Count > 0)
+        {
+            // Show the first part's texture in the texture tab as a hint.
+            SelectedNodeImage = meshParts[0].texture as System.Windows.Media.Imaging.WriteableBitmap;
+            _modelViewModel.SetCompositeModel(meshParts);
+            MainWindow.SetViewportText(1, entity.Name,
+                meshParts.Count > 1 ? $"{meshParts.Count} meshes: {string.Join(", ", renderedLabels)}" : "");
+            MainWindow.tabControl.SelectedIndex = 1; // Model View
+            MainWindow.ResetCamera();
+        }
+        else
+        {
+            SelectedNodeImage = null;
+            _modelViewModel.Texture = null;
+            _modelViewModel.AnimData = null;
+            _modelViewModel.VifModel = null;
+            MainWindow.SetViewportText(1, entity.Name + " (no model)", "");
+        }
+
+        var dump = DumpEntityRecord(entity);
+        if (decodeErrors.Count > 0)
+        {
+            dump += "\nDecode errors:\n" + string.Join("\n", decodeErrors);
+        }
+        LogText = dump;
+    }
+
+    /// <summary>
+    /// Look up the BoS level texture atlas. Tries two strategies:
+    ///   1. Hash "&lt;entity_name&gt;.tex" directly — covers BAR, T_GAZ, GARDEN,
+    ///      etc. where the CLP and asset names match.
+    ///   2. Fallback: locate the sibling "&lt;entity&gt;_T.CLP" archive and pick
+    ///      its largest entry — covers cases where the CLP name is a short
+    ///      code but the asset is the full word (WARE_1 → warehouse_1.tex,
+    ///      TUTOR → tutorial.tex). The .tex is always the biggest of the 2–3
+    ///      entries in a _T.CLP (they hold .tex / .hsh / .vat where .hsh is
+    ///      always tiny and .vat is medium).
+    /// </summary>
+    private WorldTexFile? LoadBosLevelTex(string entityName)
+    {
+        if (World == null) return null;
+        var lowerName = entityName.Trim().ToLowerInvariant();
+
+        var hash = BosNameTable.Hash(lowerName + ".tex");
+        if (World.AssetIndex.TryGetValue(hash, out var loc)
+            && loc.Clp.Directory.TryGetValue(loc.EntryLabel, out var entry))
+        {
+            var bytes = new byte[entry.Length];
+            Buffer.BlockCopy(loc.Clp.FileData, entry.StartOffset, bytes, 0, entry.Length);
+            return new WorldTexFile(World.EngineVersion, bytes, lowerName + ".tex");
+        }
+
+        var siblingName = entityName.Trim().ToUpperInvariant() + "_T.CLP";
+        foreach (var clp in World.LoadedClps)
+        {
+            if (!string.Equals(clp.Name, siblingName, StringComparison.OrdinalIgnoreCase)) continue;
+            // The .tex is always the biggest entry in a _T.CLP.
+            string? bestKey = null;
+            int bestSize = 0;
+            foreach (var (key, info) in clp.Directory)
+            {
+                if (info.Length > bestSize) { bestSize = info.Length; bestKey = key; }
+            }
+            if (bestKey != null)
+            {
+                var info = clp.Directory[bestKey];
+                var bytes = new byte[info.Length];
+                Buffer.BlockCopy(clp.FileData, info.StartOffset, bytes, 0, info.Length);
+                return new WorldTexFile(World.EngineVersion, bytes, bestKey);
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Decode a cat-8 entity's type-5 (Other-role) asset as a BoS world file
+    /// and surface it in the Level tab. Returns false if the entity has no
+    /// usable Other reference, or its bytes don't parse — in which case the
+    /// caller falls through to the regular mesh/log path.
+    /// </summary>
+    private bool TryRenderCat8World(DdfFile.EntityRecord entity)
+    {
+        if (World == null) return false;
+        // The world-layout slot is the cat-8 type-5 reference. We attributed
+        // it as AssetRole.Other in the DDF parser. There can be multiple
+        // Other-role assets (types 5/6/7), so try each in turn.
+        foreach (var asset in entity.Assets)
+        {
+            if (asset.Role != DdfFile.AssetRole.Other) continue;
+            if (!World.AssetIndex.TryGetValue(asset.Hash, out var loc)) continue;
+            if (!loc.Clp.Directory.TryGetValue(loc.EntryLabel, out var entry)) continue;
+            try
+            {
+                var data = loc.Clp.FileData.AsSpan(entry.StartOffset, entry.Length);
+                // Quick header sanity-check before paying the parse cost: a
+                // real WorldFileHeader has a small NumberOfElements at +0
+                // and an ElementArrayStart at +0x24 inside the file.
+                if (data.Length < 0x68) continue;
+                var ne = BitConverter.ToInt32(data.Slice(0, 4));
+                var eas = BitConverter.ToInt32(data.Slice(0x24, 4));
+                var wtoo = BitConverter.ToInt32(data.Slice(0x64, 4));
+                if (ne <= 0 || ne > 8000 || eas < 100 || eas >= data.Length) continue;
+                if (wtoo < 100 || wtoo >= data.Length) continue;
+
+                WorldFileDecoder decoder = World.EngineVersion == EngineVersion.BrotherhoodOfSteel
+                    ? new WorldFileV1BoSDecoder()
+                    : new WorldFileV1Decoder();
+                // Derive the level texture atlas from the *archive* the world
+                // file lives in (e.g. LAB_1B.CLP → lab_1b.tex / LAB_1B_T.CLP),
+                // NOT from the entity SDB name. With our recursive SDB scan,
+                // an entity like "Vault Lab 1, mutated" (which lives in
+                // GTEXT.SDB) wins the SDB lookup race over the level ID
+                // "LAB_1b" (in LAB_1B.SDB / GLOBAL.SDB), and the localized
+                // display name doesn't match any CLP archive name. Falling
+                // back to the CLP filename matches what the .world dispatch
+                // does and finds the right atlas.
+                var levelKey = Path.GetFileNameWithoutExtension(loc.Clp.Name);
+                var texFile = LoadBosLevelTex(levelKey) ?? World.WorldTex;
+                var worldData = decoder.Decode(data, texFile);
+                World.WorldData = worldData;
+                _levelViewModel.WorldNode = null;
+                _levelViewModel.WorldData = worldData;
+
+                MainWindow.tabControl.SelectedIndex = 3; // Level View
+                MainWindow.SetViewportText(3, entity.Name, $"{worldData.WorldElements.Count} elements");
+                MainWindow.ResetCamera();
+
+                // Clear the model viewport so a previously-selected character
+                // mesh doesn't overlap visually.
+                _modelViewModel.VifModel = null;
+                _modelViewModel.Texture = null;
+                _modelViewModel.AnimData = null;
+                SelectedNodeImage = null;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogText = $"Cat-8 world decode failed for asset 0x{asset.Hash:X8}: {ex.GetType().Name}: {ex.Message}";
+                return false;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Build a human-readable text dump of a DDF entity record: header info,
+    /// asset list with names where known, and the populated float / int slots
+    /// in the record body. Used as the Log-tab preview when an entity is
+    /// selected so parameter-only records (emitters, AI, lights, beam effects)
+    /// are legible and asset-bearing entities also expose their gameplay
+    /// stats.
+    /// </summary>
+    private string DumpEntityRecord(DdfFile.EntityRecord entity)
+    {
+        var sb = new StringBuilder();
+        sb.AppendFormat("Entity: {0}\n", entity.Name);
+        sb.AppendFormat("  SDB hash:      0x{0:X8}\n", entity.SdbHash);
+        sb.AppendFormat("  Category:      {0}\n", entity.CategoryCode);
+        sb.AppendFormat("  Record offset: 0x{0:X}\n", entity.RecordOffset);
+
+        if (entity.Assets.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Assets:");
+            foreach (var a in entity.Assets)
+            {
+                var name = BosNameTable.Get(a.Hash);
+                var nameStr = name != null ? $"  '{name}'" : "";
+                var pair = a.PairedHash.HasValue ? $"  paired→0x{a.PairedHash.Value:X8}" : "";
+                sb.AppendFormat("  {0,-9} 0x{1:X8}{2}{3}\n", a.Role, a.Hash, nameStr, pair);
+            }
+        }
+
+        var ddf = World?.WorldDdf;
+        if (ddf != null && entity.RecordOffset + 0x14 <= ddf.FileData.Length)
+        {
+            var size = (int)BitConverter.ToUInt32(ddf.FileData, entity.RecordOffset + 0x10);
+            size = Math.Min(size, ddf.FileData.Length - entity.RecordOffset);
+            if (size > 0x14)
+            {
+                sb.AppendLine();
+                sb.AppendFormat("Record body ({0} bytes total, showing non-zero u32/float pairs from +0x14):\n", size);
+                for (var off = 0x14; off + 4 <= size; off += 4)
+                {
+                    var u = BitConverter.ToUInt32(ddf.FileData, entity.RecordOffset + off);
+                    if (u == 0) continue;
+                    var f = BitConverter.ToSingle(ddf.FileData, entity.RecordOffset + off);
+                    var i = (int)u;
+                    var floatStr = (Math.Abs(f) > 0.0001f && Math.Abs(f) < 1e10f) ? f.ToString("F4") : "—";
+                    sb.AppendFormat("  +0x{0:X3}  u32=0x{1:X8} ({2,11})  float={3}\n", off, u, i, floatStr);
+                }
+            }
+        }
+        return sb.ToString();
+    }
+
     private void OnLmpEntrySelected(LmpEntryTreeViewModel lmpEntry)
     {
         var lmpFile = lmpEntry.LmpFileProperty;
@@ -190,6 +506,160 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         var ext = (Path.GetExtension(lmpEntry.Label) ?? "").ToLower();
 
+        // Selecting an .anm directly under a DDF entity should preview the
+        // clip on the entity's composite mesh, not on whatever model happened
+        // to be loaded last (a sibling sub-mesh, a different entity, or
+        // nothing — in which case the .anm path would otherwise fall through
+        // to the skeleton-only view). Rebuild the composite first so the
+        // subsequent AnimData assignment lands on the right meshes.
+        if (ext == ".anm" && lmpEntry.Parent is DdfEntityTreeViewModel entityNode)
+        {
+            OnDdfEntitySelected(entityNode);
+        }
+
+        try
+        {
+            DispatchLmpEntry(lmpFile, entry, lmpEntry, ext);
+        }
+        catch (Exception ex)
+        {
+            LogText = $"Failed to decode {lmpEntry.Label} as {ext}: {ex.GetType().Name}: {ex.Message}\n\n"
+                      + HexDump(lmpFile.FileData, entry.StartOffset, Math.Min(entry.Length, 256));
+            MainWindow.tabControl.SelectedIndex = 4; // Log View
+        }
+    }
+
+    private static LmpFile.EntryInfo? FindSiblingTex(LmpFile lmp, string vifLabel)
+    {
+        // Strongest signal: ask the DDF for the specific texture hash that
+        // shares this mesh's asset record. When an entity has several variants
+        // (e.g. multiple Bottle Caps drops, each with its own mesh+texture),
+        // each variant binds the right texture to the right mesh.
+        if (lmp is ClpFile clp &&
+            clp.TexturePairResolver != null &&
+            clp.HashByLabel.TryGetValue(vifLabel, out var meshHash))
+        {
+            var paired = clp.TexturePairResolver(meshHash);
+            if (paired.HasValue)
+            {
+                foreach (var (key, info) in lmp.Directory)
+                {
+                    if (!key.EndsWith(".tex")) continue;
+                    if (clp.HashByLabel.TryGetValue(key, out var texHash) && texHash == paired.Value)
+                    {
+                        return info;
+                    }
+                }
+            }
+        }
+
+        // Legacy BGDA naming convention — same basename, .tex extension.
+        var legacy = Path.GetFileNameWithoutExtension(vifLabel) + ".tex";
+        if (lmp.Directory.TryGetValue(legacy, out var byBasename)) return byBasename;
+
+        // Last resort: any .tex with the same entity-name token.
+        var vifEntity = ExtractEntityToken(vifLabel);
+        if (vifEntity == null) return null;
+        foreach (var (key, info) in lmp.Directory)
+        {
+            if (!key.EndsWith(".tex")) continue;
+            if (ExtractEntityToken(key) == vifEntity) return info;
+        }
+        return null;
+    }
+
+    private static string? ExtractEntityToken(string label)
+    {
+        var dot = label.LastIndexOf('.');
+        return dot > 0 ? label.Substring(0, dot) : label;
+    }
+
+    private void OnSdbSelected(SdbTreeViewModel node)
+    {
+        var sdb = node.SdbFile;
+        var sb = new StringBuilder();
+        sb.AppendFormat("{0}\nString database — {1} records.\n", sdb.Name, sdb.Records.Count);
+        sb.AppendLine();
+        sb.AppendLine("  slot   stored hash   string");
+        sb.AppendLine("  -----  -----------   ------------------------------------------------");
+        foreach (var rec in sdb.Records)
+        {
+            var preview = rec.Text ?? "<missing string>";
+            if (preview.Length > 96) preview = preview.Substring(0, 93) + "...";
+            preview = preview.Replace('\r', ' ').Replace('\n', ' ');
+            sb.AppendFormat("  {0,5}  0x{1:X8}    {2}\n", rec.Slot, rec.Hash, preview);
+        }
+        LogText = sb.ToString();
+        MainWindow.tabControl.SelectedIndex = 4; // Log View
+    }
+
+    private static string DescribeVag(string label, byte[] data, int offset, int length)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine(label);
+        if (length < 0x40)
+        {
+            sb.AppendLine("VAG file is too short to read header.");
+            return sb.ToString();
+        }
+        // VAG header is big-endian.
+        var version = (data[offset + 4] << 24) | (data[offset + 5] << 16) | (data[offset + 6] << 8) | data[offset + 7];
+        var dataSize = (data[offset + 0xC] << 24) | (data[offset + 0xD] << 16) | (data[offset + 0xE] << 8) | data[offset + 0xF];
+        var sampleRate = (data[offset + 0x10] << 24) | (data[offset + 0x11] << 16) | (data[offset + 0x12] << 8) | data[offset + 0x13];
+        var name = new StringBuilder();
+        for (var i = 0; i < 16 && data[offset + 0x20 + i] != 0; i++) name.Append((char)data[offset + 0x20 + i]);
+        sb.AppendFormat("VAG (PS2 ADPCM audio)\n");
+        sb.AppendFormat("  Internal name: {0}\n", name);
+        sb.AppendFormat("  Version:       0x{0:X8}\n", version);
+        sb.AppendFormat("  Sample rate:   {0} Hz\n", sampleRate);
+        sb.AppendFormat("  Data size:     {0} bytes ({1:F1} KB)\n", dataSize, dataSize / 1024.0);
+        sb.AppendFormat("  File size:     {0} bytes\n", length);
+        return sb.ToString();
+    }
+
+    private static string DescribeNameTable(string label, byte[] data, int offset, int length)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine(label);
+        sb.AppendFormat("32-byte name table, {0} records\n\n", length / 32);
+        for (var i = 0; i < length; i += 32)
+        {
+            var name = new StringBuilder();
+            for (var j = 0; j < 32 && i + j < length; j++)
+            {
+                var b = data[offset + i + j];
+                if (b == 0) break;
+                name.Append(b >= 0x20 && b < 0x7f ? (char)b : '.');
+            }
+            if (name.Length == 0) continue;
+            sb.AppendFormat("  {0:D4}: {1}\n", i / 32, name);
+        }
+        return sb.ToString();
+    }
+
+    private static string HexDump(byte[] data, int offset, int length)
+    {
+        var sb = new StringBuilder();
+        for (var i = 0; i < length; i += 16)
+        {
+            sb.AppendFormat("{0:X8}: ", offset + i);
+            for (var j = 0; j < 16 && i + j < length; j++)
+            {
+                sb.AppendFormat("{0:X2} ", data[offset + i + j]);
+            }
+            sb.Append(' ');
+            for (var j = 0; j < 16 && i + j < length; j++)
+            {
+                var b = data[offset + i + j];
+                sb.Append(b >= 32 && b < 127 ? (char)b : '.');
+            }
+            sb.AppendLine();
+        }
+        return sb.ToString();
+    }
+
+    private void DispatchLmpEntry(LmpFile lmpFile, LmpFile.EntryInfo entry, LmpEntryTreeViewModel lmpEntry, string ext)
+    {
         switch (ext)
         {
             case ".tex":
@@ -202,18 +672,31 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 break;
             case ".vif":
             {
+                LmpFile.EntryInfo? pairedTex;
                 var texFilename = Path.GetFileNameWithoutExtension(lmpEntry.Label) + ".tex";
-                var texEntry = lmpFile.Directory[texFilename];
-                SelectedNodeImage =
-                    TexDecoder.Decode(lmpFile.FileData.AsSpan().Slice(texEntry.StartOffset, texEntry.Length));
+                if (lmpFile.Directory.TryGetValue(texFilename, out var ent))
+                {
+                    pairedTex = ent;
+                }
+                else
+                {
+                    pairedTex = FindSiblingTex(lmpFile, lmpEntry.Label);
+                }
+                SelectedNodeImage = pairedTex != null
+                    ? TexDecoder.Decode(lmpFile.FileData.AsSpan().Slice(pairedTex.StartOffset, pairedTex.Length))
+                    : null;
                 StringLogger log = new();
                 _modelViewModel.Texture = SelectedNodeImage;
                 _modelViewModel.AnimData = null;
+                // VifDecoder divides UV coords by (textureDim * 16). With dim 0 we get
+                // NaN UVs and WPF silently drops the geometry; fall back to 256 so the
+                // Model viewer can paint with the checkerboard brush instead.
+                var uvW = SelectedNodeImage?.PixelWidth ?? 256;
+                var uvH = SelectedNodeImage?.PixelHeight ?? 256;
                 Model model = new(VifDecoder.Decode(
                     log,
                     lmpFile.FileData.AsSpan().Slice(entry.StartOffset, entry.Length),
-                    SelectedNodeImage?.PixelWidth ?? 0,
-                    SelectedNodeImage?.PixelHeight ?? 0));
+                    uvW, uvH));
                 _modelViewModel.VifModel = model;
 
                 /*// Load animation data
@@ -241,8 +724,14 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 if (_modelViewModel.VifModel != null)
                 {
                     var boneCount = _modelViewModel.VifModel.CountBones();
-                    // Ensure the animation has the same number of bones as the model
-                    if (boneCount != 0 && boneCount == animData.NumBones)
+                    // CountBones returns (max-skinned-bone-id + 1) — only bones
+                    // that vertex weights reference. animData.NumBones counts
+                    // the full skeleton, including unskinned helpers (root, IK,
+                    // attach points). Requiring equality rejects legitimate
+                    // skeletons with trailing unskinned bones (e.g. the baby
+                    // deathclaw). The pose lookup in Conversions.CreateModel3D
+                    // only needs every referenced bone id to be < NumBones.
+                    if (boneCount != 0 && boneCount <= animData.NumBones)
                     {
                         _modelViewModel.AnimData = animData;
 
@@ -324,6 +813,53 @@ public class MainWindowViewModel : INotifyPropertyChanged
             }
                 MainWindow.tabControl.SelectedIndex = 4; // Log View
 
+                break;
+            case ".vag":
+                LogText = DescribeVag(lmpEntry.Label, lmpFile.FileData, entry.StartOffset, entry.Length);
+                MainWindow.tabControl.SelectedIndex = 4; // Log View
+                break;
+            case ".names":
+                LogText = DescribeNameTable(lmpEntry.Label, lmpFile.FileData, entry.StartOffset, entry.Length);
+                MainWindow.tabControl.SelectedIndex = 4; // Log View
+                break;
+            case ".adpcm":
+                LogText = $"{lmpEntry.Label}\nRaw PS2 ADPCM stream (header-less VAG body).\n  {entry.Length} bytes = {entry.Length / 16} frames = {entry.Length * 28 / 16} samples\n\n"
+                          + HexDump(lmpFile.FileData, entry.StartOffset, Math.Min(entry.Length, 128));
+                MainWindow.tabControl.SelectedIndex = 4; // Log View
+                break;
+            case ".world":
+            {
+                if (World == null) break;
+                var data = lmpFile.FileData.AsSpan(entry.StartOffset, entry.Length);
+                WorldFileDecoder decoder = World.EngineVersion == EngineVersion.BrotherhoodOfSteel
+                    ? new WorldFileV1BoSDecoder()
+                    : new WorldFileV1Decoder();
+                // Derive the texture atlas from the parent CLP's name. The
+                // user typically opens e.g. "BAR.CLP" — the matching atlas is
+                // "bar.tex" living in BAR_T.CLP, hashable via BosNameTable.
+                WorldTexFile? texFile = World.WorldTex;
+                if (World.EngineVersion == EngineVersion.BrotherhoodOfSteel)
+                {
+                    var levelName = Path.GetFileNameWithoutExtension(lmpFile.Name);
+                    texFile = LoadBosLevelTex(levelName) ?? texFile;
+                }
+                World.WorldData = decoder.Decode(data, texFile);
+                _levelViewModel.WorldNode = null;
+                _levelViewModel.WorldData = World.WorldData;
+                LogText = World.WorldData.ToString();
+                MainWindow.tabControl.SelectedIndex = 3; // Level View
+                MainWindow.SetViewportText(3, lmpEntry.Label, $"{World.WorldData.WorldElements.Count} elements");
+                MainWindow.ResetCamera();
+                _modelViewModel.VifModel = null;
+                _modelViewModel.Texture = null;
+                _modelViewModel.AnimData = null;
+                SelectedNodeImage = null;
+                break;
+            }
+            default:
+                LogText = $"{lmpEntry.Label}\nNo decoder for extension '{ext}'. First {Math.Min(entry.Length, 256)} bytes:\n\n"
+                          + HexDump(lmpFile.FileData, entry.StartOffset, Math.Min(entry.Length, 256));
+                MainWindow.tabControl.SelectedIndex = 4; // Log View
                 break;
         }
     }

@@ -22,6 +22,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
 using WorldExplorer.DataExporters;
@@ -43,6 +44,7 @@ public partial class MainWindow : Window
         SetupViewports();
 
         App.LoadSettings();
+        JetBlackEngineLib.Data.Textures.PalEntry.ForceOpaque = App.Settings.Get("Textures.ForceOpaque", false);
 
         _fileTreeMenu = new FileTreeViewContextManager(this, treeView);
         ViewModel = new MainWindowViewModel(this, App.Settings.Get("Files.DataPath", "") ?? "");
@@ -65,11 +67,10 @@ public partial class MainWindow : Window
         switch (tabControl.SelectedIndex)
         {
             case 1:
-                modelView.viewport.SetView(new Point3D(0, -100, 0), new Vector3D(0, 100, 0), new Vector3D(0, 0, 1));
+                FrameModel(modelView.viewport, ViewModel.TheModelViewModel.VifModel);
                 break;
             case 2:
-                skeletonView.viewport.SetView(new Point3D(0, -100, 0), new Vector3D(0, 100, 0),
-                    new Vector3D(0, 0, 1));
+                FrameModel(skeletonView.viewport, ViewModel.TheModelViewModel.VifModel);
                 break;
             case 3:
                 // Attempt to get the whole world in view
@@ -78,6 +79,82 @@ public partial class MainWindow : Window
                     levelView.viewport.ZoomExtents(bounds, 1000);
                 break;
         }
+    }
+
+    /// <summary>
+    /// Position the camera at a 3/4 angle in front of the model's centroid,
+    /// looking at the widest face. We choose between viewing along -Y or
+    /// along -X depending on which gives the larger visible projection
+    /// (sizeX·sizeZ vs sizeY·sizeZ). Characters end up viewed from -Y
+    /// (front), but a long object oriented along Y (e.g. a rifle) gets
+    /// viewed from -X so its length runs across the screen instead of
+    /// pointing at the camera. Writes camera properties directly so
+    /// downstream code (UpdateCamera, ZoomExtents, …) can't override.
+    /// </summary>
+    private static void FrameModel(HelixViewport3D viewport, JetBlackEngineLib.Data.Models.Model? model)
+    {
+        if (viewport.Camera is not ProjectionCamera cam) return;
+
+        if (model == null || !TryGetModelBounds(model, out var bounds))
+        {
+            cam.Position = new Point3D(0, -100, 50);
+            cam.LookDirection = new Vector3D(0, 100, -50);
+            cam.UpDirection = new Vector3D(0, 0, 1);
+            if (cam is OrthographicCamera oc0) oc0.Width = 200;
+            return;
+        }
+
+        var cx = bounds.X + bounds.SizeX / 2;
+        var cy = bounds.Y + bounds.SizeY / 2;
+        var cz = bounds.Z + bounds.SizeZ / 2;
+        var span = Math.Max(bounds.SizeX, Math.Max(bounds.SizeY, bounds.SizeZ));
+        if (span < 1) span = 1;
+        var distance = span * 2.0;
+        var elevation = span * 0.4;
+
+        // Compare visible-face area for each candidate view axis. Whichever
+        // gives the larger XZ-or-YZ rectangle wins.
+        var areaFromY = bounds.SizeX * bounds.SizeZ;
+        var areaFromX = bounds.SizeY * bounds.SizeZ;
+
+        if (areaFromX > areaFromY)
+        {
+            // Camera at -X looking toward +X.
+            cam.Position = new Point3D(cx - distance, cy, cz + elevation);
+            cam.LookDirection = new Vector3D(distance, 0, -elevation);
+        }
+        else
+        {
+            // Camera at -Y looking toward +Y (default for characters).
+            cam.Position = new Point3D(cx, cy - distance, cz + elevation);
+            cam.LookDirection = new Vector3D(0, distance, -elevation);
+        }
+        cam.UpDirection = new Vector3D(0, 0, 1);
+        if (cam is OrthographicCamera oc) oc.Width = span * 1.4;
+    }
+
+    private static bool TryGetModelBounds(JetBlackEngineLib.Data.Models.Model model, out Rect3D bounds)
+    {
+        bounds = Rect3D.Empty;
+        var any = false;
+        double minX = double.PositiveInfinity, minY = double.PositiveInfinity, minZ = double.PositiveInfinity;
+        double maxX = double.NegativeInfinity, maxY = double.NegativeInfinity, maxZ = double.NegativeInfinity;
+        foreach (var mesh in model.MeshList)
+        {
+            foreach (var p in mesh.Positions)
+            {
+                any = true;
+                if (p.X < minX) minX = p.X;
+                if (p.Y < minY) minY = p.Y;
+                if (p.Z < minZ) minZ = p.Z;
+                if (p.X > maxX) maxX = p.X;
+                if (p.Y > maxY) maxY = p.Y;
+                if (p.Z > maxZ) maxZ = p.Z;
+            }
+        }
+        if (!any) return false;
+        bounds = new Rect3D(minX, minY, minZ, maxX - minX, maxY - minY, maxZ - minZ);
+        return true;
     }
 
     public void SetViewportText(int index, string title, string subTitle)
@@ -238,6 +315,55 @@ public partial class MainWindow : Window
                 stream.Close();
             }
         }
+    }
+
+    private void Menu_Export_TextureWeaved_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedNodeImage == null)
+        {
+            MessageBox.Show(this, "No texture currently loaded.", "Error", MessageBoxButton.OK);
+            return;
+        }
+
+        var src = ViewModel.SelectedNodeImage;
+        if (src.PixelHeight < 2 || (src.PixelHeight & 1) != 0)
+        {
+            MessageBox.Show(this, "Texture height must be even to weave fields.", "Error",
+                MessageBoxButton.OK);
+            return;
+        }
+
+        SaveFileDialog dialog = new() {Filter = "PNG Image|*.png"};
+        if (!dialog.ShowDialog(this).GetValueOrDefault(false)) return;
+
+        var woven = WeaveInterlacedFields(src);
+        using FileStream stream = new(dialog.FileName, FileMode.Create);
+        PngBitmapEncoder encoder = new();
+        encoder.Frames.Add(BitmapFrame.Create(woven));
+        encoder.Save(stream);
+    }
+
+    // Interleaves a texture stored as two stacked fields (top half + bottom
+    // half) into a single image with the same dimensions, taking output line
+    // 2k from top-half line k and output line 2k+1 from bottom-half line k.
+    private static BitmapSource WeaveInterlacedFields(BitmapSource src)
+    {
+        var converted = new FormatConvertedBitmap(src, PixelFormats.Bgra32, null, 0);
+        int w = converted.PixelWidth;
+        int h = converted.PixelHeight;
+        int halfH = h / 2;
+        int stride = w * 4;
+        byte[] pixels = new byte[stride * h];
+        converted.CopyPixels(pixels, stride, 0);
+
+        byte[] output = new byte[stride * h];
+        for (int y = 0; y < halfH; y++)
+        {
+            Buffer.BlockCopy(pixels, y * stride, output, (2 * y) * stride, stride);
+            Buffer.BlockCopy(pixels, (halfH + y) * stride, output, (2 * y + 1) * stride, stride);
+        }
+
+        return BitmapSource.Create(w, h, src.DpiX, src.DpiY, PixelFormats.Bgra32, null, output, stride);
     }
 
     private void Menu_Export_Model_Click(object sender, RoutedEventArgs e)
