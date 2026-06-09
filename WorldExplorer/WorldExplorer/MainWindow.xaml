@@ -1,4 +1,4 @@
-﻿<Window x:Class="WorldExplorer.MainWindow"
+<Window x:Class="WorldExplorer.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:WorldExplorer"
@@ -15,41 +15,98 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
+        <!-- ═══════════════════════════════════ Menu bar ═══════════════════════════════════ -->
         <Menu IsMainMenu="True">
+
+            <!-- File menu -->
             <MenuItem Header="_File">
                 <MenuItem Header="_Open File" Click="MenuOpenFileClick" />
                 <Separator />
-                <MenuItem x:Name="MenuRecentFiles" Header="Recent _Files" SubmenuOpened="MenuRecentFilesSubmenuOpened">
+                <MenuItem x:Name="MenuRecentFiles" Header="Recent _Files"
+                          SubmenuOpened="MenuRecentFilesSubmenuOpened">
                     <MenuItem />
                 </MenuItem>
                 <Separator />
+                <!-- NEW: saves the currently loaded (and dirty) LMP archive -->
+                <MenuItem x:Name="Menu_SaveArchive"
+                          Header="_Save Archive…"
+                          Click="Menu_SaveArchive_Click"
+                          IsEnabled="{Binding IsArchiveDirty}" />
+                <Separator />
                 <MenuItem Header="E_xit" Click="MenuExitClick" />
             </MenuItem>
+
+            <!-- Edit menu -->
             <MenuItem Header="_Edit">
+
+                <!-- ── Export sub-menu (existing) ─────────────────────────────── -->
                 <MenuItem x:Name="Menu_Export" Header="_Export">
-                    <MenuItem x:Name="Menu_Export_Texture" Header="Texture" Click="Menu_Export_Texture_Click" />
-                    <MenuItem x:Name="Menu_Export_TextureWeaved" Header="Texture (Weave Interlaced Fields)" Click="Menu_Export_TextureWeaved_Click" />
-                    <MenuItem x:Name="Menu_Export_Model" Header="Model" Click="Menu_Export_Model_Click" />
-                    <MenuItem x:Name="Menu_Export_PosedModel" Header="Posed Model" Click="Menu_Export_PosedModel_Click" />
+                    <MenuItem x:Name="Menu_Export_Texture"
+                              Header="Texture"
+                              Click="Menu_Export_Texture_Click" />
+                    <MenuItem x:Name="Menu_Export_TextureWeaved"
+                              Header="Texture (Weave Interlaced Fields)"
+                              Click="Menu_Export_TextureWeaved_Click" />
+                    <MenuItem x:Name="Menu_Export_Model"
+                              Header="Model"
+                              Click="Menu_Export_Model_Click" />
+                    <MenuItem x:Name="Menu_Export_PosedModel"
+                              Header="Posed Model"
+                              Click="Menu_Export_PosedModel_Click" />
                 </MenuItem>
+
+                <!-- ── Import sub-menu (NEW) ──────────────────────────────────── -->
+                <MenuItem Header="_Import">
+                    <MenuItem Header="Replace Current Entry with File…"
+                              Click="Menu_Import_ReplaceEntry_Click"
+                              ToolTip="Replace the bytes of the selected archive entry with an external file and queue the change for saving." />
+                    <MenuItem Header="Add New Entry to Archive…"
+                              Click="Menu_Import_AddEntry_Click"
+                              ToolTip="Browse for a file and append it as a new entry in the currently loaded archive." />
+                </MenuItem>
+
+                <!-- ── Batch Export sub-menu (NEW) ───────────────────────────── -->
+                <MenuItem Header="_Batch Export">
+                    <MenuItem Header="All Textures as PNG…"
+                              Click="Menu_BatchExport_Textures_Click"
+                              ToolTip="Decode every .tex entry in the loaded archive and write it as a PNG to a chosen folder." />
+                    <MenuItem Header="All Entries (Raw)…"
+                              Click="Menu_BatchExport_AllEntries_Click"
+                              ToolTip="Write every entry in the loaded archive as a separate file to a chosen folder." />
+                </MenuItem>
+
             </MenuItem>
+
+            <!-- Tools menu (unchanged) -->
             <MenuItem Header="_Tools">
                 <MenuItem Header="_Settings" Command="Properties" />
             </MenuItem>
+
         </Menu>
+
+        <!-- ═════════════════════════════════ Main content ═════════════════════════════════ -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <TreeView HorizontalAlignment="Stretch" Name="treeView" VerticalAlignment="Stretch" Grid.Column="0"
-                      DataContext="{Binding}" ItemsSource="{Binding Children}"
+
+            <!-- Left: tree view -->
+            <TreeView HorizontalAlignment="Stretch"
+                      Name="treeView"
+                      VerticalAlignment="Stretch"
+                      Grid.Column="0"
+                      DataContext="{Binding}"
+                      ItemsSource="{Binding Children}"
                       SelectedItemChanged="TreeView_OnSelectedItemChanged">
                 <TreeView.ItemContainerStyle>
-                    <!-- 
-                        This Style binds a TreeViewItem to a TreeViewItemViewModel. 
-                     -->
+                    <!--
+                        This Style binds a TreeViewItem to a TreeViewItemViewModel.
+                        IsExpanded and IsSelected are two-way bound so the view-model
+                        drives expansion (the root auto-expands on load) and user
+                        interaction feeds back into the view-model.
+                    -->
                     <Style TargetType="{x:Type TreeViewItem}">
                         <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                         <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
@@ -61,40 +118,50 @@
                         </Style.Triggers>
                     </Style>
                 </TreeView.ItemContainerStyle>
-
-                <TreeView.Resources>
-                    <HierarchicalDataTemplate DataType="{x:Type treeView:TreeViewItemViewModel}"
-                                              ItemsSource="{Binding Children}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{Binding Label}" />
-                        </StackPanel>
+                <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                        <TextBlock Text="{Binding Label}" />
                     </HierarchicalDataTemplate>
-                </TreeView.Resources>
+                </TreeView.ItemTemplate>
             </TreeView>
-            <GridSplitter HorizontalAlignment="Right"
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1"
+                          Width="4"
+                          HorizontalAlignment="Center"
                           VerticalAlignment="Stretch"
-                          Grid.Column="1" ResizeBehavior="PreviousAndNext"
-                          Width="5" Background="#FFBCBCBC" />
-            <TabControl Grid.Column="2" Name="tabControl">
+                          ResizeBehavior="PreviousAndNext" />
+
+            <!-- Right: tab panels (unchanged) -->
+            <TabControl x:Name="tabControl" Grid.Column="2">
+
                 <TabItem Header="Texture">
-                    <Image HorizontalAlignment="Stretch" Name="texture" VerticalAlignment="Stretch"
-                           Source="{Binding SelectedNodeImage}" />
+                    <Image Source="{Binding SelectedNodeImage}"
+                           Stretch="Uniform"
+                           RenderOptions.BitmapScalingMode="NearestNeighbor" />
                 </TabItem>
-                <TabItem Header="3D View">
-                    <local:ModelView x:Name="modelView" DataContext="{Binding TheModelViewModel}" />
+
+                <TabItem Header="Model">
+                    <local:ModelView DataContext="{Binding TheModelViewModel}" />
                 </TabItem>
-                <TabItem Header="Skeleton">
-                    <local:SkeletonView x:Name="skeletonView" DataContext="{Binding TheSkeletonViewModel}" />
-                </TabItem>
+
                 <TabItem Header="Level">
-                    <local:LevelView x:Name="levelView" DataContext="{Binding TheLevelViewModel}" />
+                    <local:LevelView DataContext="{Binding TheLevelViewModel}" />
                 </TabItem>
+
+                <TabItem Header="Skeleton">
+                    <local:SkeletonView DataContext="{Binding TheSkeletonViewModel}" />
+                </TabItem>
+
                 <TabItem Header="Log">
-                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                        <TextBox HorizontalAlignment="Stretch" Name="log" VerticalAlignment="Stretch"
-                                 Text="{Binding LogText}" FontFamily="Consolas" FontSize="12" />
-                    </ScrollViewer>
+                    <TextBox IsReadOnly="True"
+                             Text="{Binding LogText, Mode=OneWay}"
+                             FontFamily="Courier New"
+                             FontSize="11"
+                             VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Auto" />
                 </TabItem>
+
             </TabControl>
         </Grid>
     </Grid>

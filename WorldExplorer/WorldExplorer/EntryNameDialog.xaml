@@ -1,0 +1,29 @@
+<Window x:Class="WorldExplorer.EntryNameDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Entry Name"
+        Width="380" SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <StackPanel Margin="14">
+        <TextBlock Text="Enter the name for this entry inside the archive:"
+                   Margin="0 0 0 6" TextWrapping="Wrap"/>
+        <TextBox x:Name="entryNameBox"
+                 MaxLength="55"
+                 Padding="4 3"
+                 Margin="0 0 0 12"/>
+
+        <TextBlock Foreground="Gray" FontSize="11" TextWrapping="Wrap"
+                   Margin="0 0 0 12"
+                   Text="The name is stored directly in the archive directory. For BGDA / BoS archives the maximum is 55 characters and must be ASCII. Include the extension (e.g. mymodel.vif)."/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="_OK"     Width="80" Margin="0 0 8 0"
+                    IsDefault="True"  Click="OkButton_Click"/>
+            <Button Content="_Cancel" Width="80"
+                    IsCancel="True"   Click="CancelButton_Click"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

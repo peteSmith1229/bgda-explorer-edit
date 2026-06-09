@@ -1,4 +1,4 @@
-﻿/*  Copyright (C) 2012 Ian Brown
+/*  Copyright (C) 2012 Ian Brown
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,6 +15,10 @@
 */
 
 using HelixToolkit.Wpf;
+using JetBlackEngineLib;
+using JetBlackEngineLib.Data.DataContainers;
+using JetBlackEngineLib.Data.Models;
+using JetBlackEngineLib.Data.Textures;
 using Microsoft.Win32;
 using System;
 using System.IO;
@@ -26,227 +30,107 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
 using WorldExplorer.DataExporters;
+using WorldExplorer.DataImporters;
+using WorldExplorer.TreeView;
+using FolderBrowserDialog = System.Windows.Forms.FolderBrowserDialog;
 
 namespace WorldExplorer;
 
 /// <summary>
-/// Interaction logic for MainWindow.xaml
+/// Interaction logic for MainWindow.xaml.
 /// </summary>
 public partial class MainWindow : Window
 {
-    private FileTreeViewContextManager _fileTreeMenu;
+    private FileTreeViewContextManager _contextManager = null!;
 
-    public MainWindowViewModel ViewModel { get; }
+    public MainWindowViewModel ViewModel { get; private set; }
 
     public MainWindow()
     {
         InitializeComponent();
+
+        var dataPath = App.Settings.Get("Files.DataPath", "") ?? "";
+        ViewModel    = new MainWindowViewModel(this, dataPath);
+        DataContext  = ViewModel;
+
+        _contextManager = new FileTreeViewContextManager(this, treeView);
+
         SetupViewports();
 
-        App.LoadSettings();
-        JetBlackEngineLib.Data.Textures.PalEntry.ForceOpaque = App.Settings.Get("Textures.ForceOpaque", false);
-
-        _fileTreeMenu = new FileTreeViewContextManager(this, treeView);
-        ViewModel = new MainWindowViewModel(this, App.Settings.Get("Files.DataPath", "") ?? "");
-        DataContext = ViewModel;
-
-        CommandBinding binding = new(ApplicationCommands.Properties);
-        binding.Executed += Properties_Executed;
-        binding.CanExecute += Properties_CanExecute;
-        CommandBindings.Add(binding);
-
-        var lastLoadedFile = App.Settings.Get("Files.LastLoadedFile", "");
-        if (!string.IsNullOrEmpty(lastLoadedFile) && File.Exists(lastLoadedFile))
-        {
-            ViewModel.LoadFile(lastLoadedFile);
-        }
+        // Restore the last opened file (if any)
+        var lastFile = App.Settings.Get("Files.LastLoadedFile", "") ?? "";
+        if (!string.IsNullOrEmpty(lastFile) && File.Exists(lastFile))
+            OpenFile(lastFile);
     }
 
-    public void ResetCamera()
-    {
-        switch (tabControl.SelectedIndex)
-        {
-            case 1:
-                FrameModel(modelView.viewport, ViewModel.TheModelViewModel.VifModel);
-                break;
-            case 2:
-                FrameModel(skeletonView.viewport, ViewModel.TheModelViewModel.VifModel);
-                break;
-            case 3:
-                // Attempt to get the whole world in view
-                var bounds = ViewModel.TheLevelViewModel.WorldBounds;
-                if (!bounds.IsEmpty)
-                    levelView.viewport.ZoomExtents(bounds, 1000);
-                break;
-        }
-    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // Title bar
+    // ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Position the camera at a 3/4 angle in front of the model's centroid,
-    /// looking at the widest face. We choose between viewing along -Y or
-    /// along -X depending on which gives the larger visible projection
-    /// (sizeX·sizeZ vs sizeY·sizeZ). Characters end up viewed from -Y
-    /// (front), but a long object oriented along Y (e.g. a rifle) gets
-    /// viewed from -X so its length runs across the screen instead of
-    /// pointing at the camera. Writes camera properties directly so
-    /// downstream code (UpdateCamera, ZoomExtents, …) can't override.
+    /// Refreshes the window title to reflect whether the loaded archive has
+    /// unsaved edits.  Called by the context manager after any edit operation.
     /// </summary>
-    private static void FrameModel(HelixViewport3D viewport, JetBlackEngineLib.Data.Models.Model? model)
+    public void UpdateTitle()
     {
-        if (viewport.Camera is not ProjectionCamera cam) return;
+        var dirty = ViewModel.World?.WorldLmp?.IsDirty == true;
+        Title = dirty ? "World Explorer [Modified]" : "World Explorer";
 
-        if (model == null || !TryGetModelBounds(model, out var bounds))
-        {
-            cam.Position = new Point3D(0, -100, 50);
-            cam.LookDirection = new Vector3D(0, 100, -50);
-            cam.UpDirection = new Vector3D(0, 0, 1);
-            if (cam is OrthographicCamera oc0) oc0.Width = 200;
-            return;
-        }
-
-        var cx = bounds.X + bounds.SizeX / 2;
-        var cy = bounds.Y + bounds.SizeY / 2;
-        var cz = bounds.Z + bounds.SizeZ / 2;
-        var span = Math.Max(bounds.SizeX, Math.Max(bounds.SizeY, bounds.SizeZ));
-        if (span < 1) span = 1;
-        var distance = span * 2.0;
-        var elevation = span * 0.4;
-
-        // Compare visible-face area for each candidate view axis. Whichever
-        // gives the larger XZ-or-YZ rectangle wins.
-        var areaFromY = bounds.SizeX * bounds.SizeZ;
-        var areaFromX = bounds.SizeY * bounds.SizeZ;
-
-        if (areaFromX > areaFromY)
-        {
-            // Camera at -X looking toward +X.
-            cam.Position = new Point3D(cx - distance, cy, cz + elevation);
-            cam.LookDirection = new Vector3D(distance, 0, -elevation);
-        }
-        else
-        {
-            // Camera at -Y looking toward +Y (default for characters).
-            cam.Position = new Point3D(cx, cy - distance, cz + elevation);
-            cam.LookDirection = new Vector3D(0, distance, -elevation);
-        }
-        cam.UpDirection = new Vector3D(0, 0, 1);
-        if (cam is OrthographicCamera oc) oc.Width = span * 1.4;
+        // Propagate to the ViewModel so the "Save Archive" menu item can bind.
+        ViewModel.NotifyIsArchiveDirty();
     }
 
-    private static bool TryGetModelBounds(JetBlackEngineLib.Data.Models.Model model, out Rect3D bounds)
-    {
-        bounds = Rect3D.Empty;
-        var any = false;
-        double minX = double.PositiveInfinity, minY = double.PositiveInfinity, minZ = double.PositiveInfinity;
-        double maxX = double.NegativeInfinity, maxY = double.NegativeInfinity, maxZ = double.NegativeInfinity;
-        foreach (var mesh in model.MeshList)
-        {
-            foreach (var p in mesh.Positions)
-            {
-                any = true;
-                if (p.X < minX) minX = p.X;
-                if (p.Y < minY) minY = p.Y;
-                if (p.Z < minZ) minZ = p.Z;
-                if (p.X > maxX) maxX = p.X;
-                if (p.Y > maxY) maxY = p.Y;
-                if (p.Z > maxZ) maxZ = p.Z;
-            }
-        }
-        if (!any) return false;
-        bounds = new Rect3D(minX, minY, minZ, maxX - minX, maxY - minY, maxZ - minZ);
-        return true;
-    }
-
-    public void SetViewportText(int index, string title, string subTitle)
-    {
-        switch (index)
-        {
-            case 1:
-                if (title != null)
-                {
-                    modelView.viewport.Title = title;
-                }
-
-                if (subTitle != null)
-                {
-                    modelView.viewport.SubTitle = subTitle;
-                }
-
-                break;
-            case 2:
-                if (title != null)
-                {
-                    skeletonView.viewport.Title = title;
-                }
-
-                if (subTitle != null)
-                {
-                    skeletonView.viewport.SubTitle = subTitle;
-                }
-
-                break;
-            case 3:
-                if (title != null)
-                {
-                    levelView.viewport.Title = title;
-                }
-
-                if (subTitle != null)
-                {
-                    levelView.viewport.SubTitle = subTitle;
-                }
-
-                break;
-        }
-    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // Viewport setup (unchanged)
+    // ─────────────────────────────────────────────────────────────────────────
 
     private void SetupViewports()
     {
-        HelixViewport3D[] viewports = {modelView.viewport, skeletonView.viewport, levelView.viewport};
+        HelixViewport3D[] viewports = { modelView.viewport, skeletonView.viewport, levelView.viewport };
 
         foreach (var viewport in viewports)
         {
-            viewport.ResetCameraGesture = null;
+            viewport.ResetCameraGesture    = null;
             viewport.ResetCameraKeyGesture = null;
-            viewport.RotateGesture = new MouseGesture(MouseAction.LeftClick);
-            viewport.PanGesture = new MouseGesture(MouseAction.MiddleClick);
+            viewport.RotateGesture         = new MouseGesture(MouseAction.LeftClick);
+            viewport.PanGesture            = new MouseGesture(MouseAction.MiddleClick);
 
-            viewport.PreviewMouseDown += (sender, e) =>
+            viewport.PreviewMouseDown += (s, ev) =>
             {
-                if (e.ChangedButton == MouseButton.Middle && e.ClickCount > 1)
+                if (ev.ChangedButton == MouseButton.Middle && ev.ClickCount > 1)
                 {
-                    var view = (HelixViewport3D)sender;
-                    view.SetView(new Point3D(0, -100, 0), new Vector3D(0, 100, 0), new Vector3D(0, 0, 1), 1000);
-                    e.Handled = true;
+                    var v = (HelixViewport3D)s;
+                    v.SetView(new Point3D(0, -100, 0), new Vector3D(0, 100, 0),
+                              new Vector3D(0, 0, 1), 1000);
+                    ev.Handled = true;
                 }
             };
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // File open / recent files (unchanged)
+    // ─────────────────────────────────────────────────────────────────────────
+
     public void OpenFile(string file)
     {
         ViewModel.LoadFile(file);
+        UpdateTitle();
 
         var recentFiles =
-            (App.Settings.Get("Files.RecentFiles", "") ?? "").Split(new[] {','},
-                StringSplitOptions.RemoveEmptyEntries);
+            (App.Settings.Get("Files.RecentFiles", "") ?? "")
+            .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
         var list = recentFiles.ToList();
 
-        // Remove 1 from the end and anything else just in case
         if (list.Count >= 10)
-        {
             list.RemoveRange(9, list.Count - 9);
-        }
 
-        // If the file is already listed remove it and add it to the top
         if (list.Contains(file))
-        {
             list.Remove(file);
-        }
 
         list.Insert(0, file);
 
-        App.Settings["Files.RecentFiles"] = string.Join(",", list);
+        App.Settings["Files.RecentFiles"]    = string.Join(",", list);
         App.Settings["Files.LastLoadedFile"] = file;
         App.SaveSettings();
     }
@@ -263,12 +147,9 @@ public partial class MainWindow : Window
 
     private void Properties_Executed(object sender, ExecutedRoutedEventArgs e)
     {
-        SettingsWindow window = new() {Owner = this, WindowStartupLocation = WindowStartupLocation.CenterOwner};
+        SettingsWindow window = new() { Owner = this, WindowStartupLocation = WindowStartupLocation.CenterOwner };
         if (window.ShowDialog() == true)
-            // User pressed save, so we should re-init things.
-        {
             ViewModel.SettingsChanged();
-        }
     }
 
     private void TreeView_OnSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -278,19 +159,245 @@ public partial class MainWindow : Window
 
     private void MenuOpenFileClick(object sender, RoutedEventArgs e)
     {
-        OpenFileDialog dialog = new() {Multiselect = false};
-
-        var result = dialog.ShowDialog();
-        if (result.GetValueOrDefault(false))
-        {
+        var dialog = new OpenFileDialog { Multiselect = false };
+        if (dialog.ShowDialog().GetValueOrDefault(false))
             OpenFile(dialog.FileName);
+    }
+
+    private void MenuExitClick(object sender, RoutedEventArgs e) => Close();
+
+    private void MenuRecentFilesSubmenuOpened(object sender, RoutedEventArgs e)
+    {
+        MenuRecentFiles.Items.Clear();
+
+        var recentFiles =
+            (App.Settings.Get("Files.RecentFiles", "") ?? "")
+            .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+
+        if (recentFiles.Length > 0)
+        {
+            foreach (var file in recentFiles)
+            {
+                MenuItem menu = new() { Header = file, Tag = file };
+                menu.Click += (o, _) => OpenFile((string)((MenuItem)o).Tag);
+                MenuRecentFiles.Items.Add(menu);
+            }
+        }
+        else
+        {
+            MenuRecentFiles.Items.Add(new MenuItem { Header = "No Recent Files", IsEnabled = false });
         }
     }
 
-    private void MenuExitClick(object sender, RoutedEventArgs e)
+    // ─────────────────────────────────────────────────────────────────────────
+    // File → Save Archive (NEW)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void Menu_SaveArchive_Click(object sender, RoutedEventArgs e)
     {
-        Close();
+        var lmpFile = GetActiveLmpFile();
+        if (lmpFile == null)
+        {
+            MessageBox.Show(this, "No archive is currently loaded.", "Save Archive",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        if (!lmpFile.IsDirty)
+        {
+            MessageBox.Show(this, "No pending changes to save.", "Save Archive",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            FileName = lmpFile.Name,
+            Filter   = "LMP Archive|*.lmp|All Files|*.*"
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            AssetImporter.SaveArchive(lmpFile, dialog.FileName);
+            UpdateTitle();
+            MessageBox.Show(this, $"Archive saved to:\n{dialog.FileName}",
+                "Save Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Save failed:\n{ex.Message}", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Edit → Import (NEW)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Replaces the bytes of whichever archive entry is currently selected in
+    /// the tree with an external file chosen by the user.
+    /// </summary>
+    private void Menu_Import_ReplaceEntry_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedNode is not LmpEntryTreeViewModel selectedEntry)
+        {
+            MessageBox.Show(this,
+                "Please select an archive entry in the tree first.",
+                "Replace Entry", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var lmpFile = selectedEntry.LmpFileProperty;
+        if (lmpFile is ClpFile)
+        {
+            MessageBox.Show(this,
+                "Editing CLP archives is not supported (hash-indexed format).",
+                "Not Supported", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var ext    = (Path.GetExtension(selectedEntry.Label) ?? "*").TrimStart('.');
+        var dialog = new OpenFileDialog
+        {
+            Title  = $"Select replacement file for '{selectedEntry.Label}'",
+            Filter = $"{ext.ToUpper()} Files|*.{ext}|All Files|*.*"
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            AssetImporter.ReplaceEntryFromFile(lmpFile, selectedEntry.Label, dialog.FileName);
+            UpdateTitle();
+            MessageBox.Show(this,
+                $"'{selectedEntry.Label}' queued for replacement.\n\n" +
+                "Save the archive (File → Save Archive…) to write the changes to disk.",
+                "Queued", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Replace failed:\n{ex.Message}", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// Adds a new file as an entry to the currently loaded top-level LMP archive.
+    /// </summary>
+    private void Menu_Import_AddEntry_Click(object sender, RoutedEventArgs e)
+    {
+        var lmpFile = GetActiveLmpFile();
+        if (lmpFile == null || lmpFile is ClpFile)
+        {
+            MessageBox.Show(this,
+                "No writable LMP archive is currently loaded.",
+                "Add Entry", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var openDialog = new OpenFileDialog
+        {
+            Title  = $"Select file to add to '{lmpFile.Name}'",
+            Filter = "All Files|*.*"
+        };
+        if (openDialog.ShowDialog() != true) return;
+
+        var nameDialog = new EntryNameDialog(Path.GetFileName(openDialog.FileName))
+            { Owner = this };
+        if (nameDialog.ShowDialog() != true) return;
+
+        var entryName = nameDialog.EntryName;
+        if (string.IsNullOrWhiteSpace(entryName))
+        {
+            MessageBox.Show(this, "Entry name cannot be empty.", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        try
+        {
+            AssetImporter.AddEntryFromFile(lmpFile, entryName, openDialog.FileName);
+            UpdateTitle();
+            MessageBox.Show(this,
+                $"Entry '{entryName}' added to the pending queue.\n\n" +
+                "Save the archive (File → Save Archive…) to write the changes to disk.",
+                "Entry Added", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Add failed:\n{ex.Message}", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Edit → Batch Export (NEW)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void Menu_BatchExport_Textures_Click(object sender, RoutedEventArgs e)
+    {
+        var lmpFile = GetActiveLmpFile();
+        if (lmpFile == null)
+        {
+            MessageBox.Show(this, "No archive is currently loaded.", "Batch Export",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        using var folderDialog = new FolderBrowserDialog
+        {
+            Description = $"Choose output folder for textures from '{lmpFile.Name}'"
+        };
+        if (folderDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+
+        try
+        {
+            var count = AssetImporter.BatchExportTextures(lmpFile, folderDialog.SelectedPath);
+            MessageBox.Show(this,
+                $"Exported {count} texture(s) to:\n{folderDialog.SelectedPath}",
+                "Batch Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Batch export failed:\n{ex.Message}", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void Menu_BatchExport_AllEntries_Click(object sender, RoutedEventArgs e)
+    {
+        var lmpFile = GetActiveLmpFile();
+        if (lmpFile == null)
+        {
+            MessageBox.Show(this, "No archive is currently loaded.", "Batch Export",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        using var folderDialog = new FolderBrowserDialog
+        {
+            Description = $"Choose output folder for all entries from '{lmpFile.Name}'"
+        };
+        if (folderDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+
+        try
+        {
+            var count = AssetImporter.BatchExportAllEntries(lmpFile, folderDialog.SelectedPath);
+            MessageBox.Show(this,
+                $"Exported {count} entr{(count == 1 ? "y" : "ies")} to:\n{folderDialog.SelectedPath}",
+                "Batch Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Batch export failed:\n{ex.Message}", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Edit → Export (unchanged)
+    // ─────────────────────────────────────────────────────────────────────────
 
     private void Menu_Export_Texture_Click(object sender, RoutedEventArgs e)
     {
@@ -300,21 +407,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        SaveFileDialog dialog = new() {Filter = "PNG Image|*.png"};
-        var result = dialog.ShowDialog(this);
+        var dialog = new SaveFileDialog { Filter = "PNG Image|*.png" };
+        if (!dialog.ShowDialog(this).GetValueOrDefault(false)) return;
 
-        if (result.GetValueOrDefault(false))
-        {
-            using (FileStream stream = new(dialog.FileName, FileMode.Create))
-            {
-                PngBitmapEncoder encoder = new();
-                encoder.Frames.Add(BitmapFrame.Create(ViewModel.SelectedNodeImage));
-                encoder.Save(stream);
-
-                stream.Flush();
-                stream.Close();
-            }
-        }
+        using var stream  = new FileStream(dialog.FileName, FileMode.Create);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(ViewModel.SelectedNodeImage));
+        encoder.Save(stream);
+        stream.Flush();
     }
 
     private void Menu_Export_TextureWeaved_Click(object sender, RoutedEventArgs e)
@@ -333,25 +433,25 @@ public partial class MainWindow : Window
             return;
         }
 
-        SaveFileDialog dialog = new() {Filter = "PNG Image|*.png"};
+        var dialog = new SaveFileDialog { Filter = "PNG Image|*.png" };
         if (!dialog.ShowDialog(this).GetValueOrDefault(false)) return;
 
-        var woven = WeaveInterlacedFields(src);
-        using FileStream stream = new(dialog.FileName, FileMode.Create);
-        PngBitmapEncoder encoder = new();
+        var woven   = WeaveInterlacedFields(src);
+        using var stream  = new FileStream(dialog.FileName, FileMode.Create);
+        var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(woven));
         encoder.Save(stream);
     }
 
-    // Interleaves a texture stored as two stacked fields (top half + bottom
-    // half) into a single image with the same dimensions, taking output line
-    // 2k from top-half line k and output line 2k+1 from bottom-half line k.
+    /// <summary>
+    /// Interleaves a texture stored as two stacked fields (top half + bottom half)
+    /// into a single image, taking output line 2k from top-half line k and output
+    /// line 2k+1 from bottom-half line k.
+    /// </summary>
     private static BitmapSource WeaveInterlacedFields(BitmapSource src)
     {
         var converted = new FormatConvertedBitmap(src, PixelFormats.Bgra32, null, 0);
-        int w = converted.PixelWidth;
-        int h = converted.PixelHeight;
-        int halfH = h / 2;
+        int w = converted.PixelWidth, h = converted.PixelHeight, halfH = h / 2;
         int stride = w * 4;
         byte[] pixels = new byte[stride * h];
         converted.CopyPixels(pixels, stride, 0);
@@ -359,11 +459,11 @@ public partial class MainWindow : Window
         byte[] output = new byte[stride * h];
         for (int y = 0; y < halfH; y++)
         {
-            Buffer.BlockCopy(pixels, y * stride, output, (2 * y) * stride, stride);
+            Buffer.BlockCopy(pixels, y * stride,          output, (2 * y)     * stride, stride);
             Buffer.BlockCopy(pixels, (halfH + y) * stride, output, (2 * y + 1) * stride, stride);
         }
-
-        return BitmapSource.Create(w, h, src.DpiX, src.DpiY, PixelFormats.Bgra32, null, output, stride);
+        return BitmapSource.Create(w, h, src.DpiX, src.DpiY,
+                                   PixelFormats.Bgra32, null, output, stride);
     }
 
     private void Menu_Export_Model_Click(object sender, RoutedEventArgs e)
@@ -373,31 +473,26 @@ public partial class MainWindow : Window
             MessageBox.Show(this, "No model currently loaded.", "Error", MessageBoxButton.OK);
             return;
         }
-
         if (ViewModel.TheModelViewModel.Texture == null)
         {
             MessageBox.Show(this, "Model does not have a texture.", "Error", MessageBoxButton.OK);
             return;
         }
 
-        SaveFileDialog dialog = new()
+        var dialog = new SaveFileDialog
         {
-            Filter = "GLTF File|*.gltf|OBJ File|*.obj",
-            // Select gltf by default
+            Filter      = "GLTF File|*.gltf|OBJ File|*.obj",
             FilterIndex = 1,
-            FileName = "some-model.gltf"
+            FileName    = "some-model.gltf"
         };
-        if (dialog.ShowDialog() != true)
-        {
-            return;
-        }
+        if (dialog.ShowDialog() != true) return;
 
-        var ext = Path.GetExtension(dialog.FileName).ToUpperInvariant();
+        var ext      = Path.GetExtension(dialog.FileName).ToUpperInvariant();
         IVifExporter? exporter = ext switch
         {
-            ".OBJ" => new VifObjExporter(),
+            ".OBJ"  => new VifObjExporter(),
             ".GLTF" => new VifGltfExporter(),
-            _ => null
+            _       => null
         };
         if (exporter == null)
         {
@@ -414,32 +509,97 @@ public partial class MainWindow : Window
         ViewModel.TheModelViewModel.ShowExportForPosedModel();
     }
 
-    private void MenuRecentFilesSubmenuOpened(object sender, RoutedEventArgs e)
+    // ─────────────────────────────────────────────────────────────────────────
+    // Helper: resolve "active" LMP for the top-level menu actions
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns the primary LMP file for the currently loaded world.
+    /// Prefers the LMP file that the selected tree node belongs to; falls back
+    /// to <c>World.WorldLmp</c>.  Returns null if nothing is loaded.
+    /// </summary>
+    private LmpFile? GetActiveLmpFile()
     {
-        MenuRecentFiles.Items.Clear();
-
-        var recentFiles =
-            (App.Settings.Get("Files.RecentFiles", "") ?? "").Split(new[] {','},
-                StringSplitOptions.RemoveEmptyEntries);
-
-        if (recentFiles.Length > 0)
+        // If the selected node belongs to an LMP, use that.
+        switch (ViewModel.SelectedNode)
         {
-            foreach (var file in recentFiles)
-            {
-                MenuItem menu = new() {Header = file, Tag = file};
-                menu.Click += delegate(object o, RoutedEventArgs args)
-                {
-                    var menuItem = (MenuItem)o;
-                    OpenFile((string)menuItem.Tag);
-                };
+            case LmpEntryTreeViewModel entry:
+                return entry.LmpFileProperty;
+            case LmpTreeViewModel tree:
+                return tree.LmpFileProperty;
+        }
 
-                MenuRecentFiles.Items.Add(menu);
-            }
+        // Fall back to the world's top-level LMP.
+        return ViewModel.World?.WorldLmp;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Camera frame helper (unchanged — used by FrameModel)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Frames the viewport camera to show the given model's bounding box.
+    /// We choose between viewing along -Y or along -X depending on which
+    /// gives the larger visible projection (sizeX·sizeZ vs sizeY·sizeZ).
+    /// </summary>
+    private static void FrameModel(HelixViewport3D viewport,
+                                   JetBlackEngineLib.Data.Models.Model? model)
+    {
+        if (viewport.Camera is not ProjectionCamera cam) return;
+
+        if (model == null || !TryGetModelBounds(model, out var bounds))
+        {
+            cam.Position      = new Point3D(0, -100, 50);
+            cam.LookDirection = new Vector3D(0, 100, -50);
+            cam.UpDirection   = new Vector3D(0, 0, 1);
+            if (cam is OrthographicCamera oc0) oc0.Width = 200;
+            return;
+        }
+
+        var cx       = bounds.X + bounds.SizeX / 2;
+        var cy       = bounds.Y + bounds.SizeY / 2;
+        var cz       = bounds.Z + bounds.SizeZ / 2;
+        var span     = Math.Max(bounds.SizeX, Math.Max(bounds.SizeY, bounds.SizeZ));
+        if (span < 1) span = 1;
+        var distance  = span * 2.0;
+        var elevation = span * 0.4;
+
+        if (bounds.SizeY * bounds.SizeZ > bounds.SizeX * bounds.SizeZ)
+        {
+            cam.Position      = new Point3D(cx - distance, cy, cz + elevation);
+            cam.LookDirection = new Vector3D(distance, 0, -elevation);
         }
         else
         {
-            MenuItem menu = new() {Header = "No Recent Files", IsEnabled = false};
-            MenuRecentFiles.Items.Add(menu);
+            cam.Position      = new Point3D(cx, cy - distance, cz + elevation);
+            cam.LookDirection = new Vector3D(0, distance, -elevation);
         }
+        cam.UpDirection = new Vector3D(0, 0, 1);
+        if (cam is OrthographicCamera oc) oc.Width = distance * 1.5;
+    }
+
+    private static bool TryGetModelBounds(JetBlackEngineLib.Data.Models.Model model,
+                                          out Rect3D bounds)
+    {
+        bounds = Rect3D.Empty;
+        if (model.MeshList.Count == 0) return false;
+
+        double minX = double.MaxValue, minY = double.MaxValue, minZ = double.MaxValue;
+        double maxX = double.MinValue, maxY = double.MinValue, maxZ = double.MinValue;
+
+        foreach (var mesh in model.MeshList)
+        {
+            foreach (var v in mesh.Positions)
+            {
+                if (v.X < minX) minX = v.X; if (v.X > maxX) maxX = v.X;
+                if (v.Y < minY) minY = v.Y; if (v.Y > maxY) maxY = v.Y;
+                if (v.Z < minZ) minZ = v.Z; if (v.Z > maxZ) maxZ = v.Z;
+            }
+        }
+
+        if (minX > maxX) return false;
+        bounds = new Rect3D(minX, minY, minZ,
+                            maxX - minX, maxY - minY, maxZ - minZ);
+        return true;
     }
 }

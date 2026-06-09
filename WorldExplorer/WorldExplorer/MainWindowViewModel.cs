@@ -179,6 +179,23 @@ public class MainWindowViewModel : INotifyPropertyChanged
         World = new World(engineVersion, folderPath, Path.GetFileName(_gobFile));
         _worldTreeViewModel = new WorldTreeViewModel(World);
         OnPropertyChanged("Children");
+
+        NotifyIsArchiveDirty();   // ← add this line
+    }
+
+    /// <summary>
+    /// True when the currently loaded top-level LMP has unsaved edits.
+    /// Bound by the "File → Save Archive…" menu item's IsEnabled.
+    /// </summary>
+    public bool IsArchiveDirty => World?.WorldLmp?.IsDirty == true;
+
+    /// <summary>
+    /// Called by <see cref="MainWindow.UpdateTitle"/> after any edit so that the
+    /// "Save Archive…" menu item refreshes its enabled state.
+    /// </summary>
+    public void NotifyIsArchiveDirty()
+    {
+        OnPropertyChanged(nameof(IsArchiveDirty));
     }
 
     public void SettingsChanged()
