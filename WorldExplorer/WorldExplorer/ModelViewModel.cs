@@ -217,7 +217,7 @@ public class ModelViewModel : BaseViewModel
 
     public ModelViewModel(MainWindowViewModel mainViewWindow) : base(mainViewWindow)
     {
-        _modelView = MainViewModel.MainWindow.modelView;
+        _modelView = MainViewModel.MainWindow.ModelView;
         _playTimer.Tick += (_, _) =>
         {
             var max = MaximumFrame;

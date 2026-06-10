@@ -15,6 +15,7 @@
 */
 
 using System.IO;
+using System.Linq;
 
 namespace JetBlackEngineLib.Data.DataContainers;
 
@@ -23,43 +24,76 @@ public class GobFile
     public EngineVersion EngineVersion { get; }
     public readonly Dictionary<string, LmpFile> Directory = new();
     public string Name { get; set; }
-        
+
     private readonly byte[] _fileData;
+
+    // -------------------------------------------------------------------------
+    // Constructors (unchanged)
+    // -------------------------------------------------------------------------
 
     public GobFile(EngineVersion engineVersion, string filepath)
     {
         EngineVersion = engineVersion;
-        Name = Path.GetFileName(filepath);
-        _fileData = File.ReadAllBytes(filepath);
+        Name          = Path.GetFileName(filepath);
+        _fileData     = File.ReadAllBytes(filepath);
         ParseFileData();
     }
-        
+
     public GobFile(EngineVersion engineVersion, string fileName, byte[] fileData)
     {
         EngineVersion = engineVersion;
-        Name = fileName;
-        _fileData = fileData;
+        Name          = fileName;
+        _fileData     = fileData;
         ParseFileData();
     }
-        
+
+    // -------------------------------------------------------------------------
+    // Edit-state helpers (NEW)
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// True when any of the LMP files contained in this GOB has unsaved edits
+    /// (replacements, deletions, or additions queued via
+    /// <see cref="LmpFile.ReplaceEntry"/>, <see cref="LmpFile.DeleteEntry"/>,
+    /// or <see cref="LmpFile.AddEntry"/>).
+    /// </summary>
+    public bool IsDirty => Directory.Values.Any(lmp => lmp.IsDirty);
+
+    /// <summary>
+    /// Clears the pending-edit state on every contained LMP file.
+    /// Call this after a successful <see cref="GobWriter.Pack"/> + disk-write
+    /// so that <see cref="IsDirty"/> returns <see langword="false"/> again.
+    /// </summary>
+    public void ClearAllPendingEdits()
+    {
+        foreach (var lmp in Directory.Values)
+            lmp.ClearPendingEdits();
+    }
+
+    // -------------------------------------------------------------------------
+    // Existing private implementation (unchanged)
+    // -------------------------------------------------------------------------
+
     private void ParseFileData()
     {
         var gobFile = ParseGobFile(EngineVersion, _fileData);
         foreach (var (name, entry) in gobFile.Entries)
         {
-            Directory[name] = new LmpFile(EngineVersion, name, _fileData, entry.Offset, entry.Length);
+            Directory[name] = new LmpFile(EngineVersion, name, _fileData,
+                                          entry.Offset, entry.Length);
         }
     }
-        
-    private static GobFileData ParseGobFile(EngineVersion engineVersion, ReadOnlySpan<byte> data)
+
+    private static GobFileData ParseGobFile(EngineVersion engineVersion,
+                                            ReadOnlySpan<byte> data)
     {
-        var gobFile = new GobFileData {Entries = new Dictionary<string, GobFileEntry>()};
+        var gobFile = new GobFileData { Entries = new Dictionary<string, GobFileEntry>() };
         var index = 0;
         var s = DataUtil.GetString(data, index);
         while (s.Length > 0)
         {
             var lmpOffset = BitConverter.ToInt32(data[(index + 0x20)..]);
-            var lmpLen = BitConverter.ToInt32(data[(index + 0x24)..]);
+            var lmpLen    = BitConverter.ToInt32(data[(index + 0x24)..]);
             gobFile.Entries[s] = new GobFileEntry(lmpOffset, lmpLen);
             index += 0x28;
             s = DataUtil.GetString(data, index);

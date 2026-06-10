@@ -219,4 +219,17 @@ public static class AssetImporter
             sb.Append(Array.IndexOf(invalid, c) >= 0 ? '_' : c);
         return sb.ToString();
     }
+    
+    /// <summary>
+    /// Packs <paramref name="gobFile"/> — re-packing every contained LMP and
+    /// applying all pending edits — and writes the result to
+    /// <paramref name="destinationPath"/>.  On success clears the dirty state of
+    /// every contained LMP by calling <see cref="GobFile.ClearAllPendingEdits"/>.
+    /// </summary>
+    public static void SaveGob(GobFile gobFile, string destinationPath)
+    {
+        var packed = GobWriter.Pack(gobFile);
+        File.WriteAllBytes(destinationPath, packed);
+        gobFile.ClearAllPendingEdits();
+    }
 }

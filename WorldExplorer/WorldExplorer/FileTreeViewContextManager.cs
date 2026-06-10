@@ -34,6 +34,8 @@ using WorldExplorer.DataExporters;
 using WorldExplorer.DataImporters;
 using WorldExplorer.Logging;
 using WorldExplorer.TreeView;
+using ContextMenu = System.Windows.Controls.ContextMenu;
+using MenuItem = System.Windows.Controls.MenuItem;
 using MessageBox  = System.Windows.MessageBox;
 using OpenFileDialog  = Microsoft.Win32.OpenFileDialog;
 using SaveFileDialog  = Microsoft.Win32.SaveFileDialog;
@@ -49,6 +51,7 @@ internal class FileTreeViewContextManager
     private readonly MenuItem _saveRawData;
     private readonly System.Windows.Controls.TreeView _treeView;
     private readonly MainWindow _window;
+    private readonly MenuItem _saveGob;
 
     // ── new: per-entry actions ────────────────────────────────────────────────
     private readonly MenuItem _exportAsPng;
@@ -104,6 +107,7 @@ internal class FileTreeViewContextManager
         _batchExportTextures = AddItem("Batch Export All Textures…", BatchExportTexturesClicked);
         _batchExportAll     = AddItem("Batch Export All Entries…",   BatchExportAllClicked);
         _saveArchive        = AddItem("Save Archive…",               SaveArchiveClicked);
+        _saveGob            = AddItem("Save GOB…", SaveGobClicked);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -125,7 +129,7 @@ internal class FileTreeViewContextManager
             _saveParsedVifData, _logTexData,
             _sep1, _exportAsPng, _exportAsModel,
             _sep2, _replaceEntry, _deleteEntry,
-            _sep3, _addNewEntry, _batchExportTextures, _batchExportAll, _saveArchive);
+            _sep3, _addNewEntry, _batchExportTextures, _batchExportAll, _saveArchive, _saveGob);
 
         switch (dataContext)
         {
@@ -160,17 +164,25 @@ internal class FileTreeViewContextManager
             // ── LMP file node ──────────────────────────────────────────────
             case LmpTreeViewModel lmpTree:
             {
-                // Archive-level actions — only for writable LmpFile, not CLP
-                if (lmpTree.LmpFileProperty is not ClpFile)
-                {
-                    _sep3.Visibility            = Visibility.Visible;
-                    _addNewEntry.Visibility     = Visibility.Visible;
-                    _saveArchive.Visibility     = Visibility.Visible;
-                }
+                var isInGob = lmpTree.Parent is GobTreeViewModel;
+
+                _sep3.Visibility            = Visibility.Visible;
                 _batchExportTextures.Visibility = Visibility.Visible;
                 _batchExportAll.Visibility      = Visibility.Visible;
-                // Make the sep3 visible even for CLP batch exports
-                _sep3.Visibility = Visibility.Visible;
+
+                if (isInGob)
+                {
+                    // Editing individual LMP entries is already handled; here we offer
+                    // saving the whole GOB so the modified offsets stay consistent.
+                    _saveGob.Visibility = Visibility.Visible;
+                }
+                else if (lmpTree.LmpFileProperty is not ClpFile)
+                {
+                    // Standalone LMP (not embedded in a GOB).
+                    _addNewEntry.Visibility  = Visibility.Visible;
+                    _saveArchive.Visibility  = Visibility.Visible;
+                }
+
                 _menu.DataContext = lmpTree;
                 break;
             }
@@ -607,6 +619,40 @@ internal class FileTreeViewContextManager
             _window.UpdateTitle();
             MessageBox.Show(
                 $"Archive saved to:\n{dialog.FileName}",
+                "Save Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Save failed: {ex.Message}", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+    
+    private void SaveGobClicked(object sender, RoutedEventArgs e)
+    {
+        if (_menu.DataContext is not LmpTreeViewModel lmpTree) return;
+
+        var gob = _window.ViewModel.World?.WorldGob;
+        if (gob == null)
+        {
+            MessageBox.Show("No GOB file is currently loaded.", "Save GOB",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            FileName = gob.Name,
+            Filter   = "GOB Archive|*.gob|All Files|*.*"
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            AssetImporter.SaveGob(gob, dialog.FileName);
+            _window.UpdateTitle();
+            MessageBox.Show(
+                $"GOB saved to:\n{dialog.FileName}",
                 "Save Complete", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)

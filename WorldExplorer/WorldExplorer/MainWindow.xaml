@@ -30,8 +30,10 @@
                 <!-- NEW: saves the currently loaded (and dirty) LMP archive -->
                 <MenuItem x:Name="Menu_SaveArchive"
                           Header="_Save Archive…"
-                          Click="Menu_SaveArchive_Click"
-                          IsEnabled="{Binding IsArchiveDirty}" />
+                          Click="Menu_SaveArchive_Click" />
+                <MenuItem x:Name="Menu_SaveGob"
+                          Header="Save _GOB…"
+                          Click="Menu_SaveGob_Click" />
                 <Separator />
                 <MenuItem Header="E_xit" Click="MenuExitClick" />
             </MenuItem>
@@ -142,15 +144,18 @@
                 </TabItem>
 
                 <TabItem Header="Model">
-                    <local:ModelView DataContext="{Binding TheModelViewModel}" />
+                    <local:ModelView x:Name="ModelView" DataContext="{Binding TheModelViewModel}" />
+
                 </TabItem>
 
                 <TabItem Header="Level">
-                    <local:LevelView DataContext="{Binding TheLevelViewModel}" />
+                    <local:LevelView x:Name="LevelView" DataContext="{Binding TheLevelViewModel}" />
+
                 </TabItem>
 
                 <TabItem Header="Skeleton">
-                    <local:SkeletonView DataContext="{Binding TheSkeletonViewModel}" />
+                    <local:SkeletonView x:Name="SkeletonView" DataContext="{Binding TheSkeletonViewModel}" />
+
                 </TabItem>
 
                 <TabItem Header="Log">

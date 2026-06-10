@@ -48,16 +48,22 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-
-        var dataPath = App.Settings.Get("Files.DataPath", "") ?? "";
-        ViewModel    = new MainWindowViewModel(this, dataPath);
-        DataContext  = ViewModel;
-
-        _contextManager = new FileTreeViewContextManager(this, treeView);
-
         SetupViewports();
 
-        // Restore the last opened file (if any)
+        App.LoadSettings();
+        JetBlackEngineLib.Data.Textures.PalEntry.ForceOpaque =
+            App.Settings.Get("Textures.ForceOpaque", false);
+
+        _contextManager = new FileTreeViewContextManager(this, treeView);
+        ViewModel       = new MainWindowViewModel(this, App.Settings.Get("Files.DataPath", "") ?? "");
+        DataContext      = ViewModel;
+
+        // Required so Tools → Settings is not greyed out.
+        CommandBinding propertiesBinding = new(ApplicationCommands.Properties);
+        propertiesBinding.Executed   += Properties_Executed;
+        propertiesBinding.CanExecute += Properties_CanExecute;
+        CommandBindings.Add(propertiesBinding);
+
         var lastFile = App.Settings.Get("Files.LastLoadedFile", "") ?? "";
         if (!string.IsNullOrEmpty(lastFile) && File.Exists(lastFile))
             OpenFile(lastFile);
@@ -73,10 +79,9 @@ public partial class MainWindow : Window
     /// </summary>
     public void UpdateTitle()
     {
-        var dirty = ViewModel.World?.WorldLmp?.IsDirty == true;
-        Title = dirty ? "World Explorer [Modified]" : "World Explorer";
-
-        // Propagate to the ViewModel so the "Save Archive" menu item can bind.
+        var lmpDirty = ViewModel.World?.WorldLmp?.IsDirty == true;
+        var gobDirty = ViewModel.World?.WorldGob?.IsDirty == true;
+        Title = (lmpDirty || gobDirty) ? "World Explorer [Modified]" : "World Explorer";
         ViewModel.NotifyIsArchiveDirty();
     }
 
@@ -86,7 +91,7 @@ public partial class MainWindow : Window
 
     private void SetupViewports()
     {
-        HelixViewport3D[] viewports = { modelView.viewport, skeletonView.viewport, levelView.viewport };
+        HelixViewport3D[] viewports = { ModelView.viewport, SkeletonView.viewport, LevelView.viewport };
 
         foreach (var viewport in viewports)
         {
@@ -222,6 +227,55 @@ public partial class MainWindow : Window
             AssetImporter.SaveArchive(lmpFile, dialog.FileName);
             UpdateTitle();
             MessageBox.Show(this, $"Archive saved to:\n{dialog.FileName}",
+                "Save Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Save failed:\n{ex.Message}", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+    
+    /// <summary>
+    /// Returns the GOB file for the currently loaded world, or null if no GOB
+    /// is open.
+    /// </summary>
+    private GobFile? GetActiveGobFile() => ViewModel.World?.WorldGob;
+ 
+    // ════════════════════════════════════════════════════════════════
+    // 2. Add the click handler for File → Save GOB…
+    //    Place it alongside Menu_SaveArchive_Click.
+    // ════════════════════════════════════════════════════════════════
+ 
+    private void Menu_SaveGob_Click(object sender, RoutedEventArgs e)
+    {
+        var gob = GetActiveGobFile();
+        if (gob == null)
+        {
+            MessageBox.Show(this, "No GOB file is currently loaded.", "Save GOB",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+ 
+        if (!gob.IsDirty)
+        {
+            MessageBox.Show(this, "No pending changes to save.", "Save GOB",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+ 
+        var dialog = new SaveFileDialog
+        {
+            FileName = gob.Name,
+            Filter   = "GOB Archive|*.gob|All Files|*.*"
+        };
+        if (dialog.ShowDialog() != true) return;
+ 
+        try
+        {
+            AssetImporter.SaveGob(gob, dialog.FileName);
+            UpdateTitle();
+            MessageBox.Show(this, $"GOB saved to:\n{dialog.FileName}",
                 "Save Complete", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
@@ -602,4 +656,56 @@ public partial class MainWindow : Window
                             maxX - minX, maxY - minY, maxZ - minZ);
         return true;
     }
+    
+    /// <summary>
+    /// Sets the title and subtitle overlay text on one of the three Helix
+    /// viewports. Called by MainWindowViewModel when a new asset is selected.
+    ///   index 1 → Model viewport
+    ///   index 2 → Skeleton viewport
+    ///   index 3 → Level viewport
+    /// </summary>
+    public void SetViewportText(int index, string title, string subTitle)
+    {
+        switch (index)
+        {
+            case 1:
+                if (title != null) ModelView.viewport.Title    = title;
+                if (subTitle != null) ModelView.viewport.SubTitle = subTitle;
+                break;
+            case 2:
+                if (title != null) SkeletonView.viewport.Title    = title;
+                if (subTitle != null) SkeletonView.viewport.SubTitle = subTitle;
+                break;
+            case 3:
+                if (title != null) LevelView.viewport.Title    = title;
+                if (subTitle != null) LevelView.viewport.SubTitle = subTitle;
+                break;
+        }
+    }
+ 
+    /// <summary>
+    /// Re-frames the active viewport's camera to fit the currently loaded
+    /// content. For the model and skeleton tabs this calls FrameModel; for the
+    /// level tab it calls ZoomExtents on the world bounding box.
+    /// Called by MainWindowViewModel after loading a world or switching tabs.
+    /// </summary>
+    public void ResetCamera()
+    {
+        switch (tabControl.SelectedIndex)
+        {
+            case 1:
+                FrameModel(ModelView.viewport, ViewModel.TheModelViewModel.VifModel);
+                break;
+            case 2:
+                FrameModel(SkeletonView.viewport, ViewModel.TheModelViewModel.VifModel);
+                break;
+            case 3:
+                var bounds = ViewModel.TheLevelViewModel.WorldBounds;
+                if (!bounds.IsEmpty)
+                    LevelView.viewport.ZoomExtents(bounds, 1000);
+                break;
+        }
+    }
+    
+    
 }
