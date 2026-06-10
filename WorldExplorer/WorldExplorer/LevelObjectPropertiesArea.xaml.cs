@@ -121,12 +121,12 @@ public partial class LevelObjectPropertiesArea : UserControl
                 posX = SelectedElement.WorldElement.Position.X;
             }
 
-            if (GetDouble(editor_PosYBox.Text, out var posY)) // Y
+            if (!GetDouble(editor_PosYBox.Text, out var posY)) // Y
             {
                 posY = SelectedElement.WorldElement.Position.Y;
             }
 
-            if (GetDouble(editor_PosZBox.Text, out var posZ)) // Z
+            if (!GetDouble(editor_PosZBox.Text, out var posZ)) // Z
             {
                 posZ = SelectedElement.WorldElement.Position.Z;
             }
@@ -173,7 +173,12 @@ public partial class LevelObjectPropertiesArea : UserControl
 
             levelViewModel.RebuildScene();
         }
-
+        // Queue the edits into the archive's pending-edit layer so that
+        // File → Save GOB… / Save Archive… includes them.
+        if (levelViewModel.CommitChangesToArchive())
+        {
+            levelViewModel.MainViewModel.MainWindow.UpdateTitle();
+        }
         ChangesApplied?.Invoke(this, EventArgs.Empty);
     }
 

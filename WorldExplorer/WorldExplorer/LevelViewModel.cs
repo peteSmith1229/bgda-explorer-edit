@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using JetBlackEngineLib;
 using JetBlackEngineLib.Data.DataContainers;
 using JetBlackEngineLib.Data.Models;
 using JetBlackEngineLib.Data.Textures;
@@ -353,4 +354,72 @@ public class LevelViewModel : BaseViewModel
         scene.Add(ambientLight);
         scene.Add(directionalLight);
     }
+    
+    
+/// <summary>
+/// Queues all level edits (moved world elements and edited objects) into the
+/// world LMP's pending-edit layer so they are included the next time the
+/// archive is saved (File → Save GOB… / Save Archive…).
+///
+/// Two entries are regenerated:
+///   1. The <c>.world</c> entry — element transforms are surgically patched
+///      in place via <see cref="WorldElementPatcher"/>; everything else in
+///      the file stays byte-identical.
+///   2. The <c>objects.ob</c> entry — fully re-encoded from the in-memory
+///      object list via <see cref="ObEncoder"/>.
+///
+/// Returns true if anything was queued.
+/// </summary>
+public bool CommitChangesToArchive()
+{
+    if (WorldNode == null)
+        return false;   // No editable world loaded (e.g. BoS cat-8 preview).
+ 
+    var lmpFile = WorldNode.LmpFileProperty;
+    var queued  = false;
+ 
+    // ── 1. Patch element transforms back into the .world entry ────────────
+    if (_worldData != null && lmpFile.Directory.TryGetValue(WorldNode.Label, out var worldEntry))
+    {
+        // Start from the pending bytes if a previous Apply already queued an
+        // edit; otherwise slice the original entry out of FileData.
+        byte[] baseBytes;
+        if (lmpFile.PendingEdits.TryGetValue(WorldNode.Label, out var pendingWorld))
+        {
+            baseBytes = pendingWorld;
+        }
+        else
+        {
+            baseBytes = new byte[worldEntry.Length];
+            Buffer.BlockCopy(lmpFile.FileData, worldEntry.StartOffset,
+                             baseBytes, 0, worldEntry.Length);
+        }
+ 
+        var engineVersion = MainViewModel.World?.EngineVersion
+                            ?? App.Settings.Get<EngineVersion>("Core.EngineVersion");
+ 
+        var patched = WorldElementPatcher.Patch(baseBytes,
+            _worldData.WorldElements, engineVersion);
+ 
+        lmpFile.ReplaceEntry(WorldNode.Label, patched);
+        queued = true;
+    }
+ 
+    // ── 2. Re-encode objects.ob from the in-memory object list ────────────
+    if (lmpFile.Directory.TryGetValue("objects.ob", out var obEntry)
+        && ObjectManager.Objects.Count > 0)
+    {
+        // Preserve the opaque flags i16 at +0x02 of the ORIGINAL entry —
+        // ObDecoder skips it on read and the editor never changes it.
+        var flags = BitConverter.ToInt16(lmpFile.FileData, obEntry.StartOffset + 2);
+ 
+        var encoded = ObEncoder.Encode(ObjectManager.Objects, flags);
+        lmpFile.ReplaceEntry("objects.ob", encoded);
+        queued = true;
+    }
+ 
+    return queued;
+}
+    
+    
 }

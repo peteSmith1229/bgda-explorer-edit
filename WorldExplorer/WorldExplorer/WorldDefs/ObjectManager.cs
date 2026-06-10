@@ -10,6 +10,13 @@ public class ObjectManager
     private readonly ObjectDefinitions _defs;
     private readonly List<ObjectData> _objects = new();
     private readonly List<VisualObjectData> _visualObjects = new();
+    
+    /// <summary>
+    /// The decoded objects from <c>objects.ob</c>, in original file order.
+    /// <see cref="LevelObjectPropertiesArea"/> mutates these instances in place,
+    /// so this list always reflects the current edited state.
+    /// </summary>
+    public IReadOnlyList<ObjectData> Objects => _objects;
 
     public LevelViewModel LevelViewModel { get; }
 
