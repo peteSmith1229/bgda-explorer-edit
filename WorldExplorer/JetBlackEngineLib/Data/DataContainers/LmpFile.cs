@@ -250,4 +250,21 @@ public class LmpFile
             StartOffset = startOffset;
         }
     }
+    /// <summary>
+    /// Returns the original raw bytes of this LMP exactly as they appear on
+    /// disk.  For a standalone LMP this is <see cref="FileData"/> itself; for an
+    /// LMP embedded in a GOB it is the slice
+    /// <c>FileData[_startOffset .. _startOffset + _dataLen]</c>.
+    /// Used by <see cref="GobWriter"/> to copy untouched LMPs verbatim instead
+    /// of re-packing them.
+    /// </summary>
+    public byte[] GetRawData()
+    {
+        if (_startOffset == 0 && _dataLen == FileData.Length)
+            return FileData;
+ 
+        var result = new byte[_dataLen];
+        Buffer.BlockCopy(FileData, _startOffset, result, 0, _dataLen);
+        return result;
+    }
 }

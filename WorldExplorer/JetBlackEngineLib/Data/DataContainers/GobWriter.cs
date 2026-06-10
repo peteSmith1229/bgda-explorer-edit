@@ -83,27 +83,45 @@ public static class GobWriter
     /// <summary>
     /// Packs an arbitrary ordered list of (name, LmpFile) pairs into a GOB
     /// binary using the standard BGDA directory format.
+    ///
+    /// LMPs with pending edits are re-packed via <see cref="LmpWriter"/> (which
+    /// applies the edits); untouched LMPs are copied byte-for-byte from their
+    /// original data, so lazy-loaded archives whose directories were never read
+    /// are preserved exactly.
     /// </summary>
     public static byte[] PackEntries(EngineVersion engineVersion,
                                      IList<KeyValuePair<string, LmpFile>> entries)
     {
         int n = entries.Count;
-
-        // Re-pack every LMP (applies pending edits inside each one).
+     
+        // Obtain each LMP's payload bytes.
         var packedLmps = new byte[n][];
         for (int i = 0; i < n; i++)
-            packedLmps[i] = LmpWriter.Pack(entries[i].Value);
-
+        {
+            var lmp = entries[i].Value;
+     
+            if (lmp.IsDirty)
+            {
+                // The pending-edit overlay is applied relative to the entries in
+                // Directory — if the directory was never lazily loaded, read it
+                // now so the original entries aren't lost in the re-pack.
+                if (lmp.Directory.Count == 0)
+                    lmp.ReadDirectory();
+     
+                packedLmps[i] = LmpWriter.Pack(lmp);
+            }
+            else
+            {
+                // No edits — copy the original bytes verbatim. This also covers
+                // LMPs whose directory was never read (lazy tree loading).
+                packedLmps[i] = lmp.GetRawData();
+            }
+        }
+     
         // ── Compute layout ────────────────────────────────────────────────
-        //
-        //   directory:  n * 40 bytes
-        //   terminator: 1 byte  (null — stops the GOB read loop)
-        //   padding:    to LmpAlignment boundary
-        //   lmp blobs:  each LmpAlignment-aligned
-
         int directoryBytes = n * DirectoryEntrySize + 1; // +1 for null terminator
         int dataStart      = AlignUp(directoryBytes, LmpAlignment);
-
+     
         var lmpOffsets = new int[n];
         var cursor = dataStart;
         for (int i = 0; i < n; i++)
@@ -112,27 +130,23 @@ public static class GobWriter
             cursor += packedLmps[i].Length;
             cursor  = AlignUp(cursor, LmpAlignment);
         }
-
+     
         // ── Assemble result ───────────────────────────────────────────────
-        var result = new byte[cursor]; // zero-initialised
-
+        var result = new byte[cursor];
+     
         for (int i = 0; i < n; i++)
         {
-            int slotOff  = i * DirectoryEntrySize;
+            int slotOff   = i * DirectoryEntrySize;
             var nameBytes = Encoding.ASCII.GetBytes(entries[i].Key);
             var copyLen   = Math.Min(nameBytes.Length, FilenameFieldSize - 1);
             Array.Copy(nameBytes, 0, result, slotOff, copyLen);
-            // NUL terminator already present (array is zero-initialised).
-
-            BitConverter.GetBytes(lmpOffsets[i])      .CopyTo(result, slotOff + OffsetFieldRelative);
+     
+            BitConverter.GetBytes(lmpOffsets[i])       .CopyTo(result, slotOff + OffsetFieldRelative);
             BitConverter.GetBytes(packedLmps[i].Length).CopyTo(result, slotOff + LengthFieldRelative);
-
-            // Write LMP payload.
+     
             packedLmps[i].CopyTo(result, lmpOffsets[i]);
         }
-        // Byte at index [n * DirectoryEntrySize] is already 0 — that is the
-        // null terminator that stops the read loop in ParseGobFile.
-
+     
         return result;
     }
 

@@ -67,15 +67,21 @@ public static class LmpWriter
     /// <summary>
     /// Packs <paramref name="lmpFile"/> — applying any pending edits, deletions,
     /// and additions — and returns the resulting byte array ready to be written
-    /// to disk.
+    /// to disk.  If the archive has no pending edits its original bytes are
+    /// returned verbatim.
     /// </summary>
-    /// <param name="lmpFile">
-    /// The source archive.  Its <see cref="LmpFile.PendingEdits"/>,
-    /// <see cref="LmpFile.PendingDeletions"/>, and
-    /// <see cref="LmpFile.PendingAdditions"/> are applied before packing.
-    /// </param>
     public static byte[] Pack(LmpFile lmpFile)
     {
+        // Untouched archive → byte-identical copy, no re-pack.
+        if (!lmpFile.IsDirty)
+            return lmpFile.GetRawData();
+ 
+        // Defensive: the directory is lazily loaded by the tree view; make sure
+        // it is populated before building the effective entry list, otherwise
+        // the original entries would be silently dropped.
+        if (lmpFile.Directory.Count == 0)
+            lmpFile.ReadDirectory();
+ 
         var entries = BuildEffectiveEntries(lmpFile);
         return PackEntries(lmpFile.EngineVersion, entries);
     }
