@@ -129,16 +129,10 @@ public static class ObjectClipboard
             var floats = new float[3];
             Array.Copy(dto.Floats, floats, Math.Min(dto.Floats.Length, 3));
 
-            // NOTE: if ObjectData's members are initialised via a constructor
+            // NOTE: if ObjectData's members are initialised via a constructor 
             // rather than settable properties/fields in your tree, adapt this
             // block to match (e.g. new ObjectData(dto.Name, dto.I6, floats, …)).
-            return new ObjectData
-            {
-                Name       = dto.Name,
-                I6         = dto.I6,
-                Floats     = floats,
-                Properties = new List<string>(dto.Properties)
-            };
+            return new ObjectData(dto.Name, dto.I6, floats, new List<string>(dto.Properties));
         }
         catch (Exception)
         {
@@ -147,18 +141,12 @@ public static class ObjectClipboard
     }
 
     /// <summary>
-    /// Convenience: deep-clones an existing object without touching the
+    /// Convenience: deep-clones an existing object without touching the 
     /// clipboard (used by Duplicate, which shouldn't overwrite whatever the
     /// user has copied).
     /// </summary>
     public static ObjectData Clone(ObjectData source)
     {
-        return new ObjectData
-        {
-            Name       = source.Name,
-            I6         = source.I6,
-            Floats     = source.Floats.Take(3).ToArray(),
-            Properties = new List<string>(source.Properties)
-        };
+        return new ObjectData(source.Name, source.I6, source.Floats.Take(3).ToArray(), new List<string>(source.Properties));
     }
 }
