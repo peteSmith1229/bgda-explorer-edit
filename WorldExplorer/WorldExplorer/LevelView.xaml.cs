@@ -20,6 +20,7 @@ using System.Windows.Media;
 using System.Windows.Media.Media3D;
 using WorldExplorer.TreeView;
 using WorldExplorer.WorldDefs;
+using System.Windows.Controls;
 
 namespace WorldExplorer;
 
@@ -36,20 +37,44 @@ public partial class LevelView
         DataContextChanged += LevelView_DataContextChanged;
         viewport.MouseUp += viewport_MouseUp;
         viewport.KeyDown += Viewport_KeyDown;
+        
+        viewport.CalculateCursorPosition = true;        // ← NEW: enables paste-at-cursor
+        viewport.ContextMenu = BuildViewportContextMenu(); // ← NEW
+        
         ElementSelected(null);
     }
 
     private void Viewport_KeyDown(object sender, KeyEventArgs e)
     {
         if (_lvm == null) return;
-            
+ 
+        var ctrl = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
+ 
         switch (e.Key)
         {
             case Key.L:
-            {
-                // Toggle lighting
+                // Toggle lighting (existing behaviour)
                 _lvm.EnableLevelSpecifiedLights = !_lvm.EnableLevelSpecifiedLights;
-            }
+                break;
+ 
+            case Key.C when ctrl:
+                CopySelectedObject();
+                e.Handled = true;
+                break;
+ 
+            case Key.V when ctrl:
+                PasteObject();
+                e.Handled = true;
+                break;
+ 
+            case Key.D when ctrl:
+                DuplicateSelectedObject();
+                e.Handled = true;
+                break;
+ 
+            case Key.Delete:
+                DeleteSelectedObject();
+                e.Handled = true;
                 break;
         }
     }
@@ -174,4 +199,113 @@ public partial class LevelView
 
         return null;
     }
+    /// <summary>Copies the selected object to the system clipboard as JSON.</summary>
+private void CopySelectedObject()
+{
+    var selected = _lvm?.SelectedObject;
+    if (selected?.ObjectData == null) return;
+ 
+    ObjectClipboard.Copy(selected.ObjectData);
+}
+ 
+/// <summary>
+/// Pastes the clipboard object into the level.  Position priority:
+///   1. The 3D cursor position (where the mouse is over level geometry),
+///   2. otherwise the source position nudged by a couple of units so the
+///      copy is visibly distinct from the original.
+/// Remember: ObjectData.Floats are 4× the displayed world offset
+/// (ObjectManager computes Offset = Floats / 4).
+/// </summary>
+private void PasteObject()
+{
+    if (_lvm == null) return;
+ 
+    var pasted = ObjectClipboard.TryPaste();
+    if (pasted == null) return;
+ 
+    var cursor = viewport.CursorPosition;
+    if (cursor.HasValue)
+    {
+        pasted.Floats[0] = (float)(cursor.Value.X * 4.0);
+        pasted.Floats[1] = (float)(cursor.Value.Y * 4.0);
+        pasted.Floats[2] = (float)(cursor.Value.Z * 4.0);
+    }
+    else
+    {
+        // No cursor hit — nudge so the copy doesn't overlap the original.
+        pasted.Floats[0] += 8.0f;   // 2 world units × 4
+        pasted.Floats[1] += 8.0f;
+    }
+ 
+    var vod = _lvm.AddObjectToLevel(pasted);
+    if (vod != null)
+    {
+        ObjectSelected(vod);   // select the new copy for immediate editing
+    }
+}
+ 
+/// <summary>
+/// Duplicates the selected object in place (with a small offset) without
+/// touching the clipboard, and selects the copy.
+/// </summary>
+private void DuplicateSelectedObject()
+{
+    var selected = _lvm?.SelectedObject;
+    if (_lvm == null || selected?.ObjectData == null) return;
+ 
+    var clone = ObjectClipboard.Clone(selected.ObjectData);
+    clone.Floats[0] += 8.0f;   // 2 world units × 4
+    clone.Floats[1] += 8.0f;
+ 
+    var vod = _lvm.AddObjectToLevel(clone);
+    if (vod != null)
+    {
+        ObjectSelected(vod);
+    }
+}
+ 
+/// <summary>Deletes the selected object from the level.</summary>
+private void DeleteSelectedObject()
+{
+    var selected = _lvm?.SelectedObject;
+    if (_lvm == null || selected == null) return;
+ 
+    _lvm.DeleteObjectFromLevel(selected);
+    ObjectSelected(null!);   // collapse selection in the properties panel
+}
+ 
+/// <summary>
+/// Builds the viewport right-click menu.  Item enablement is refreshed each
+/// time the menu opens, based on the current selection and clipboard state.
+/// </summary>
+private ContextMenu BuildViewportContextMenu()
+{
+    var copyItem      = new MenuItem { Header = "Copy Object\tCtrl+C" };
+    var pasteItem     = new MenuItem { Header = "Paste Object\tCtrl+V" };
+    var duplicateItem = new MenuItem { Header = "Duplicate Object\tCtrl+D" };
+    var deleteItem    = new MenuItem { Header = "Delete Object\tDel" };
+ 
+    copyItem.Click      += (_, _) => CopySelectedObject();
+    pasteItem.Click     += (_, _) => PasteObject();
+    duplicateItem.Click += (_, _) => DuplicateSelectedObject();
+    deleteItem.Click    += (_, _) => DeleteSelectedObject();
+ 
+    var menu = new ContextMenu();
+    menu.Items.Add(copyItem);
+    menu.Items.Add(pasteItem);
+    menu.Items.Add(duplicateItem);
+    menu.Items.Add(new Separator());
+    menu.Items.Add(deleteItem);
+ 
+    menu.Opened += (_, _) =>
+    {
+        var hasSelection = _lvm?.SelectedObject != null;
+        copyItem.IsEnabled      = hasSelection;
+        duplicateItem.IsEnabled = hasSelection;
+        deleteItem.IsEnabled    = hasSelection;
+        pasteItem.IsEnabled     = _lvm != null && ObjectClipboard.HasObject();
+    };
+ 
+    return menu;
+}
 }

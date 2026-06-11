@@ -47,11 +47,20 @@ public class ObjectManager
         }
     }
 
+    /// <summary>
+    /// Removes an object from the level — both its visual and its entry in the
+    /// object list, so the deletion survives an objects.ob re-encode on save.
+    /// </summary>
     public void RemoveObjectFromList(VisualObjectData vod)
     {
         if (_visualObjects.Contains(vod))
         {
             _visualObjects.Remove(vod);
+        }
+ 
+        if (vod.ObjectData != null)
+        {
+            _objects.Remove(vod.ObjectData);
         }
     }
 
@@ -68,6 +77,17 @@ public class ObjectManager
             _visualObjects.Add(vod);
         }
         return vod;
+    }
+
+    /// <summary>
+    /// Adds a brand-new object to the level: registers it in the object list
+    /// (so it is included when objects.ob is re-encoded) and builds its visual.
+    /// The caller is responsible for rebuilding the scene afterwards.
+    /// </summary>
+    public VisualObjectData? AddObject(ObjectData obj)
+    {
+        _objects.Add(obj);
+        return ParseObject(obj);
     }
 
     public VisualObjectData? HitTest(ModelVisual3D hitResult)
