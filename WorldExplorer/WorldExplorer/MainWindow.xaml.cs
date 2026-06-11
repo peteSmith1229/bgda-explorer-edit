@@ -283,6 +283,16 @@ public partial class MainWindow : Window
             MessageBox.Show(this, $"Save failed:\n{ex.Message}", "Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
+
+        AssetImporter.SaveGob(gob, dialog.FileName);
+        UpdateTitle();
+
+        var texCopied = CopyCompanionTexFile(dialog.FileName);
+        MessageBox.Show(this,
+            $"GOB saved to:\n{dialog.FileName}" +
+            (texCopied ? "\n\nThe companion .TEX level-texture file was copied alongside it."
+                : ""),
+            "Save Complete", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -707,5 +717,43 @@ public partial class MainWindow : Window
         }
     }
     
+    /// <summary>
+    /// BGDA level textures live in a companion .TEX file next to the .GOB
+    /// (TOWN.GOB ↔ TOWN.TEX) — they are not inside the archive. When the GOB
+    /// is saved to a new folder or name, copy the companion file alongside it
+    /// with a matching base name so the level still loads textured.
+    /// Returns true if a copy was made.
+    /// </summary>
+    private bool CopyCompanionTexFile(string gobDestinationPath)
+    {
+        var world = ViewModel.World;
+        if (world == null) return false;
+
+        // Locate the original companion TEX next to the source GOB.
+        var baseName  = Path.GetFileNameWithoutExtension(world.Name);
+        var sourceTex = Path.Combine(world.DataPath, baseName + ".TEX");
+        if (!File.Exists(sourceTex))
+        {
+            sourceTex = Path.Combine(world.DataPath, baseName + ".tex");
+            if (!File.Exists(sourceTex)) return false;   // world has no level TEX
+        }
+
+        // Destination: same folder + base name as the saved GOB.
+        var destTex = Path.Combine(
+            Path.GetDirectoryName(gobDestinationPath) ?? "",
+            Path.GetFileNameWithoutExtension(gobDestinationPath) + Path.GetExtension(sourceTex));
+
+        // Saving in place — the TEX is already there.
+        if (string.Equals(Path.GetFullPath(sourceTex), Path.GetFullPath(destTex),
+                StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // Don't clobber an existing file; the TEX is never modified by the
+        // editor, so an existing copy is already correct.
+        if (File.Exists(destTex)) return false;
+
+        File.Copy(sourceTex, destTex);
+        return true;
+    }
     
 }
