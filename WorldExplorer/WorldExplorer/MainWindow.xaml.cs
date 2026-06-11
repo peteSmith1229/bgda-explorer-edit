@@ -19,10 +19,12 @@ using JetBlackEngineLib;
 using JetBlackEngineLib.Data.DataContainers;
 using JetBlackEngineLib.Data.Models;
 using JetBlackEngineLib.Data.Textures;
+using JetBlackEngineLib.Data.World;
 using Microsoft.Win32;
 using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -248,52 +250,104 @@ public partial class MainWindow : Window
     // ════════════════════════════════════════════════════════════════
  
     private void Menu_SaveGob_Click(object sender, RoutedEventArgs e)
+{
+    var gob = GetActiveGobFile();
+    if (gob == null)
     {
-        var gob = GetActiveGobFile();
-        if (gob == null)
+        MessageBox.Show(this, "No GOB file is currently loaded.", "Save GOB",
+            MessageBoxButton.OK, MessageBoxImage.Information);
+        return;
+    }
+ 
+    if (!gob.IsDirty)
+    {
+        MessageBox.Show(this, "No pending changes to save.", "Save GOB",
+            MessageBoxButton.OK, MessageBoxImage.Information);
+        return;
+    }
+ 
+    var dialog = new SaveFileDialog
+    {
+        FileName = gob.Name,
+        Filter   = "GOB Archive|*.gob|All Files|*.*"
+    };
+    if (dialog.ShowDialog() != true) return;
+ 
+    try
+    {
+        var report = new StringBuilder();
+ 
+        // ── 1. Live in-memory state ──────────────────────────────────────
+        var liveCount = ViewModel.TheLevelViewModel.ObjectManager.Objects.Count;
+        report.AppendLine($"In-memory objects (ObjectManager): {liveCount}");
+ 
+        // ── 2. Pending-edit state on every dirty LMP ─────────────────────
+        var pendingObLength = -1;
+        foreach (var (lmpName, lmp) in gob.Directory)
         {
-            MessageBox.Show(this, "No GOB file is currently loaded.", "Save GOB",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
+            if (!lmp.IsDirty) continue;
+ 
+            report.AppendLine($"Dirty LMP: {lmpName}");
+            foreach (var key in lmp.PendingEdits.Keys)
+            {
+                var len = lmp.PendingEdits[key].Length;
+                report.AppendLine($"   pending edit: {key} ({len} bytes)");
+                if (key.Equals("objects.ob", StringComparison.OrdinalIgnoreCase))
+                {
+                    pendingObLength = len;
+                }
+            }
+        }
+        if (pendingObLength < 0)
+        {
+            report.AppendLine("WARNING: no pending edit for objects.ob found!");
         }
  
-        if (!gob.IsDirty)
+        // ── 3. Pack, then verify the packed bytes round-trip ─────────────
+        var packed = GobWriter.Pack(gob);
+ 
+        var savedObCount = -1;
+        var verifyGob = new GobFile(gob.EngineVersion, "verify.gob", packed);
+        foreach (var (lmpName, lmp) in verifyGob.Directory)
         {
-            MessageBox.Show(this, "No pending changes to save.", "Save GOB",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
+            lmp.ReadDirectory();
+            if (lmp.Directory.TryGetValue("objects.ob", out var obEntry))
+            {
+                var objs = ObDecoder.Decode(lmp.FileData, obEntry.StartOffset, obEntry.Length);
+                savedObCount = objs.Count;
+                report.AppendLine(
+                    $"objects.ob decoded from PACKED bytes ({lmpName}): {savedObCount} objects");
+                break;
+            }
+        }
+        if (savedObCount < 0)
+        {
+            report.AppendLine("WARNING: no objects.ob entry found in the packed GOB!");
         }
  
-        var dialog = new SaveFileDialog
-        {
-            FileName = gob.Name,
-            Filter   = "GOB Archive|*.gob|All Files|*.*"
-        };
-        if (dialog.ShowDialog() != true) return;
- 
-        try
-        {
-            AssetImporter.SaveGob(gob, dialog.FileName);
-            UpdateTitle();
-            MessageBox.Show(this, $"GOB saved to:\n{dialog.FileName}",
-                "Save Complete", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(this, $"Save failed:\n{ex.Message}", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-
-        AssetImporter.SaveGob(gob, dialog.FileName);
+        // ── 4. Write to disk and clear dirty state ───────────────────────
+        File.WriteAllBytes(dialog.FileName, packed);
+        gob.ClearAllPendingEdits();
         UpdateTitle();
-
+ 
         var texCopied = CopyCompanionTexFile(dialog.FileName);
+        if (texCopied)
+        {
+            report.AppendLine("Companion .TEX copied alongside the GOB.");
+        }
+ 
+        // Surface the diagnostic both in a dialog and in the Log tab.
+        ViewModel.LogText = report.ToString();
         MessageBox.Show(this,
-            $"GOB saved to:\n{dialog.FileName}" +
-            (texCopied ? "\n\nThe companion .TEX level-texture file was copied alongside it."
-                : ""),
+            $"GOB saved to:\n{dialog.FileName}\n\n--- Diagnostics ---\n{report}",
             "Save Complete", MessageBoxButton.OK, MessageBoxImage.Information);
     }
+    catch (Exception ex)
+    {
+        MessageBox.Show(this, $"Save failed:\n{ex.Message}", "Error",
+            MessageBoxButton.OK, MessageBoxImage.Error);
+    }
+}
 
     // ─────────────────────────────────────────────────────────────────────────
     // Edit → Import (NEW)
