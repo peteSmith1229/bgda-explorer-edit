@@ -36,7 +36,7 @@ public partial class LevelView
         InitializeComponent();
         DataContextChanged += LevelView_DataContextChanged;
         viewport.MouseUp += viewport_MouseUp;
-        viewport.KeyDown += Viewport_KeyDown;
+        viewport.PreviewKeyDown += Viewport_KeyDown;
         
         viewport.CalculateCursorPosition = true;        // ← NEW: enables paste-at-cursor
         viewport.ContextMenu = BuildViewportContextMenu(); // ← NEW
@@ -220,8 +220,23 @@ private void PasteObject()
 {
     if (_lvm == null) return;
  
+    if (!ObjectClipboard.HasObject())
+    {
+        MessageBox.Show(
+            "The clipboard does not contain a WorldExplorer object.\n" +
+            "Select an object (Ctrl+Click) and press Ctrl+C first.",
+            "Paste Object", MessageBoxButton.OK, MessageBoxImage.Information);
+        return;
+    }
+ 
     var pasted = ObjectClipboard.TryPaste();
-    if (pasted == null) return;
+    if (pasted == null)
+    {
+        MessageBox.Show(
+            "The clipboard content could not be read as an object.",
+            "Paste Object", MessageBoxButton.OK, MessageBoxImage.Warning);
+        return;
+    }
  
     var cursor = viewport.CursorPosition;
     if (cursor.HasValue)
@@ -232,15 +247,23 @@ private void PasteObject()
     }
     else
     {
-        // No cursor hit — nudge so the copy doesn't overlap the original.
-        pasted.Floats[0] += 8.0f;   // 2 world units × 4
+        pasted.Floats[0] += 8.0f;
         pasted.Floats[1] += 8.0f;
     }
  
     var vod = _lvm.AddObjectToLevel(pasted);
     if (vod != null)
     {
-        ObjectSelected(vod);   // select the new copy for immediate editing
+        ObjectSelected(vod);
+    }
+    else
+    {
+        // Parse produced no visual (e.g. a black light) — the object IS in
+        // the level data and will be saved, it just has nothing to render.
+        MessageBox.Show(
+            $"'{pasted.Name}' was added to the level data but produced no " +
+            "visual (some object types, such as black lights, render nothing).",
+            "Paste Object", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 }
  

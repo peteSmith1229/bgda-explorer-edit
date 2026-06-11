@@ -21,30 +21,16 @@ using System.Linq;
 using System.Text.Json;
 using System.Windows;
 
-
 namespace WorldExplorer.WorldDefs;
 
 /// <summary>
-/// Copies <see cref="ObjectData"/> to and from the Windows clipboard as a
-/// small JSON document.  Using the system clipboard (rather than an
-/// app-internal field) means objects can be pasted between two running
-/// WorldExplorer instances — e.g. copied from one level's GOB into another —
-/// and inspected or hand-edited in any text editor.
-///
-/// Example payload:
-/// <code>
-/// {
-///   "worldExplorerObject": 1,
-///   "name": "Torch",
-///   "i6": 4096,
-///   "floats": [512.0, 832.0, 16.0],
-///   "properties": ["w=10", "h=10"]
-/// }
-/// </code>
+/// Copies <see cref="ObjectData"/> to and from the Windows clipboard as JSON.
+/// CORRECTED VERSION: constructs ObjectData through its real constructor
+/// (string, short, float[], List&lt;string&gt;) — the Floats and Properties
+/// fields are readonly, so object-initializer syntax does not compile.
 /// </summary>
 public static class ObjectClipboard
 {
-    /// <summary>Format marker so we never misinterpret unrelated clipboard text.</summary>
     private const int FormatVersion = 1;
 
     private sealed class ObjectDto
@@ -62,13 +48,6 @@ public static class ObjectClipboard
         WriteIndented = true
     };
 
-    // -------------------------------------------------------------------------
-
-    /// <summary>
-    /// Serialises <paramref name="obj"/> and places it on the system
-    /// clipboard.  Returns false if the clipboard was unavailable (it can be
-    /// locked by another process).
-    /// </summary>
     public static bool Copy(ObjectData obj)
     {
         var dto = new ObjectDto
@@ -91,17 +70,12 @@ public static class ObjectClipboard
         }
     }
 
-    /// <summary>
-    /// True if the clipboard currently holds a WorldExplorer object payload.
-    /// </summary>
     public static bool HasObject()
     {
         try
         {
-            if (!Clipboard.ContainsText()) return false;
-            var text = Clipboard.GetText();
-            // Cheap pre-check before attempting a full parse.
-            return text.Contains("\"worldExplorerObject\"");
+            return Clipboard.ContainsText()
+                && Clipboard.GetText().Contains("\"worldExplorerObject\"");
         }
         catch (Exception)
         {
@@ -109,11 +83,6 @@ public static class ObjectClipboard
         }
     }
 
-    /// <summary>
-    /// Attempts to read an object from the clipboard.  Returns a brand-new
-    /// <see cref="ObjectData"/> instance (never a reference to an existing
-    /// one), or null if the clipboard does not hold a valid payload.
-    /// </summary>
     public static ObjectData? TryPaste()
     {
         try
@@ -129,24 +98,22 @@ public static class ObjectClipboard
             var floats = new float[3];
             Array.Copy(dto.Floats, floats, Math.Min(dto.Floats.Length, 3));
 
-            // NOTE: if ObjectData's members are initialised via a constructor 
-            // rather than settable properties/fields in your tree, adapt this
-            // block to match (e.g. new ObjectData(dto.Name, dto.I6, floats, …)).
-            return new ObjectData(dto.Name, dto.I6, floats, new List<string>(dto.Properties));
+            // Use the real constructor — Floats/Properties are readonly fields.
+            return new ObjectData(dto.Name, dto.I6, floats,
+                new List<string>(dto.Properties));
         }
         catch (Exception)
         {
-            return null; // Not our payload / malformed JSON / clipboard locked.
+            return null;
         }
     }
 
-    /// <summary>
-    /// Convenience: deep-clones an existing object without touching the 
-    /// clipboard (used by Duplicate, which shouldn't overwrite whatever the
-    /// user has copied).
-    /// </summary>
     public static ObjectData Clone(ObjectData source)
     {
-        return new ObjectData(source.Name, source.I6, source.Floats.Take(3).ToArray(), new List<string>(source.Properties));
+        return new ObjectData(
+            source.Name,
+            source.I6,
+            source.Floats.Take(3).ToArray(),
+            new List<string>(source.Properties));
     }
 }

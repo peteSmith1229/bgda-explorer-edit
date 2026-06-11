@@ -48,8 +48,10 @@ public class ObjectManager
     }
 
     /// <summary>
-    /// Removes an object from the level — both its visual and its entry in the
-    /// object list, so the deletion survives an objects.ob re-encode on save.
+    /// Removes only the VISUAL for an object — the ObjectData stays in the
+    /// object list.  Used by ApplyChangesClicked to refresh a visual via a
+    /// Remove + ParseObject round-trip.  To truly delete an object use
+    /// <see cref="DeleteObject"/>.
     /// </summary>
     public void RemoveObjectFromList(VisualObjectData vod)
     {
@@ -57,6 +59,18 @@ public class ObjectManager
         {
             _visualObjects.Remove(vod);
         }
+    }
+ 
+// ── 2. ADD this separate true-deletion method ─────────────────────────────────
+ 
+    /// <summary>
+    /// Permanently removes an object from the level: both its visual and its
+    /// ObjectData entry, so the deletion is reflected when objects.ob is
+    /// re-encoded on save.
+    /// </summary>
+    public void DeleteObject(VisualObjectData vod)
+    {
+        RemoveObjectFromList(vod);
  
         if (vod.ObjectData != null)
         {

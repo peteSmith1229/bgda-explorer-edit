@@ -257,12 +257,22 @@ public class LevelViewModel : BaseViewModel
     {
         if (WorldNode == null)
             return;
-            
-        if (WorldNode.LmpFileProperty.Directory.ContainsKey("objects.ob"))
+ 
+        var lmpFile = WorldNode.LmpFileProperty;
+ 
+        if (!lmpFile.Directory.TryGetValue("objects.ob", out var obNode))
+            return;
+ 
+        // If an edited objects.ob has been queued (paste, duplicate, delete,
+        // apply-changes), reload from THOSE bytes — otherwise a scene reload
+        // would silently revert the object list to the original file content.
+        if (lmpFile.PendingEdits.TryGetValue("objects.ob", out var pendingBytes))
         {
-            var obNode = WorldNode.LmpFileProperty.Directory["objects.ob"];
-
-            ObjectManager.LoadScene(WorldNode.LmpFileProperty.FileData, obNode.StartOffset, obNode.Length);
+            ObjectManager.LoadScene(pendingBytes, 0, pendingBytes.Length);
+        }
+        else
+        {
+            ObjectManager.LoadScene(lmpFile.FileData, obNode.StartOffset, obNode.Length);
         }
     }
 
@@ -380,7 +390,7 @@ public class LevelViewModel : BaseViewModel
     /// </summary>
     public void DeleteObjectFromLevel(VisualObjectData vod)
     {
-        ObjectManager.RemoveObjectFromList(vod);
+        ObjectManager.DeleteObject(vod);
  
         if (SelectedObject == vod)
         {
