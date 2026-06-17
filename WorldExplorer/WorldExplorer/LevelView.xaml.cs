@@ -31,6 +31,7 @@ public partial class LevelView
 {
     private LevelViewModel? _lvm;
     private ObjectDragGizmo? _gizmo;
+    private ElementDragGizmo? _elementGizmo;
 
     public LevelView()
     {
@@ -42,6 +43,7 @@ public partial class LevelView
         viewport.CalculateCursorPosition = true;        // ← NEW: enables paste-at-cursor
         viewport.ContextMenu = BuildViewportContextMenu(); // ← NEW
         _gizmo = new ObjectDragGizmo(viewport);
+        _elementGizmo = new ElementDragGizmo(viewport); 
         viewport.AddHandler(
             UIElement.MouseLeftButtonUpEvent,
             new MouseButtonEventHandler(Viewport_DragMouseUp),
@@ -52,6 +54,7 @@ public partial class LevelView
     private void Viewport_DragMouseUp(object sender, MouseButtonEventArgs e)
     {
         _gizmo?.EndDrag();
+        _elementGizmo?.EndDrag(); 
     }
 
     private void Viewport_KeyDown(object sender, KeyEventArgs e)
@@ -130,7 +133,8 @@ public partial class LevelView
 
     protected void OnSceneUpdated()
     {
-        _gizmo?.Detach();                     // ← ADD
+        _gizmo?.Detach();
+        _elementGizmo?.Detach(); 
         Background = TryGettingAmbientLightColor() ?? Brushes.White;
     }
 
@@ -186,11 +190,15 @@ public partial class LevelView
 
     private void ElementSelected(WorldElementTreeViewModel? ele)
     {
-        _gizmo?.Detach();                     // ← ADD
+        _gizmo?.Detach();
         if (_lvm != null)
         {
             _lvm.SelectedObject = null;
             _lvm.SelectedElement = ele;
+            if (ele != null)
+                _elementGizmo?.Attach(ele.WorldElement, _lvm);
+            else
+                _elementGizmo?.Detach();
         }
 
         // Expand after values have changed
@@ -206,7 +214,8 @@ public partial class LevelView
         {
             _lvm.SelectedElement = null;
             _lvm.SelectedObject = obj;
-            _gizmo?.Attach(obj, _lvm);        // ← ADD
+            _elementGizmo?.Detach();
+            _gizmo?.Attach(obj, _lvm);
         }
 
         // Expand after values have changed

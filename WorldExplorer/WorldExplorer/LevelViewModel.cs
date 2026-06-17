@@ -44,6 +44,9 @@ public class LevelViewModel : BaseViewModel
     private WorldData? _worldData;
     private WorldFileTreeViewModel? _worldNode;
     private readonly WorldExplorer.WorldDefs.LevelEditHistory _history = new();
+    private readonly System.Collections.Generic.Dictionary<
+        JetBlackEngineLib.Data.World.WorldElement,
+        System.Windows.Media.Media3D.ModelVisual3D> _elementVisuals = new();
 
     public Rect3D WorldBounds
     {
@@ -141,6 +144,7 @@ public class LevelViewModel : BaseViewModel
 
     public void RebuildScene()
     {
+        _elementVisuals.Clear();  
         List<ModelVisual3D> scene = new();
         AddLights(EnableLevelSpecifiedLights, scene);
 
@@ -159,72 +163,8 @@ public class LevelViewModel : BaseViewModel
                 var modelBounds = model3D.Bounds;
 
                 worldBounds.Union(modelBounds);
-
-                Transform3DGroup transform3DGroup = new();
-
-                transform3DGroup.Children.Add(new TranslateTransform3D(element.Position));
-                var mtx = Matrix3D.Identity;
-                if (element.UsesRotFlags)
-                {
-                    if ((element.XyzRotFlags & 4) == 4)
-                    {
-                        // Flip x, y
-                        mtx.M11 = 0;
-                        mtx.M21 = 1;
-
-                        mtx.M12 = 1;
-                        mtx.M22 = 0;
-                    }
-
-                    if ((element.XyzRotFlags & 2) == 2)
-                    {
-                        mtx.M11 = -mtx.M11;
-                        mtx.M21 = -mtx.M21;
-                    }
-
-                    if ((element.XyzRotFlags & 1) == 1)
-                    {
-                        mtx.M12 = -mtx.M12;
-                        mtx.M22 = -mtx.M22;
-                    }
-
-                    if (element.XyzRotFlags == 2)
-                    {
-                        mtx.M11 = -mtx.M11;
-                        mtx.M12 = -mtx.M12;
-                        mtx.M21 = -mtx.M21;
-                        mtx.M22 = -mtx.M22;
-                    }
-
-                    if (element.XyzRotFlags == 1)
-                    {
-                        mtx.M12 = -mtx.M12;
-                        mtx.M22 = -mtx.M22;
-                        mtx.M11 = -mtx.M11;
-                        mtx.M21 = -mtx.M21;
-                    }
-                }
-                else
-                {
-                    // Change handedness by reversing angle (sign on sin)
-                    mtx.M11 = element.CosAlpha;
-                    mtx.M21 = -element.SinAlpha;
-                    mtx.M12 = element.SinAlpha;
-                    mtx.M22 = element.CosAlpha;
-                    if (element.NegYaxis)
-                    {
-                        // Should this be col1 due to handed change?
-                        mtx.M12 = -mtx.M12;
-                        mtx.M22 = -mtx.M22;
-                    }
-                }
-
-                if (!mtx.IsIdentity)
-                {
-                    transform3DGroup.Children.Add(new MatrixTransform3D(mtx));
-                }
-
-                mv3d.Transform = transform3DGroup;
+                mv3d.Transform = SceneTransforms.BuildElementTransform(element); 
+                _elementVisuals[element] = mv3d;  
 
                 scene.Add(mv3d);
             }
@@ -575,5 +515,15 @@ public class LevelViewModel : BaseViewModel
         if (CommitChangesToArchive())
             MainViewModel.MainWindow.UpdateTitle();
     }
+    
+    /// <summary>
+    /// Returns the <see cref="System.Windows.Media.Media3D.ModelVisual3D"/> built
+    /// for <paramref name="element"/> in the most recent RebuildScene, or null if
+    /// the element has no visual (e.g. no model). The map is rebuilt every
+    /// RebuildScene, so this always reflects the current scene.
+    /// </summary>
+    public System.Windows.Media.Media3D.ModelVisual3D? GetElementVisual(
+        JetBlackEngineLib.Data.World.WorldElement element)
+        => _elementVisuals.TryGetValue(element, out var v) ? v : null;
     
 }
