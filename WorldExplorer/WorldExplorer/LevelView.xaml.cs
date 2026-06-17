@@ -52,6 +52,21 @@ public partial class LevelView
  
         switch (e.Key)
         {
+            case Key.Z when ctrl && (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift:
+                _lvm?.Redo();          // Ctrl+Shift+Z = redo
+                e.Handled = true;
+                break;
+ 
+            case Key.Z when ctrl:
+                _lvm?.Undo();
+                e.Handled = true;
+                break;
+ 
+            case Key.Y when ctrl:
+                _lvm?.Redo();
+                e.Handled = true;
+                break;
+            
             case Key.L:
                 // Toggle lighting (existing behaviour)
                 _lvm.EnableLevelSpecifiedLights = !_lvm.EnableLevelSpecifiedLights;

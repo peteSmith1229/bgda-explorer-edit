@@ -144,43 +144,42 @@ public static class LmpWriter
 
     // ---- BGDA / BoS format --------------------------------------------------
 
+    private const int BgdaEntryAlignment = 128;   // matches original BGDA LMP layout
+    private static int Align(int v, int a) => (v + a - 1) & ~(a - 1);
+ 
     private static byte[] PackBgda(IList<(string Name, byte[] Data)> entries)
     {
         var n = entries.Count;
-
-        // Directory block: 4-byte count + n 64-byte header entries.
         var dirSize = 4 + n * BgdaHeaderEntryBytes;
-
-        // Compute per-entry data offsets (4-byte aligned, packed after directory).
+ 
         var dataOffsets = new int[n];
-        var cursor = dirSize;
+        var cursor    = Align(dirSize, BgdaEntryAlignment);   // first entry 128-aligned
+        var totalSize = cursor;
         for (var i = 0; i < n; i++)
         {
             dataOffsets[i] = cursor;
-            cursor += entries[i].Data.Length;
-            cursor = Align4(cursor);
+            var end        = cursor + entries[i].Data.Length;
+            totalSize      = end;                             // last entry's true end
+            cursor         = Align(end, BgdaEntryAlignment);  // next entry start
         }
-
-        var result = new byte[cursor];
-
-        // Entry count
+ 
+        var result = new byte[totalSize];                     // no trailing pad
+ 
         BitConverter.GetBytes(n).CopyTo(result, 0);
-
+ 
         for (var i = 0; i < n; i++)
         {
             var headerOff = 4 + i * BgdaHeaderEntryBytes;
             var nameBytes = Encoding.ASCII.GetBytes(entries[i].Name);
             var copyLen   = Math.Min(nameBytes.Length, BgdaFilenameSizeBytes - 1);
             Array.Copy(nameBytes, 0, result, headerOff, copyLen);
-            // result is already zeroed, so the NUL terminator is already there.
-
+ 
             BitConverter.GetBytes(dataOffsets[i]).CopyTo(result, headerOff + 56);
             BitConverter.GetBytes(entries[i].Data.Length).CopyTo(result, headerOff + 60);
-
-            // Payload
+ 
             entries[i].Data.CopyTo(result, dataOffsets[i]);
         }
-
+ 
         return result;
     }
 

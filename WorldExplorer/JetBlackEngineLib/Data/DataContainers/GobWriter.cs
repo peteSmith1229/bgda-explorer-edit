@@ -57,7 +57,7 @@ public static class GobWriter
     /// Byte alignment applied between packed LMP blobs.  4 bytes is safe for
     /// all known BGDA variants; raise to a power-of-two sector size if needed.
     /// </summary>
-    public const int LmpAlignment = 4;
+    public const int LmpAlignment = 2048;   // BGDA GOBs sector-align every LMP blob
 
     private const int DirectoryEntrySize   = 0x28; // 40 bytes
     private const int FilenameFieldSize    = 0x20; // 32 bytes (max 31 chars + NUL)
@@ -90,65 +90,114 @@ public static class GobWriter
     /// are preserved exactly.
     /// </summary>
     public static byte[] PackEntries(EngineVersion engineVersion,
-                                     IList<KeyValuePair<string, LmpFile>> entries)
+        IList<KeyValuePair<string, LmpFile>> entries)
     {
         int n = entries.Count;
-     
-        // Obtain each LMP's payload bytes.
+ 
         var packedLmps = new byte[n][];
         for (int i = 0; i < n; i++)
         {
             var lmp = entries[i].Value;
-     
             if (lmp.IsDirty)
             {
-                // The pending-edit overlay is applied relative to the entries in
-                // Directory — if the directory was never lazily loaded, read it
-                // now so the original entries aren't lost in the re-pack.
                 if (lmp.Directory.Count == 0)
                     lmp.ReadDirectory();
-     
                 packedLmps[i] = LmpWriter.Pack(lmp);
             }
             else
             {
-                // No edits — copy the original bytes verbatim. This also covers
-                // LMPs whose directory was never read (lazy tree loading).
                 packedLmps[i] = lmp.GetRawData();
             }
         }
-     
-        // ── Compute layout ────────────────────────────────────────────────
-        int directoryBytes = n * DirectoryEntrySize + 1; // +1 for null terminator
+ 
+        int directoryBytes = n * DirectoryEntrySize + 1;     // +1 null terminator
         int dataStart      = AlignUp(directoryBytes, LmpAlignment);
-     
+ 
         var lmpOffsets = new int[n];
-        var cursor = dataStart;
+        var cursor     = dataStart;
+        var totalSize  = dataStart;
         for (int i = 0; i < n; i++)
         {
             lmpOffsets[i] = cursor;
-            cursor += packedLmps[i].Length;
-            cursor  = AlignUp(cursor, LmpAlignment);
+            var end       = cursor + packedLmps[i].Length;
+            totalSize     = end;                              // last blob's true end
+            cursor        = AlignUp(end, LmpAlignment);       // next LMP start
         }
-     
-        // ── Assemble result ───────────────────────────────────────────────
-        var result = new byte[cursor];
-     
+ 
+        var result = new byte[totalSize];                     // no trailing sector pad
+ 
         for (int i = 0; i < n; i++)
         {
             int slotOff   = i * DirectoryEntrySize;
             var nameBytes = Encoding.ASCII.GetBytes(entries[i].Key);
             var copyLen   = Math.Min(nameBytes.Length, FilenameFieldSize - 1);
             Array.Copy(nameBytes, 0, result, slotOff, copyLen);
-     
+ 
             BitConverter.GetBytes(lmpOffsets[i])       .CopyTo(result, slotOff + OffsetFieldRelative);
             BitConverter.GetBytes(packedLmps[i].Length).CopyTo(result, slotOff + LengthFieldRelative);
-     
+ 
             packedLmps[i].CopyTo(result, lmpOffsets[i]);
         }
-     
+ 
         return result;
     }
+    
+    /// <summary>
+/// Attempts to apply all pending edits to <paramref name="gobFile"/> WITHOUT
+/// re-packing, by overwriting each edited entry's bytes in place inside a
+/// clone of the original GOB data.
+///
+/// <para>
+/// This succeeds only when every edit is <b>length-preserving</b>: no LMP has
+/// pending additions or deletions, and every pending entry replacement has
+/// exactly the same byte length as the entry it replaces.  A world-element
+/// transform edit (move/rotate) always satisfies this, because
+/// <see cref="WorldExplorer"/>'s element patcher rewrites the struct in place
+/// at its original size.
+/// </para>
+///
+/// <para>
+/// Returns the patched byte array (identical to the original except for the
+/// edited regions — same size, same alignment, trailing data preserved), or
+/// <see langword="null"/> if any edit changes a length, in which case the
+/// caller should fall back to <see cref="Pack"/>.
+/// </para>
+/// </summary>
+public static byte[]? TryPatchInPlace(GobFile gobFile)
+{
+    // All LMPs in a GOB share the same underlying byte array (the whole GOB).
+    var result = (byte[])gobFile.RawFileData.Clone();
+ 
+    foreach (var lmp in gobFile.Directory.Values)
+    {
+        // Structural changes can't be expressed as an in-place overwrite.
+        if (lmp.PendingAdditions.Count > 0 || lmp.PendingDeletions.Count > 0)
+            return null;
+ 
+        if (lmp.PendingEdits.Count == 0)
+            continue; // untouched LMP — its bytes are already in the clone.
+ 
+        // The pending-edit overlay is keyed against Directory entries; make
+        // sure the directory is populated (it is lazily loaded by the tree).
+        if (lmp.Directory.Count == 0)
+            lmp.ReadDirectory();
+ 
+        foreach (var (name, newBytes) in lmp.PendingEdits)
+        {
+            if (!lmp.Directory.TryGetValue(name, out var entry))
+                return null; // edit refers to an entry we can't locate — be safe.
+ 
+            if (newBytes.Length != entry.Length)
+                return null; // length changed — must re-pack.
+ 
+            // entry.StartOffset is absolute within the GOB byte array.
+            Buffer.BlockCopy(newBytes, 0, result, entry.StartOffset, newBytes.Length);
+        }
+    }
+ 
+    return result;
+}
+ 
 
     // -------------------------------------------------------------------------
 

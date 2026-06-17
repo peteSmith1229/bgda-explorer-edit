@@ -221,14 +221,16 @@ public static class AssetImporter
     }
     
     /// <summary>
-    /// Packs <paramref name="gobFile"/> — re-packing every contained LMP and
-    /// applying all pending edits — and writes the result to
-    /// <paramref name="destinationPath"/>.  On success clears the dirty state of
-    /// every contained LMP by calling <see cref="GobFile.ClearAllPendingEdits"/>.
+    /// Writes <paramref name="gobFile"/> to <paramref name="destinationPath"/>,
+    /// applying all pending edits.  Length-preserving edits (e.g. moving an
+    /// element) are patched in place so the output is byte-identical to the
+    /// original except for the edited bytes — identical size, alignment, and
+    /// trailing data.  Edits that change a length (add/delete object) trigger a
+    /// full re-pack.  On success clears every contained LMP's pending state.
     /// </summary>
     public static void SaveGob(GobFile gobFile, string destinationPath)
     {
-        var packed = GobWriter.Pack(gobFile);
+        var packed = GobWriter.TryPatchInPlace(gobFile) ?? GobWriter.Pack(gobFile);
         File.WriteAllBytes(destinationPath, packed);
         gobFile.ClearAllPendingEdits();
     }

@@ -96,6 +96,7 @@ public partial class LevelObjectPropertiesArea : UserControl
         int tempIntValue;
         double tempDoubleValue;
         var levelViewModel = (LevelViewModel)DataContext;
+        levelViewModel.PushUndoSnapshot();   // ← ADD (capture state before edit)
 
         if (SelectedElement != null)
         {

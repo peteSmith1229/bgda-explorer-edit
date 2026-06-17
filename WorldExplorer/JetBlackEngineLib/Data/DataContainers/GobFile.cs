@@ -22,6 +22,15 @@ namespace JetBlackEngineLib.Data.DataContainers;
 public class GobFile
 {
     public EngineVersion EngineVersion { get; }
+    
+    /// <summary>
+    /// The complete original bytes of this GOB exactly as loaded from disk.
+    /// Every contained <see cref="LmpFile"/> shares this same array as its
+    /// <see cref="LmpFile.FileData"/>; entry <c>StartOffset</c> values are
+    /// absolute within it.  Used by <see cref="GobWriter.TryPatchInPlace"/>.
+    /// </summary>
+    public byte[] RawFileData => _fileData;
+    
     public readonly Dictionary<string, LmpFile> Directory = new();
     public string Name { get; set; }
 

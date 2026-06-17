@@ -40,7 +40,10 @@
 
             <!-- Edit menu -->
             <MenuItem Header="_Edit">
-
+                <MenuItem Header="_Undo" InputGestureText="Ctrl+Z" Click="Menu_Undo_Click" />
+                <MenuItem Header="_Redo" InputGestureText="Ctrl+Y" Click="Menu_Redo_Click" />
+                <Separator />
+                
                 <!-- ── Export sub-menu (existing) ─────────────────────────────── -->
                 <MenuItem x:Name="Menu_Export" Header="_Export">
                     <MenuItem x:Name="Menu_Export_Texture"

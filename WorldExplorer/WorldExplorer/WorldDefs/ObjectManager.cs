@@ -162,4 +162,17 @@ public class ObjectManager
         result = GetObjectByName(name);
         return result != null;
     }
+    /// <summary>
+    /// Replaces the entire object list with <paramref name="objects"/> and rebuilds
+    /// each object's visual.  Used by undo/redo to restore a captured object set.
+    /// </summary>
+    public void ReplaceAllObjects(IEnumerable<ObjectData> objects)
+    {
+        _visualObjects.Clear();
+        _objects.Clear();
+        _objects.AddRange(objects);
+        foreach (var obj in _objects)
+            ParseObject(obj);
+    }
+    
 }

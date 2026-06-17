@@ -43,6 +43,7 @@ public class LevelViewModel : BaseViewModel
     private Rect3D _worldBounds = Rect3D.Empty;
     private WorldData? _worldData;
     private WorldFileTreeViewModel? _worldNode;
+    private readonly WorldExplorer.WorldDefs.LevelEditHistory _history = new();
 
     public Rect3D WorldBounds
     {
@@ -245,7 +246,7 @@ public class LevelViewModel : BaseViewModel
     private void NewWorldLoaded()
     {
         ResetState();
-
+        _history.Clear();          // ← ADD: undo history must not cross levels
         LoadObjects();
         LoadSkyDome();
         RebuildScene();
@@ -373,6 +374,7 @@ public class LevelViewModel : BaseViewModel
     /// </summary>
     public VisualObjectData? AddObjectToLevel(ObjectData newObject)
     {
+        PushUndoSnapshot();        // ← ADD
         var vod = ObjectManager.AddObject(newObject);
         RebuildScene();
  
@@ -383,13 +385,107 @@ public class LevelViewModel : BaseViewModel
  
         return vod;
     }
- 
+    
+    /// <summary>True when there is a level edit that can be undone / redone.</summary>
+    public bool CanUndo => _history.CanUndo;
+    public bool CanRedo => _history.CanRedo;
+     
+    /// <summary>
+    /// Records the current level state so the next edit can be undone.  MUST be
+    /// called at the START of every edit operation, before anything is mutated.
+    /// No-op when no editable world is loaded.
+    /// </summary>
+    public void PushUndoSnapshot()
+    {
+        if (WorldNode == null) return;
+        _history.PushUndo(CaptureMemento());
+    }
+     
+    /// <summary>Reverts the most recent edit.</summary>
+    public void Undo()
+    {
+        if (WorldNode == null) return;
+        var restored = _history.Undo(CaptureMemento());
+        if (restored != null) RestoreMemento(restored);
+    }
+     
+    /// <summary>Re-applies the most recently undone edit.</summary>
+    public void Redo()
+    {
+        if (WorldNode == null) return;
+        var restored = _history.Redo(CaptureMemento());
+        if (restored != null) RestoreMemento(restored);
+    }
+     
+    private WorldExplorer.WorldDefs.LevelEditMemento CaptureMemento()
+    {
+        // Clone objects so the snapshot is never aliased to the live list.
+        var objects = ObjectManager.Objects
+            .Select(WorldExplorer.WorldDefs.ObjectClipboard.Clone)
+            .ToList();
+     
+        var transforms = new System.Collections.Generic.Dictionary<int, WorldExplorer.WorldDefs.ElementTransform>();
+        if (_worldData != null)
+        {
+            foreach (var el in _worldData.WorldElements)
+            {
+                transforms[el.ElementIndex] = new WorldExplorer.WorldDefs.ElementTransform
+                {
+                    Position     = el.Position,
+                    NegYaxis     = el.NegYaxis,
+                    SinAlpha     = el.SinAlpha,
+                    CosAlpha     = el.CosAlpha,
+                    UsesRotFlags = el.UsesRotFlags,
+                    XyzRotFlags  = el.XyzRotFlags,
+                };
+            }
+        }
+     
+        return new WorldExplorer.WorldDefs.LevelEditMemento(objects, transforms);
+    }
+     
+    private void RestoreMemento(WorldExplorer.WorldDefs.LevelEditMemento m)
+    {
+        // Hand ObjectManager fresh clones so later in-place edits can't corrupt
+        // the stored snapshot.
+        ObjectManager.ReplaceAllObjects(
+            m.Objects.Select(WorldExplorer.WorldDefs.ObjectClipboard.Clone));
+     
+        // Write element transforms back into the live elements.
+        if (_worldData != null)
+        {
+            foreach (var el in _worldData.WorldElements)
+            {
+                if (!m.ElementTransforms.TryGetValue(el.ElementIndex, out var t)) continue;
+                el.Position     = t.Position;
+                el.NegYaxis     = t.NegYaxis;
+                el.SinAlpha     = t.SinAlpha;
+                el.CosAlpha     = t.CosAlpha;
+                el.UsesRotFlags = t.UsesRotFlags;
+                el.XyzRotFlags  = t.XyzRotFlags;
+            }
+        }
+     
+        // The previous selection points at now-replaced instances — clear it so
+        // the properties panel doesn't act on stale references.
+        SelectedObject = null;
+        SelectedElement = null;
+     
+        RebuildScene();
+     
+        if (CommitChangesToArchive())
+            MainViewModel.MainWindow.UpdateTitle();
+    }
+    
+    
+    
     /// <summary>
     /// Deletes <paramref name="vod"/> from the level, rebuilds the scene, and
     /// queues the updated objects.ob into the archive's pending-edit layer.
     /// </summary>
     public void DeleteObjectFromLevel(VisualObjectData vod)
     {
+        PushUndoSnapshot();        // ← ADD
         ObjectManager.DeleteObject(vod);
  
         if (SelectedObject == vod)

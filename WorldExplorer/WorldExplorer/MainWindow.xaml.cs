@@ -304,7 +304,7 @@ public partial class MainWindow : Window
         }
  
         // ── 3. Pack, then verify the packed bytes round-trip ─────────────
-        var packed = GobWriter.Pack(gob);
+        var packed = GobWriter.TryPatchInPlace(gob) ?? GobWriter.Pack(gob);
  
         var savedObCount = -1;
         var verifyGob = new GobFile(gob.EngineVersion, "verify.gob", packed);
@@ -809,5 +809,9 @@ public partial class MainWindow : Window
         File.Copy(sourceTex, destTex);
         return true;
     }
+    private void Menu_Undo_Click(object sender, RoutedEventArgs e)
+        => ViewModel.TheLevelViewModel.Undo();
     
+    private void Menu_Redo_Click(object sender, RoutedEventArgs e)
+        => ViewModel.TheLevelViewModel.Redo();
 }
