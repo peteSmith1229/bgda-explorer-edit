@@ -30,6 +30,7 @@ namespace WorldExplorer;
 public partial class LevelView
 {
     private LevelViewModel? _lvm;
+    private ObjectDragGizmo? _gizmo;
 
     public LevelView()
     {
@@ -40,8 +41,17 @@ public partial class LevelView
         
         viewport.CalculateCursorPosition = true;        // ← NEW: enables paste-at-cursor
         viewport.ContextMenu = BuildViewportContextMenu(); // ← NEW
+        _gizmo = new ObjectDragGizmo(viewport);
+        viewport.AddHandler(
+            UIElement.MouseLeftButtonUpEvent,
+            new MouseButtonEventHandler(Viewport_DragMouseUp),
+            handledEventsToo: true);
         
         ElementSelected(null);
+    }
+    private void Viewport_DragMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        _gizmo?.EndDrag();
     }
 
     private void Viewport_KeyDown(object sender, KeyEventArgs e)
@@ -120,6 +130,7 @@ public partial class LevelView
 
     protected void OnSceneUpdated()
     {
+        _gizmo?.Detach();                     // ← ADD
         Background = TryGettingAmbientLightColor() ?? Brushes.White;
     }
 
@@ -175,6 +186,7 @@ public partial class LevelView
 
     private void ElementSelected(WorldElementTreeViewModel? ele)
     {
+        _gizmo?.Detach();                     // ← ADD
         if (_lvm != null)
         {
             _lvm.SelectedObject = null;
@@ -194,6 +206,7 @@ public partial class LevelView
         {
             _lvm.SelectedElement = null;
             _lvm.SelectedObject = obj;
+            _gizmo?.Attach(obj, _lvm);        // ← ADD
         }
 
         // Expand after values have changed

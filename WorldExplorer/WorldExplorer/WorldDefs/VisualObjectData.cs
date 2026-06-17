@@ -17,18 +17,33 @@ public class VisualObjectData
         {
             return;
         }
-            
+ 
+        Model.Transform = BuildTransform();
+        scene.Add(Model);
+    }
+ 
+    /// <summary>
+    /// Rebuilds <see cref="Model"/>'s transform from the current <see cref="Offset"/>
+    /// and <see cref="ZRotation"/>.  Used for live drag feedback so a single object
+    /// can be repositioned without rebuilding the whole scene.
+    /// </summary>
+    public void UpdateTransform()
+    {
+        if (Model != null)
+            Model.Transform = BuildTransform();
+    }
+ 
+    private Transform3D BuildTransform()
+    {
         Transform3DGroup transform3DGroup = new();
-
+ 
         if (ZRotation != 0.0)
         {
             transform3DGroup.Children.Add(
                 new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(0, 0, 1), ZRotation)));
         }
-
+ 
         transform3DGroup.Children.Add(new TranslateTransform3D(Offset));
-
-        Model.Transform = transform3DGroup;
-        scene.Add(Model);
+        return transform3DGroup;
     }
 }

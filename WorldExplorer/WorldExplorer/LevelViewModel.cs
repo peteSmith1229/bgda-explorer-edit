@@ -565,6 +565,15 @@ public class LevelViewModel : BaseViewModel
      
         return queued;
 }
-    
+    /// <summary>
+    /// Rebuilds the scene and commits pending edits to the archive, refreshing the
+    /// title.  Called after a viewport drag completes.
+    /// </summary>
+    public void FinalizeEdit()
+    {
+        RebuildScene();
+        if (CommitChangesToArchive())
+            MainViewModel.MainWindow.UpdateTitle();
+    }
     
 }
