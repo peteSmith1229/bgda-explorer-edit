@@ -56,6 +56,7 @@ internal class FileTreeViewContextManager
     // ── new: per-entry actions ────────────────────────────────────────────────
     private readonly MenuItem _exportAsPng;
     private readonly MenuItem _exportAsModel;
+    private readonly MenuItem _importTexture;
     private readonly MenuItem _replaceEntry;
     private readonly MenuItem _deleteEntry;
 
@@ -91,6 +92,7 @@ internal class FileTreeViewContextManager
         // ── per-entry export shortcuts ────────────────────────────────────
         _exportAsPng   = AddItem("Export Entry as PNG",       ExportAsPngClicked);
         _exportAsModel = AddItem("Export Entry as GLTF/OBJ…", ExportAsModelClicked);
+        _importTexture = AddItem("Import Texture (PNG→TEX)…", ImportTextureClicked);
 
         // ── separator ────────────────────────────────────────────────────
         _menu.Items.Add(_sep2);
@@ -127,7 +129,7 @@ internal class FileTreeViewContextManager
             _saveRawData);
         SetVisibility(Visibility.Collapsed,
             _saveParsedVifData, _logTexData,
-            _sep1, _exportAsPng, _exportAsModel,
+            _sep1, _exportAsPng, _exportAsModel, _importTexture,
             _sep2, _replaceEntry, _deleteEntry,
             _sep3, _addNewEntry, _batchExportTextures, _batchExportAll, _saveArchive, _saveGob);
 
@@ -144,6 +146,8 @@ internal class FileTreeViewContextManager
 
                 // Export shortcuts
                 _sep1.Visibility = Visibility.Visible;
+                if (ext == ".TEX")
+                    _importTexture.Visibility = Visibility.Visible;
                 if (ext == ".TEX")
                     _exportAsPng.Visibility = Visibility.Visible;
                 if (ext is ".VIF")
@@ -469,6 +473,76 @@ internal class FileTreeViewContextManager
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
+    private void ImportTextureClicked(object sender, RoutedEventArgs e)
+    {
+        if (_menu.DataContext is not LmpEntryTreeViewModel lmpEntry) return;
+
+        var lmpFile = lmpEntry.LmpFileProperty;
+        var entry   = lmpFile.Directory[lmpEntry.Label];
+
+        // Original entry bytes = the encoder template (mirrors ExportAsPngClicked).
+        byte[] templateBytes;
+        if (lmpFile.PendingEdits.TryGetValue(lmpEntry.Label, out var pending))
+            templateBytes = pending;
+        else
+        {
+            templateBytes = new byte[entry.Length];
+            Buffer.BlockCopy(lmpFile.FileData, entry.StartOffset, templateBytes, 0, entry.Length);
+        }
+
+        if (!TexEncoder.CanEncodeInto(templateBytes))
+        {
+            MessageBox.Show(
+                "Import currently supports 256-colour (PSMT8) textures only; " +
+                "this entry isn't one of those.",
+                "Import Texture", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Title  = $"Choose a PNG to import into '{lmpEntry.Label}'",
+            Filter = "PNG Image|*.png|All Files|*.*"
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            // Load the PNG synchronously.
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption   = BitmapCacheOption.OnLoad;
+            image.CreateOptions = BitmapCreateOptions.None;
+            image.UriSource     = new Uri(dialog.FileName);
+            image.EndInit();
+            image.Freeze();
+
+            // Encode against the original entry (same dimensions) and queue it.
+            var newTex = TexEncoder.Encode(templateBytes, image);
+            lmpFile.ReplaceEntry(lmpEntry.Label, newTex);
+            _window.UpdateTitle();
+
+            MessageBox.Show(
+                $"Imported '{Path.GetFileName(dialog.FileName)}' into '{lmpEntry.Label}'.\n\n" +
+                "Use 'Save GOB…' (right-click the GOB/LMP node) to write it to disk.",
+                "Import Texture", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (ArgumentException ex)      // dimension mismatch
+        {
+            MessageBox.Show(ex.Message, "Import Texture",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (NotSupportedException ex)  // not a 256-colour texture
+        {
+            MessageBox.Show(ex.Message, "Import Texture",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Texture import failed:\n{ex.Message}", "Import Texture",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
 
     private void DeleteEntryClicked(object sender, RoutedEventArgs e)
     {
@@ -682,4 +756,72 @@ internal class FileTreeViewContextManager
             VifChunkExporter.WriteChunks(saveFilePath, chunkFunc());
         });
     }
+    /// <summary>
+    /// Imports a PNG into a 256-colour .tex entry: encodes it against the original
+    /// entry (template) via <see cref="TexEncoder"/>, then replaces the entry in
+    /// the LMP's pending-edit layer so File → Save GOB… writes it out.
+    /// </summary>
+    private void ImportTexture(LmpFile lmp, string entryName, byte[] originalEntryBytes)
+    {
+        if (!TexEncoder.CanEncodeInto(originalEntryBytes))
+        {
+            MessageBox.Show(
+                "This texture isn't a 256-colour (PSMT8) image. Import currently " +
+                "supports 256-colour textures only.",
+                "Import Texture", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Title  = $"Choose a PNG to import into {entryName}",
+            Filter = "PNG Image|*.png|All Files|*.*",
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            // Load the PNG synchronously.
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption  = BitmapCacheOption.OnLoad;
+            image.CreateOptions = BitmapCreateOptions.None;
+            image.UriSource    = new Uri(dialog.FileName);
+            image.EndInit();
+            image.Freeze();
+
+            // Encode against the original entry as a template (same dimensions).
+            var newTex = TexEncoder.Encode(originalEntryBytes, image);
+
+            // Replace through the existing pending-edit pathway (same as Replace Entry).
+            lmp.ReplaceEntry(entryName, newTex);
+
+            // Refresh the view / mark dirty / update the title exactly as your
+            // Replace Entry handler does. For example:
+            //     RefreshTreeForLmp(lmp);
+            //     _window.UpdateTitle();
+
+            MessageBox.Show(
+                $"Imported '{System.IO.Path.GetFileName(dialog.FileName)}' into {entryName}.\n" +
+                "Use File → Save GOB… to write it to the archive.",
+                "Import Texture", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (ArgumentException ex)
+        {
+            // Dimension mismatch — TexEncoder requires the PNG to match the texture.
+            MessageBox.Show(ex.Message, "Import Texture",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (NotSupportedException ex)
+        {
+            MessageBox.Show(ex.Message, "Import Texture",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Texture import failed:\n{ex.Message}", "Import Texture",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+    
 }

@@ -243,4 +243,96 @@ internal class GsMemory
 
         return data;
     }
+    /// <summary>
+    /// Inverse of <see cref="ReadTexPSMT8"/>: writes 8-bit indices from
+    /// <paramref name="src"/> (a linear <c>rrW × rrH</c> array) into GS memory at
+    /// the PSMT8 addresses, so a subsequent <see cref="ReadTexPSMCT32"/> over the
+    /// transfer region yields the on-disk byte order.
+    /// </summary>
+    public void WriteTexPSMT8(int dbp, int dbw, int dsaX, int dsaY, int rrW, int rrH,
+        ReadOnlySpan<byte> src)
+    {
+        var dataIndex = 0;
+        dbw >>= 1;
+        var startBlockPos = dbp * 64;
+     
+        for (var y = dsaY; y < dsaY + rrH; y++)
+        for (var x = dsaX; x < dsaX + rrW; x++)
+        {
+            var pageX = x / 128;
+            var pageY = y / 64;
+            var page = pageX + (pageY * dbw);
+     
+            var px = x - (pageX * 128);
+            var py = y - (pageY * 64);
+     
+            var blockX = px / 16;
+            var blockY = py / 16;
+            var block = Block8[blockX + (blockY * 8)];
+     
+            var bx = px - (blockX * 16);
+            var by = py - (blockY * 16);
+     
+            var column = by / 4;
+     
+            var cx = bx;
+            var cy = by - (column * 4);
+            var cw = ColumnWord8[column & 1, cx + (cy * 16)];
+            var cb = ColumnByte8[cx + (cy * 16)];
+     
+            var gsIndex = startBlockPos + (page * 2048) + (block * 64) + (column * 16) + cw;
+            gsIndex *= 4;
+     
+            if (dataIndex < src.Length)
+            {
+                _memory[gsIndex + cb] = src[dataIndex++];
+            }
+        }
+    }
+     
+    /// <summary>
+    /// Inverse of <see cref="WriteTexPSMCT32"/>: reads the GS memory back in
+    /// PSMCT32 transfer order, producing the image-data bytes that go into the
+    /// TEX file (4 bytes per transferred pixel).
+    /// </summary>
+    public byte[] ReadTexPSMCT32(int dbp, int dbw, int dsaX, int dsaY, int rrW, int rrH)
+    {
+        var data = new byte[rrW * rrH * 4];
+        var dataIndex = 0;
+        var startBlockPos = dbp * 64;
+     
+        for (var y = dsaY; y < dsaY + rrH; y++)
+        for (var x = dsaX; x < dsaX + rrW; x++)
+        {
+            var pageX = x / 64;
+            var pageY = y / 32;
+            var page = pageX + (pageY * dbw);
+     
+            var px = x - (pageX * 64);
+            var py = y - (pageY * 32);
+     
+            var blockX = px / 8;
+            var blockY = py / 8;
+            var block = Block32[blockX + (blockY * 8)];
+     
+            var bx = px - (blockX * 8);
+            var by = py - (blockY * 8);
+     
+            var column = by / 2;
+     
+            var cx = bx;
+            var cy = by - (column * 2);
+            var cw = ColumnWord32[cx + (cy * 8)];
+     
+            var gsIndex = startBlockPos + (page * 2048) + (block * 64) + (column * 16) + cw;
+            gsIndex *= 4;
+     
+            data[dataIndex++] = _memory[gsIndex];
+            data[dataIndex++] = _memory[gsIndex + 1];
+            data[dataIndex++] = _memory[gsIndex + 2];
+            data[dataIndex++] = _memory[gsIndex + 3];
+        }
+     
+        return data;
+    }
 }
