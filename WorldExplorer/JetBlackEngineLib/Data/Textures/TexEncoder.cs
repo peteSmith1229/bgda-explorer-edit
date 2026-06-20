@@ -24,23 +24,26 @@ using System.Windows.Media.Imaging;
 namespace JetBlackEngineLib.Data.Textures;
 
 /// <summary>
-/// Encodes an image into a 256-colour PS2 <c>.tex</c> (PSMT8) by inverting
-/// <see cref="TexDecoder"/>.  This is the write-side counterpart of the
-/// decoder; the algorithm was validated in Python against real game textures
-/// (book.tex and greenwater.tex re-encode byte-for-byte; arbitrary &gt;256-colour
-/// images round-trip with RMSE ≈ 5 after quantisation).
+/// Encodes an image into a palettised PS2 <c>.tex</c> by inverting
+/// <see cref="TexDecoder"/>. Supports two formats, chosen from the template:
 ///
-/// <para><b>Template-based.</b> Because the PS2 header carries fields whose
-/// meaning isn't fully known and the GIF/DMA setup encodes the exact transfer
-/// parameters, the encoder takes the <em>original</em> <c>.tex</c> being
-/// replaced as a template and swaps only the palette bytes and the swizzled
-/// pixel bytes in place. The result is the same byte length and structure as
-/// the original — only the picture changes.</para>
+/// <list type="bullet">
+///   <item><b>256-colour (PSMT8)</b> — palette swizzled (32-block involution),
+///         pixels 1 byte each, destWBytes = (w+0x7f)&amp;~0x7f.</item>
+///   <item><b>16-colour (PSMT4)</b> — palette stored linearly (not swizzled),
+///         pixels 4 bits each (nibble swizzle), destWBytes = (w+0x3f)&amp;~0x3f.</item>
+/// </list>
 ///
-/// <para><b>Scope.</b> This version handles the common 256-colour (PSMT8)
-/// textures and requires the replacement image to match the original's
-/// dimensions. 16-colour (PSMT4) and 32-bit (direct image-mode) textures, and
-/// dimension changes, are future extensions.</para>
+/// <para><b>Template-based.</b> The encoder takes the original <c>.tex</c> being
+/// replaced and swaps only the palette bytes and the swizzled pixel bytes in
+/// place, preserving the header and GIF/DMA setup — so the output has the same
+/// byte length and structure as the original. The replacement image must match
+/// the original's dimensions.</para>
+///
+/// <para>Both paths were validated in Python: the 256-colour path re-encodes
+/// real game textures byte-for-byte; the 16-colour swizzle inverse is proven
+/// (WriteTexPSMT4 ∘ ReadTexPSMT4 == identity) and a full 16-colour round-trip is
+/// pixel-perfect.</para>
 /// </summary>
 public static class TexEncoder
 {
@@ -49,15 +52,15 @@ public static class TexEncoder
     private const int TRXREG    = 0x52;
 
     /// <summary>
-    /// True if <paramref name="templateTex"/> is a 256-colour PSMT8 texture
-    /// this encoder can target (used to enable/disable the import UI).
+    /// True if <paramref name="templateTex"/> is a 256- or 16-colour texture
+    /// this encoder can target (used to enable the import UI).
     /// </summary>
     public static bool CanEncodeInto(ReadOnlySpan<byte> templateTex)
     {
         try
         {
             var tp = ParseTemplate(templateTex);
-            return tp.PaletteLen == 256 * 4; // 256 RGBA entries
+            return tp.PaletteLen == 256 * 4 || tp.PaletteLen == 16 * 4;
         }
         catch
         {
@@ -66,41 +69,62 @@ public static class TexEncoder
     }
 
     /// <summary>
-    /// Encodes <paramref name="image"/> into a 256-colour TEX using
-    /// <paramref name="templateTex"/> (the texture being replaced) for the
-    /// header and GIF structure. Throws if the template isn't a 256-colour
-    /// texture or the dimensions differ.
+    /// Encodes <paramref name="image"/> into a TEX using
+    /// <paramref name="templateTex"/> for header + GIF structure. Throws if the
+    /// template isn't a supported palettised texture or the dimensions differ.
     /// </summary>
     public static byte[] Encode(byte[] templateTex, BitmapSource image)
     {
         var tp = ParseTemplate(templateTex);
-        if (tp.PaletteLen != 256 * 4)
+        if (tp.PaletteLen != 256 * 4 && tp.PaletteLen != 16 * 4)
             throw new NotSupportedException(
-                "Only 256-colour (PSMT8) textures can currently be replaced.");
+                "Only 256-colour (PSMT8) and 16-colour (PSMT4) textures can be replaced.");
 
         if (image.PixelWidth != tp.FinalW || image.PixelHeight != tp.FinalH)
             throw new ArgumentException(
                 $"Replacement image must be {tp.FinalW}×{tp.FinalH} to match the texture " +
                 $"(got {image.PixelWidth}×{image.PixelHeight}).");
 
-        // Read the image as straight BGRA32.
         var bgra = ToBgra32(image);
+
+        byte[] palBytes;
+        byte[] imgBytes;
+        if (tp.PaletteLen == 256 * 4)
+            EncodePsmt8(tp, bgra, out palBytes, out imgBytes);
+        else
+            EncodePsmt4(tp, bgra, out palBytes, out imgBytes);
+
+        if (palBytes.Length != tp.PaletteLen)
+            throw new InvalidOperationException("Palette size mismatch with template.");
+        if (imgBytes.Length != tp.ImageLen)
+            throw new InvalidOperationException(
+                $"Encoded image size {imgBytes.Length} != template {tp.ImageLen}.");
+
+        var outBytes = (byte[])templateTex.Clone();
+        Array.Copy(palBytes, 0, outBytes, tp.PaletteData, palBytes.Length);
+        Array.Copy(imgBytes, 0, outBytes, tp.ImageData, imgBytes.Length);
+        return outBytes;
+    }
+
+    // ── 256-colour (PSMT8) ─────────────────────────────────────────────────────
+
+    private static void EncodePsmt8(TemplateInfo tp, byte[] bgra,
+        out byte[] palBytes, out byte[] imgBytes)
+    {
         var w = tp.FinalW;
         var h = tp.FinalH;
 
-        // Quantise to ≤256 colours → palette (straight RGBA) + per-pixel indices.
-        Quantize(bgra, w, h, out var palette, out var indices);
+        Quantize(bgra, w, h, 256, out var palette, out var indices);
 
-        // Palette → (R,G,B,PS2-alpha), then swizzle for storage (256-entry involution).
         var palEntries = new (byte R, byte G, byte B, byte A)[256];
         for (var i = 0; i < 256; i++)
         {
             var (r, g, b, a) = palette[i];
             palEntries[i] = (r, g, b, ToPs2Alpha(a));
         }
-        SwizzlePalette256(palEntries);
+        SwizzlePalette256(palEntries);   // 256-entry palettes ARE swizzled
 
-        var palBytes = new byte[256 * 4];
+        palBytes = new byte[256 * 4];
         for (var i = 0; i < 256; i++)
         {
             palBytes[i * 4 + 0] = palEntries[i].R;
@@ -109,30 +133,51 @@ public static class TexEncoder
             palBytes[i * 4 + 3] = palEntries[i].A;
         }
 
-        // Build the linear index grid padded to destWBytes × finalH.
         var destWBytes = (w + 0x7f) & ~0x7f;
         var linear = new byte[destWBytes * h];
         for (var y = 0; y < h; y++)
         for (var x = 0; x < w; x++)
             linear[y * destWBytes + x] = indices[y * w + x];
 
-        // Swizzle the indices into PS2 image-data byte order using the
-        // template's own transfer parameters.
         var gs = new GsMemory();
         gs.WriteTexPSMT8(tp.Dbp, destWBytes / 0x40, 0, 0, destWBytes, h, linear);
-        var imgBytes = gs.ReadTexPSMCT32(tp.Dbp, tp.Dbw, tp.Sx, tp.Sy, tp.Rrw, tp.Rrh);
+        imgBytes = gs.ReadTexPSMCT32(tp.Dbp, tp.Dbw, tp.Sx, tp.Sy, tp.Rrw, tp.Rrh);
+    }
 
-        if (palBytes.Length != tp.PaletteLen)
-            throw new InvalidOperationException("Palette size mismatch with template.");
-        if (imgBytes.Length != tp.ImageLen)
-            throw new InvalidOperationException(
-                $"Encoded image size {imgBytes.Length} != template {tp.ImageLen}.");
+    // ── 16-colour (PSMT4) ──────────────────────────────────────────────────────
 
-        // Splice the new palette + image bytes into a copy of the template.
-        var outBytes = (byte[])templateTex.Clone();
-        Array.Copy(palBytes, 0, outBytes, tp.PaletteData, palBytes.Length);
-        Array.Copy(imgBytes, 0, outBytes, tp.ImageData, imgBytes.Length);
-        return outBytes;
+    private static void EncodePsmt4(TemplateInfo tp, byte[] bgra,
+        out byte[] palBytes, out byte[] imgBytes)
+    {
+        var w = tp.FinalW;
+        var h = tp.FinalH;
+
+        Quantize(bgra, w, h, 16, out var palette, out var indices);
+
+        // 16-entry palettes are stored LINEARLY (UnswizzlePalette is a no-op
+        // for non-256 palettes), so no palette swizzle here.
+        palBytes = new byte[16 * 4];
+        for (var i = 0; i < 16; i++)
+        {
+            var (r, g, b, a) = palette[i];
+            palBytes[i * 4 + 0] = r;
+            palBytes[i * 4 + 1] = g;
+            palBytes[i * 4 + 2] = b;
+            palBytes[i * 4 + 3] = ToPs2Alpha(a);
+        }
+
+        // PSMT4 alignment: width to 0x3f, height to 0x0f. One index per element.
+        var destWBytes = (w + 0x3f) & ~0x3f;
+        var destHBytes = (h + 0x0f) & ~0x0f;
+        var expanded = new byte[destWBytes * destHBytes];
+        for (var y = 0; y < h; y++)
+        for (var x = 0; x < w; x++)
+            expanded[y * destWBytes + x] = indices[y * w + x];
+
+        var gs = new GsMemory();
+        // PSMT4 read region starts at (Sx,Sy) in the decoder, so write there too.
+        gs.WriteTexPSMT4(tp.Dbp, destWBytes / 0x40, tp.Sx, tp.Sy, destWBytes, destHBytes, expanded);
+        imgBytes = gs.ReadTexPSMCT32(tp.Dbp, tp.Dbw, tp.Sx, tp.Sy, tp.Rrw, tp.Rrh);
     }
 
     // ── Template parsing ─────────────────────────────────────────────────────
@@ -258,17 +303,16 @@ public static class TexEncoder
     // ── Quantisation (median cut) ──────────────────────────────────────────────
 
     /// <summary>
-    /// Quantises BGRA pixels to ≤256 colours. Exact when the image already has
-    /// ≤256 distinct colours; otherwise a median-cut over RGB with per-bucket
-    /// average alpha.
+    /// Quantises BGRA pixels to ≤ <paramref name="maxColors"/> colours (256 or
+    /// 16). Exact when the image already has ≤ maxColors distinct colours;
+    /// otherwise a median-cut over RGB with per-bucket average alpha.
     /// </summary>
-    private static void Quantize(byte[] bgra, int w, int h,
+    private static void Quantize(byte[] bgra, int w, int h, int maxColors,
         out (byte R, byte G, byte B, byte A)[] palette, out byte[] indices)
     {
         var n = w * h;
         indices = new byte[n];
 
-        // Gather distinct colours.
         var distinctMap = new Dictionary<uint, int>();
         var pixelKeys = new uint[n];
         for (var i = 0; i < n; i++)
@@ -283,9 +327,9 @@ public static class TexEncoder
                 distinctMap[key] = distinctMap.Count;
         }
 
-        palette = new (byte, byte, byte, byte)[256];
+        palette = new (byte, byte, byte, byte)[maxColors];
 
-        if (distinctMap.Count <= 256)
+        if (distinctMap.Count <= maxColors)
         {
             // Lossless: one palette slot per distinct colour.
             foreach (var (key, slot) in distinctMap)
@@ -299,22 +343,19 @@ public static class TexEncoder
         // Median-cut on RGB; alpha averaged per bucket.
         var pixels = new (byte R, byte G, byte B, byte A)[n];
         for (var i = 0; i < n; i++)
-        {
             pixels[i] = (bgra[i * 4 + 2], bgra[i * 4 + 1], bgra[i * 4 + 0], bgra[i * 4 + 3]);
-        }
 
         var boxes = new List<List<int>> { Enumerable.Range(0, n).ToList() };
-        while (boxes.Count < 256)
+        while (boxes.Count < maxColors)
         {
-            // Split the box with the largest colour range.
             var bestBox = -1;
             var bestRange = -1;
             var bestChannel = 0;
             for (var bi = 0; bi < boxes.Count; bi++)
             {
                 if (boxes[bi].Count < 2) continue;
-                RangeOf(pixels, boxes[bi], out var rr, out var gr, out var br, out var ch);
-                if (rr > bestRange) { bestRange = rr; bestBox = bi; bestChannel = ch; _ = gr; _ = br; }
+                RangeOf(pixels, boxes[bi], out var widest, out var ch);
+                if (widest > bestRange) { bestRange = widest; bestBox = bi; bestChannel = ch; }
             }
             if (bestBox < 0) break;
 
@@ -327,7 +368,6 @@ public static class TexEncoder
             boxes.Add(hi);
         }
 
-        // Average colour per box → palette; map pixels → nearest box index.
         for (var bi = 0; bi < boxes.Count; bi++)
         {
             long sr = 0, sg = 0, sb = 0, sa = 0;
@@ -346,7 +386,7 @@ public static class TexEncoder
         => ch == 0 ? p.R : ch == 1 ? p.G : p.B;
 
     private static void RangeOf((byte R, byte G, byte B, byte A)[] px, List<int> idx,
-        out int rRange, out int gRange, out int bRange, out int widestChannel)
+        out int widestRange, out int widestChannel)
     {
         int rMin = 255, rMax = 0, gMin = 255, gMax = 0, bMin = 255, bMax = 0;
         foreach (var i in idx)
@@ -356,9 +396,10 @@ public static class TexEncoder
             if (p.G < gMin) gMin = p.G; if (p.G > gMax) gMax = p.G;
             if (p.B < bMin) bMin = p.B; if (p.B > bMax) bMax = p.B;
         }
-        rRange = rMax - rMin; gRange = gMax - gMin; bRange = bMax - bMin;
+        var rRange = rMax - rMin;
+        var gRange = gMax - gMin;
+        var bRange = bMax - bMin;
         widestChannel = rRange >= gRange && rRange >= bRange ? 0 : gRange >= bRange ? 1 : 2;
-        // Report the widest range (so the caller picks the box to split).
-        rRange = Math.Max(rRange, Math.Max(gRange, bRange));
+        widestRange = Math.Max(rRange, Math.Max(gRange, bRange));
     }
 }
