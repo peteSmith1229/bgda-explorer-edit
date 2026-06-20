@@ -146,9 +146,9 @@ internal class FileTreeViewContextManager
 
                 // Export shortcuts
                 _sep1.Visibility = Visibility.Visible;
-                if (ext == ".TEX")
+                if (ext == ".TEX" || ext == ".ETEX") 
                     _importTexture.Visibility = Visibility.Visible;
-                if (ext == ".TEX")
+                if (ext == ".TEX" || ext == ".ETEX") 
                     _exportAsPng.Visibility = Visibility.Visible;
                 if (ext is ".VIF")
                     _exportAsModel.Visibility = Visibility.Visible;

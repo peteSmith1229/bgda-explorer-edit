@@ -24,41 +24,46 @@ using System.Windows.Media.Imaging;
 namespace JetBlackEngineLib.Data.Textures;
 
 /// <summary>
-/// Encodes an image into a palettised PS2 <c>.tex</c> by inverting
-/// <see cref="TexDecoder"/>. Supports two formats, chosen from the template:
+/// Encodes an image into a PS2 <c>.tex</c>/<c>.etex</c> by inverting
+/// <see cref="TexDecoder"/>. Three formats, chosen from the template:
 ///
 /// <list type="bullet">
-///   <item><b>256-colour (PSMT8)</b> — palette swizzled (32-block involution),
-///         pixels 1 byte each, destWBytes = (w+0x7f)&amp;~0x7f.</item>
-///   <item><b>16-colour (PSMT4)</b> — palette stored linearly (not swizzled),
-///         pixels 4 bits each (nibble swizzle), destWBytes = (w+0x3f)&amp;~0x3f.</item>
+///   <item><b>256-colour (PSMT8)</b> — palette swizzled, 1 byte/pixel,
+///         destWBytes = (w+0x7f)&amp;~0x7f.</item>
+///   <item><b>16-colour (PSMT4)</b> — palette linear, 4 bits/pixel (nibble
+///         swizzle), destWBytes = (w+0x3f)&amp;~0x3f.</item>
+///   <item><b>32-bit direct (image-mode, e.g. .etex)</b> — no palette, no
+///         swizzle: raw R,G,B,A bytes at offset 0xD0.</item>
 /// </list>
 ///
-/// <para><b>Template-based.</b> The encoder takes the original <c>.tex</c> being
-/// replaced and swaps only the palette bytes and the swizzled pixel bytes in
-/// place, preserving the header and GIF/DMA setup — so the output has the same
-/// byte length and structure as the original. The replacement image must match
-/// the original's dimensions.</para>
+/// <para><b>Template-based.</b> The encoder takes the original texture being
+/// replaced and swaps only the pixel/palette bytes in place, preserving the
+/// header and GIF/DMA setup, so the output has the same byte length and
+/// structure as the original. The replacement image must match the original's
+/// dimensions.</para>
 ///
-/// <para>Both paths were validated in Python: the 256-colour path re-encodes
-/// real game textures byte-for-byte; the 16-colour swizzle inverse is proven
-/// (WriteTexPSMT4 ∘ ReadTexPSMT4 == identity) and a full 16-colour round-trip is
-/// pixel-perfect.</para>
+/// <para>All three paths were validated in Python against real game data:
+/// 256-colour and 32-bit re-encode real textures byte-for-byte; the 16-colour
+/// swizzle inverse is proven and its round-trip is pixel-perfect.</para>
 /// </summary>
 public static class TexEncoder
 {
     private const int BITBLTBUF = 0x50;
     private const int TRXPOS    = 0x51;
     private const int TRXREG    = 0x52;
+    
+    // 32-bit image-mode pixel data begins here (TexDecoder reads data[0xD0..]).
+    private const int Image32PixelOffset = 0xD0;
 
     /// <summary>
-    /// True if <paramref name="templateTex"/> is a 256- or 16-colour texture
-    /// this encoder can target (used to enable the import UI).
+    /// True if <paramref name="templateTex"/> is a 256-/16-colour or 32-bit
+    /// texture this encoder can target (used to enable the import UI).
     /// </summary>
     public static bool CanEncodeInto(ReadOnlySpan<byte> templateTex)
     {
         try
         {
+            if (IsImage32(templateTex)) return true;
             var tp = ParseTemplate(templateTex);
             return tp.PaletteLen == 256 * 4 || tp.PaletteLen == 16 * 4;
         }
@@ -71,14 +76,18 @@ public static class TexEncoder
     /// <summary>
     /// Encodes <paramref name="image"/> into a TEX using
     /// <paramref name="templateTex"/> for header + GIF structure. Throws if the
-    /// template isn't a supported palettised texture or the dimensions differ.
+    /// template isn't a supported format or the dimensions differ.
     /// </summary>
     public static byte[] Encode(byte[] templateTex, BitmapSource image)
     {
+        // 32-bit direct (image-mode) path — no palette, no swizzle.
+        if (IsImage32(templateTex))
+            return EncodeImage32(templateTex, image);
+        
         var tp = ParseTemplate(templateTex);
         if (tp.PaletteLen != 256 * 4 && tp.PaletteLen != 16 * 4)
             throw new NotSupportedException(
-                "Only 256-colour (PSMT8) and 16-colour (PSMT4) textures can be replaced.");
+                "Only 256-colour (PSMT8), 16-colour (PSMT4) and 32-bit textures can be replaced.");
 
         if (image.PixelWidth != tp.FinalW || image.PixelHeight != tp.FinalH)
             throw new ArgumentException(
@@ -105,6 +114,64 @@ public static class TexEncoder
         Array.Copy(imgBytes, 0, outBytes, tp.ImageData, imgBytes.Length);
         return outBytes;
     }
+    
+        // ── 32-bit direct (image-mode) ─────────────────────────────────────────────
+
+    /// <summary>
+    /// True if this is a 32-bit direct (image-mode) texture: a GIF tag with
+    /// nloop==3 at offsetToGIF, and an IMAGE GIF tag (flg==2) at 0xC0 — the
+    /// structure <see cref="TexDecoder"/> reads via ReadPixels32(data[0xD0..]).
+    /// </summary>
+    private static bool IsImage32(ReadOnlySpan<byte> t)
+    {
+        if (t.Length < Image32PixelOffset) return false;
+
+        var off = DataUtil.GetLeInt(t, 16);
+        if (off < 0 || off + GIFTag.Size > t.Length) return false;
+
+        GIFTag g = new();
+        g.Parse(t[off..]);
+        if (g.nloop != 3) return false;
+
+        GIFTag g2 = new();
+        g2.Parse(t[0xC0..]);
+        return g2.flg == 2; // IMAGE
+    }
+
+    private static byte[] EncodeImage32(byte[] templateTex, BitmapSource image)
+    {
+        int finalW = DataUtil.GetLeShort(templateTex, 0);
+        int finalH = DataUtil.GetLeShort(templateTex, 2);
+
+        if (image.PixelWidth != finalW || image.PixelHeight != finalH)
+            throw new ArgumentException(
+                $"Replacement image must be {finalW}×{finalH} to match the texture " +
+                $"(got {image.PixelWidth}×{image.PixelHeight}).");
+
+        var pixelCount = finalW * finalH;
+        if (Image32PixelOffset + (pixelCount * 4) > templateTex.Length)
+            throw new InvalidOperationException("Template too small for its declared dimensions.");
+
+        var bgra = ToBgra32(image);
+        var outBytes = (byte[])templateTex.Clone(); // keep header + GIF tags (0..0xD0)
+
+        for (var i = 0; i < pixelCount; i++)
+        {
+            var b = bgra[i * 4 + 0];
+            var g = bgra[i * 4 + 1];
+            var r = bgra[i * 4 + 2];
+            var a = bgra[i * 4 + 3];
+
+            var o = Image32PixelOffset + (i * 4);
+            outBytes[o + 0] = r;
+            outBytes[o + 1] = g;
+            outBytes[o + 2] = b;
+            outBytes[o + 3] = ToPs2Alpha32(a);
+        }
+
+        return outBytes;
+    }
+
 
     // ── 256-colour (PSMT8) ─────────────────────────────────────────────────────
 
@@ -154,8 +221,7 @@ public static class TexEncoder
 
         Quantize(bgra, w, h, 16, out var palette, out var indices);
 
-        // 16-entry palettes are stored LINEARLY (UnswizzlePalette is a no-op
-        // for non-256 palettes), so no palette swizzle here.
+        // 16-entry palettes are stored LINEARLY (no swizzle).
         palBytes = new byte[16 * 4];
         for (var i = 0; i < 16; i++)
         {
@@ -180,7 +246,7 @@ public static class TexEncoder
         imgBytes = gs.ReadTexPSMCT32(tp.Dbp, tp.Dbw, tp.Sx, tp.Sy, tp.Rrw, tp.Rrh);
     }
 
-    // ── Template parsing ─────────────────────────────────────────────────────
+    // ── Template parsing (palettised) ─────────────────────────────────────────
 
     private readonly struct TemplateInfo
     {
@@ -273,7 +339,11 @@ public static class TexEncoder
         return px; // B,G,R,A per pixel
     }
 
-    /// <summary>Straight 0..255 alpha → PS2 alpha byte (0x00 opaque, 0x80 transparent).</summary>
+    /// <summary>
+    /// Straight 0..255 alpha → PS2 alpha byte for PALETTISED textures
+    /// (0x00 opaque, 0x80 transparent) — matches how the palettised game
+    /// textures store opacity.
+    /// </summary>
     private static byte ToPs2Alpha(byte a)
     {
         if (a >= 255) return 0x00;
@@ -282,8 +352,21 @@ public static class TexEncoder
         return (byte)Math.Clamp(v, 1, 127);
     }
 
-    /// <summary>256-entry palette swizzle — an involution, identical to the
-    /// decoder's UnswizzlePalette, so it is its own inverse.</summary>
+    /// <summary>
+    /// Straight 0..255 alpha → PS2 alpha byte for 32-bit IMAGE-MODE textures —
+    /// the exact inverse of <c>PalEntry.Argb</c>: 0xFF→0xFF (opaque),
+    /// 0→0x80 (transparent), else round(a/2) in 1..0x7F. Validated byte-exact
+    /// against envtex.etex.
+    /// </summary>
+    private static byte ToPs2Alpha32(byte a)
+    {
+        if (a >= 255) return 0xFF;
+        if (a == 0) return 0x80;
+        return (byte)Math.Clamp((int)Math.Round(a / 2.0), 1, 0x7F);
+    }
+
+
+    /// <summary>256-entry palette swizzle — an involution (its own inverse).</summary>
     private static void SwizzlePalette256((byte R, byte G, byte B, byte A)[] pal)
     {
         var tmp = new (byte, byte, byte, byte)[256];
