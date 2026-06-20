@@ -335,4 +335,56 @@ internal class GsMemory
      
         return data;
     }
+    /// <summary>
+    /// Inverse of <see cref="ReadTexPSMT4"/>: writes 4-bit indices from
+    /// <paramref name="expanded"/> (one index per element, low nibble used) into GS
+    /// memory at the PSMT4 nibble addresses.
+    /// </summary>
+    public void WriteTexPSMT4(int dbp, int dbw, int dsaX, int dsaY, int rrW, int rrH,
+        ReadOnlySpan<byte> expanded)
+    {
+        dbw >>= 1;
+        var dataIndex = 0;
+        var startBlockPos = dbp * 64;
+ 
+        for (var y = dsaY; y < dsaY + rrH; y++)
+        for (var x = dsaX; x < dsaX + rrW; x++)
+        {
+            var pageX = x / 128;
+            var pageY = y / 128;
+            var page = pageX + (pageY * dbw);
+ 
+            var px = x - (pageX * 128);
+            var py = y - (pageY * 128);
+ 
+            var blockX = px / 32;
+            var blockY = py / 16;
+            var block = Block4[blockX + (blockY * 4)];
+ 
+            var bx = px - (blockX * 32);
+            var by = py - (blockY * 16);
+ 
+            var column = by / 4;
+ 
+            var cx = bx;
+            var cy = by - (column * 4);
+            var cw = ColumnWord4[column & 1, cx + (cy * 32)];
+            var cb = ColumnByte4[cx + (cy * 32)];
+ 
+            var gsIndex = 4 * (startBlockPos + (page * 2048) + (block * 64) + (column * 16) + cw);
+            gsIndex += cb >> 1;
+ 
+            var val = expanded[dataIndex++] & 0x0f;
+            if ((cb & 1) == 1)
+            {
+                // GS high nibble
+                _memory[gsIndex] = (byte)((_memory[gsIndex] & 0x0f) | (val << 4));
+            }
+            else
+            {
+                // GS low nibble
+                _memory[gsIndex] = (byte)((_memory[gsIndex] & 0xf0) | val);
+            }
+        }
+    }
 }
