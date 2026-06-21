@@ -25,40 +25,32 @@ namespace JetBlackEngineLib.Data.Textures;
 
 /// <summary>
 /// Encodes an image into a PS2 <c>.tex</c>/<c>.etex</c> by inverting
-/// <see cref="TexDecoder"/>. Three formats, chosen from the template:
+/// <see cref="TexDecoder"/>. Supports 256-colour (PSMT8), 16-colour (PSMT4) and
+/// 32-bit direct (image-mode) textures.
 ///
-/// <list type="bullet">
-///   <item><b>256-colour (PSMT8)</b> — palette swizzled, 1 byte/pixel,
-///         destWBytes = (w+0x7f)&amp;~0x7f.</item>
-///   <item><b>16-colour (PSMT4)</b> — palette linear, 4 bits/pixel (nibble
-///         swizzle), destWBytes = (w+0x3f)&amp;~0x3f.</item>
-///   <item><b>32-bit direct (image-mode, e.g. .etex)</b> — no palette, no
-///         swizzle: raw R,G,B,A bytes at offset 0xD0.</item>
-/// </list>
+/// <para><b>Same dimensions</b> → the original texture is used as a template and
+/// only the palette/pixel bytes are swapped in place (byte-faithful).</para>
 ///
-/// <para><b>Template-based.</b> The encoder takes the original texture being
-/// replaced and swaps only the pixel/palette bytes in place, preserving the
-/// header and GIF/DMA setup, so the output has the same byte length and
-/// structure as the original. The replacement image must match the original's
-/// dimensions.</para>
-///
-/// <para>All three paths were validated in Python against real game data:
-/// 256-colour and 32-bit re-encode real textures byte-for-byte; the 16-colour
-/// swizzle inverse is proven and its round-trip is pixel-perfect.</para>
+/// <para><b>Different dimensions</b> → the file is <i>synthesised from scratch</i>
+/// for 256-colour and 32-bit textures: header, GIF/DMA tags and all
+/// size-derived transfer parameters are rebuilt. This synthesis is validated to
+/// reproduce the real game textures byte-for-byte <b>except</b> three header
+/// fields at +0x04/+0x08/+0x0C whose meaning is unknown (the decoder ignores
+/// them; +0x0C looks like a hash). Those three fields are copied from the
+/// source texture. Whether the game accepts a resized texture with copied
+/// values is unverified and must be confirmed in-game. 16-colour resizing is
+/// not offered (no sample was available to validate its synthesis).</para>
 /// </summary>
 public static class TexEncoder
 {
     private const int BITBLTBUF = 0x50;
     private const int TRXPOS    = 0x51;
     private const int TRXREG    = 0x52;
-    
-    // 32-bit image-mode pixel data begins here (TexDecoder reads data[0xD0..]).
     private const int Image32PixelOffset = 0xD0;
+    private const int PalSetupStart = 0x80; // constant palette-setup block for 256-colour
+    private const int PalSetupEnd   = 0xE0; // (0x50 setup GIF + 0x10 palette IMAGE tag)
 
-    /// <summary>
-    /// True if <paramref name="templateTex"/> is a 256-/16-colour or 32-bit
-    /// texture this encoder can target (used to enable the import UI).
-    /// </summary>
+    /// <summary>True if this texture is a format the encoder can target.</summary>
     public static bool CanEncodeInto(ReadOnlySpan<byte> templateTex)
     {
         try
@@ -74,35 +66,53 @@ public static class TexEncoder
     }
 
     /// <summary>
-    /// Encodes <paramref name="image"/> into a TEX using
-    /// <paramref name="templateTex"/> for header + GIF structure. Throws if the
-    /// template isn't a supported format or the dimensions differ.
+    /// Encodes <paramref name="image"/> using <paramref name="templateTex"/>.
+    /// Same dimensions → in-place swap; different dimensions → synthesised
+    /// (256-colour / 32-bit only).
     /// </summary>
     public static byte[] Encode(byte[] templateTex, BitmapSource image)
     {
-        // 32-bit direct (image-mode) path — no palette, no swizzle.
         if (IsImage32(templateTex))
-            return EncodeImage32(templateTex, image);
-        
+        {
+            int w0 = DataUtil.GetLeShort(templateTex, 0);
+            int h0 = DataUtil.GetLeShort(templateTex, 2);
+            return image.PixelWidth == w0 && image.PixelHeight == h0
+                ? EncodeImage32(templateTex, image)
+                : EncodeImage32Synth(templateTex, image);
+        }
+
         var tp = ParseTemplate(templateTex);
-        if (tp.PaletteLen != 256 * 4 && tp.PaletteLen != 16 * 4)
-            throw new NotSupportedException(
-                "Only 256-colour (PSMT8), 16-colour (PSMT4) and 32-bit textures can be replaced.");
-
-        if (image.PixelWidth != tp.FinalW || image.PixelHeight != tp.FinalH)
-            throw new ArgumentException(
-                $"Replacement image must be {tp.FinalW}×{tp.FinalH} to match the texture " +
-                $"(got {image.PixelWidth}×{image.PixelHeight}).");
-
+        var sameDims = image.PixelWidth == tp.FinalW && image.PixelHeight == tp.FinalH;
         var bgra = ToBgra32(image);
 
-        byte[] palBytes;
-        byte[] imgBytes;
         if (tp.PaletteLen == 256 * 4)
-            EncodePsmt8(tp, bgra, out palBytes, out imgBytes);
-        else
-            EncodePsmt4(tp, bgra, out palBytes, out imgBytes);
+        {
+            if (!sameDims) return EncodePsmt8Synth(templateTex, image);
+            EncodePsmt8(tp.FinalW, tp.FinalH, tp.Dbp, tp.Dbw, tp.Sx, tp.Sy, tp.Rrw, tp.Rrh,
+                bgra, out var pal, out var img);
+            return Splice(templateTex, tp, pal, img);
+        }
 
+        if (tp.PaletteLen == 16 * 4)
+        {
+            if (!sameDims)
+                throw new NotSupportedException(
+                    "Dimension changes for 16-colour (PSMT4) textures aren't supported — no " +
+                    "16-colour sample was available to validate the synthesis. Keep the same " +
+                    "dimensions for this texture.");
+            EncodePsmt4(tp.FinalW, tp.FinalH, tp.Dbp, tp.Dbw, tp.Sx, tp.Sy, tp.Rrw, tp.Rrh,
+                bgra, out var pal, out var img);
+            return Splice(templateTex, tp, pal, img);
+        }
+
+        throw new NotSupportedException(
+            "Only 256-colour (PSMT8), 16-colour (PSMT4) and 32-bit textures can be replaced.");
+    }
+
+    // ── Splice (same-dimensions in-place swap) ─────────────────────────────────
+
+    private static byte[] Splice(byte[] templateTex, TemplateInfo tp, byte[] palBytes, byte[] imgBytes)
+    {
         if (palBytes.Length != tp.PaletteLen)
             throw new InvalidOperationException("Palette size mismatch with template.");
         if (imgBytes.Length != tp.ImageLen)
@@ -114,73 +124,12 @@ public static class TexEncoder
         Array.Copy(imgBytes, 0, outBytes, tp.ImageData, imgBytes.Length);
         return outBytes;
     }
-    
-        // ── 32-bit direct (image-mode) ─────────────────────────────────────────────
 
-    /// <summary>
-    /// True if this is a 32-bit direct (image-mode) texture: a GIF tag with
-    /// nloop==3 at offsetToGIF, and an IMAGE GIF tag (flg==2) at 0xC0 — the
-    /// structure <see cref="TexDecoder"/> reads via ReadPixels32(data[0xD0..]).
-    /// </summary>
-    private static bool IsImage32(ReadOnlySpan<byte> t)
+    // ── 256-colour (PSMT8) palette + pixel encoding ────────────────────────────
+
+    private static void EncodePsmt8(int w, int h, int dbp, int dbw, int sx, int sy, int rrw, int rrh,
+        byte[] bgra, out byte[] palBytes, out byte[] imgBytes)
     {
-        if (t.Length < Image32PixelOffset) return false;
-
-        var off = DataUtil.GetLeInt(t, 16);
-        if (off < 0 || off + GIFTag.Size > t.Length) return false;
-
-        GIFTag g = new();
-        g.Parse(t[off..]);
-        if (g.nloop != 3) return false;
-
-        GIFTag g2 = new();
-        g2.Parse(t[0xC0..]);
-        return g2.flg == 2; // IMAGE
-    }
-
-    private static byte[] EncodeImage32(byte[] templateTex, BitmapSource image)
-    {
-        int finalW = DataUtil.GetLeShort(templateTex, 0);
-        int finalH = DataUtil.GetLeShort(templateTex, 2);
-
-        if (image.PixelWidth != finalW || image.PixelHeight != finalH)
-            throw new ArgumentException(
-                $"Replacement image must be {finalW}×{finalH} to match the texture " +
-                $"(got {image.PixelWidth}×{image.PixelHeight}).");
-
-        var pixelCount = finalW * finalH;
-        if (Image32PixelOffset + (pixelCount * 4) > templateTex.Length)
-            throw new InvalidOperationException("Template too small for its declared dimensions.");
-
-        var bgra = ToBgra32(image);
-        var outBytes = (byte[])templateTex.Clone(); // keep header + GIF tags (0..0xD0)
-
-        for (var i = 0; i < pixelCount; i++)
-        {
-            var b = bgra[i * 4 + 0];
-            var g = bgra[i * 4 + 1];
-            var r = bgra[i * 4 + 2];
-            var a = bgra[i * 4 + 3];
-
-            var o = Image32PixelOffset + (i * 4);
-            outBytes[o + 0] = r;
-            outBytes[o + 1] = g;
-            outBytes[o + 2] = b;
-            outBytes[o + 3] = ToPs2Alpha32(a);
-        }
-
-        return outBytes;
-    }
-
-
-    // ── 256-colour (PSMT8) ─────────────────────────────────────────────────────
-
-    private static void EncodePsmt8(TemplateInfo tp, byte[] bgra,
-        out byte[] palBytes, out byte[] imgBytes)
-    {
-        var w = tp.FinalW;
-        var h = tp.FinalH;
-
         Quantize(bgra, w, h, 256, out var palette, out var indices);
 
         var palEntries = new (byte R, byte G, byte B, byte A)[256];
@@ -189,16 +138,8 @@ public static class TexEncoder
             var (r, g, b, a) = palette[i];
             palEntries[i] = (r, g, b, ToPs2Alpha(a));
         }
-        SwizzlePalette256(palEntries);   // 256-entry palettes ARE swizzled
-
-        palBytes = new byte[256 * 4];
-        for (var i = 0; i < 256; i++)
-        {
-            palBytes[i * 4 + 0] = palEntries[i].R;
-            palBytes[i * 4 + 1] = palEntries[i].G;
-            palBytes[i * 4 + 2] = palEntries[i].B;
-            palBytes[i * 4 + 3] = palEntries[i].A;
-        }
+        SwizzlePalette256(palEntries);
+        palBytes = PaletteToBytes(palEntries, 256);
 
         var destWBytes = (w + 0x7f) & ~0x7f;
         var linear = new byte[destWBytes * h];
@@ -207,32 +148,26 @@ public static class TexEncoder
             linear[y * destWBytes + x] = indices[y * w + x];
 
         var gs = new GsMemory();
-        gs.WriteTexPSMT8(tp.Dbp, destWBytes / 0x40, 0, 0, destWBytes, h, linear);
-        imgBytes = gs.ReadTexPSMCT32(tp.Dbp, tp.Dbw, tp.Sx, tp.Sy, tp.Rrw, tp.Rrh);
+        gs.WriteTexPSMT8(dbp, destWBytes / 0x40, 0, 0, destWBytes, h, linear);
+        imgBytes = gs.ReadTexPSMCT32(dbp, dbw, sx, sy, rrw, rrh);
     }
 
-    // ── 16-colour (PSMT4) ──────────────────────────────────────────────────────
+    // ── 16-colour (PSMT4) palette + pixel encoding ─────────────────────────────
 
-    private static void EncodePsmt4(TemplateInfo tp, byte[] bgra,
-        out byte[] palBytes, out byte[] imgBytes)
+    private static void EncodePsmt4(int w, int h, int dbp, int dbw, int sx, int sy, int rrw, int rrh,
+        byte[] bgra, out byte[] palBytes, out byte[] imgBytes)
     {
-        var w = tp.FinalW;
-        var h = tp.FinalH;
-
         Quantize(bgra, w, h, 16, out var palette, out var indices);
 
         // 16-entry palettes are stored LINEARLY (no swizzle).
-        palBytes = new byte[16 * 4];
+        var palEntries = new (byte R, byte G, byte B, byte A)[16];
         for (var i = 0; i < 16; i++)
         {
             var (r, g, b, a) = palette[i];
-            palBytes[i * 4 + 0] = r;
-            palBytes[i * 4 + 1] = g;
-            palBytes[i * 4 + 2] = b;
-            palBytes[i * 4 + 3] = ToPs2Alpha(a);
+            palEntries[i] = (r, g, b, ToPs2Alpha(a));
         }
+        palBytes = PaletteToBytes(palEntries, 16);
 
-        // PSMT4 alignment: width to 0x3f, height to 0x0f. One index per element.
         var destWBytes = (w + 0x3f) & ~0x3f;
         var destHBytes = (h + 0x0f) & ~0x0f;
         var expanded = new byte[destWBytes * destHBytes];
@@ -241,9 +176,138 @@ public static class TexEncoder
             expanded[y * destWBytes + x] = indices[y * w + x];
 
         var gs = new GsMemory();
-        // PSMT4 read region starts at (Sx,Sy) in the decoder, so write there too.
-        gs.WriteTexPSMT4(tp.Dbp, destWBytes / 0x40, tp.Sx, tp.Sy, destWBytes, destHBytes, expanded);
-        imgBytes = gs.ReadTexPSMCT32(tp.Dbp, tp.Dbw, tp.Sx, tp.Sy, tp.Rrw, tp.Rrh);
+        gs.WriteTexPSMT4(dbp, destWBytes / 0x40, sx, sy, destWBytes, destHBytes, expanded);
+        imgBytes = gs.ReadTexPSMCT32(dbp, dbw, sx, sy, rrw, rrh);
+    }
+
+    // ── 256-colour SYNTHESIS (new dimensions) ──────────────────────────────────
+
+    private static byte[] EncodePsmt8Synth(byte[] template, BitmapSource image)
+    {
+        var w = image.PixelWidth;
+        var h = image.PixelHeight;
+
+        // Size-derived transfer params (validated byte-exact against book/greenwater).
+        var destW16 = (w + 0x0f) & ~0x0f;
+        var destH16 = (h + 0x0f) & ~0x0f;
+        var rrw = destW16 / 2;
+        var rrh = destH16 / 2;
+        var destWBytes = (w + 0x7f) & ~0x7f;
+        var dbwBitblt = destWBytes / 0x80;
+
+        EncodePsmt8(w, h, 0, dbwBitblt, 0, 0, rrw, rrh, ToBgra32(image),
+            out var palBytes, out var imgBytes);
+        var imgNloop = (rrw * rrh * 4) / 16;
+
+        var palSetup = template[PalSetupStart..PalSetupEnd];   // constant 0x60-byte block
+        var dest = BuildAdTag(nloop: 1, regs: new[] { BitbltbufEntry(0, dbwBitblt, 0) });
+        var xfer = BuildAdTag(nloop: 3, regs: new[] { TrxregEntry(rrw, rrh), AdEntry(TRXPOS), AdEntry(0x53) });
+        var imgTag = BuildImageTag(imgNloop);
+
+        var body = Concat(palSetup, palBytes, dest, xfer, imgTag, imgBytes);
+        return WithHeader(template, w, h, body);
+    }
+
+    // ── 32-bit SYNTHESIS (new dimensions) ──────────────────────────────────────
+
+    private static byte[] EncodeImage32Synth(byte[] template, BitmapSource image)
+    {
+        var w = image.PixelWidth;
+        var h = image.PixelHeight;
+        var bgra = ToBgra32(image);
+
+        // Reuse the template's transfer GIF tag (nloop==3 @0x80) and patch the
+        // TRXREG (w,h) and BITBLTBUF dbw for the new size.
+        var setup = template[0x80..0xC0];
+        var dbw = Math.Max(1, (w + 0x3f) / 0x40);
+        for (var i = 0; i < 3; i++)
+        {
+            var b = 0x10 + (i * 0x10);
+            var reg = DataUtil.GetLeInt(setup, b + 8);
+            if (reg == BITBLTBUF) setup[b + 6] = (byte)dbw;
+            else if (reg == TRXREG) { PutU16(setup, b + 0, w); PutU16(setup, b + 4, h); }
+        }
+
+        var imgNloop = (w * h * 4) / 16;
+        var imgTag = BuildImageTag(imgNloop);
+
+        var px = new byte[w * h * 4];
+        for (var i = 0; i < w * h; i++)
+        {
+            px[i * 4 + 0] = bgra[i * 4 + 2]; // R
+            px[i * 4 + 1] = bgra[i * 4 + 1]; // G
+            px[i * 4 + 2] = bgra[i * 4 + 0]; // B
+            px[i * 4 + 3] = ToPs2Alpha32(bgra[i * 4 + 3]);
+        }
+
+        var body = Concat(setup, imgTag, px);
+        return WithHeader(template, w, h, body);
+    }
+
+    /// <summary>
+    /// Builds the 0x80-byte header for a synthesised texture: dimensions and
+    /// length are computed; the three unknown fields at +0x04/+0x08/+0x0C are
+    /// COPIED from the source template (see class remarks). offsetToGIF = 0x80.
+    /// </summary>
+    private static byte[] WithHeader(byte[] template, int w, int h, byte[] body)
+    {
+        var hdr = new byte[0x80];
+        PutU16(hdr, 0, w);
+        PutU16(hdr, 2, h);
+        // @4 (u16) and @8/@12 (two u32) — meaning unknown; copy from source.
+        Array.Copy(template, 4, hdr, 4, 2);
+        Array.Copy(template, 8, hdr, 8, 8);
+        PutU32(hdr, 16, 0x80);
+        PutU16(hdr, 6, body.Length / 16);
+        return Concat(hdr, body);
+    }
+
+    // ── GIF tag builders ───────────────────────────────────────────────────────
+
+    /// <summary>A 16-byte A+D register entry: 8 data bytes + register id @+8.</summary>
+    private static byte[] AdEntry(int regId, long data = 0)
+    {
+        var e = new byte[0x10];
+        PutU32(e, 0, (int)(data & 0xFFFFFFFF));
+        PutU32(e, 4, (int)((data >> 32) & 0xFFFFFFFF));
+        PutU32(e, 8, regId);
+        return e;
+    }
+
+    private static byte[] BitbltbufEntry(int dbp, int dbw, int dpsm)
+    {
+        var e = AdEntry(BITBLTBUF);
+        PutU16(e, 4, dbp & 0x3FFF);   // DBP (bits 32-45)
+        e[6] = (byte)(dbw & 0x3F);    // DBW (bits 48-53)
+        e[7] = (byte)(dpsm & 0x3F);   // DPSM (bits 56-61)
+        return e;
+    }
+
+    private static byte[] TrxregEntry(int rrw, int rrh)
+    {
+        var e = AdEntry(TRXREG);
+        PutU16(e, 0, rrw);
+        PutU16(e, 4, rrh);
+        return e;
+    }
+
+    /// <summary>PACKED A+D GIF tag (EOP set, nreg=1, REGS=A+D) followed by its entries.</summary>
+    private static byte[] BuildAdTag(int nloop, byte[][] regs)
+    {
+        var tag = new byte[0x10];
+        PutU16(tag, 0, (nloop & 0x7FFF) | 0x8000); // nloop + EOP
+        tag[7] = 0x10;                              // nreg = 1, flg = 0 (PACKED)
+        tag[8] = 0x0e;                              // REGS[0] = A+D
+        return Concat(new[] { tag }.Concat(regs).ToArray());
+    }
+
+    /// <summary>IMAGE-mode GIF tag (EOP set, flg=2).</summary>
+    private static byte[] BuildImageTag(int nloop)
+    {
+        var tag = new byte[0x10];
+        PutU16(tag, 0, (nloop & 0x7FFF) | 0x8000); // nloop + EOP
+        tag[7] = 0x08;                              // flg = 2 (IMAGE)
+        return tag;
     }
 
     // ── Template parsing (palettised) ─────────────────────────────────────────
@@ -273,11 +337,11 @@ public static class TexEncoder
         var end = off + length;
 
         GIFTag g = new();
-        g.Parse(t[off..]);                       // palette setup (nloop == 4)
+        g.Parse(t[off..]);
         off += g.Length;
 
         GIFTag g2 = new();
-        g2.Parse(t[off..]);                      // palette IMAGE
+        g2.Parse(t[off..]);
         var palData = off + GIFTag.Size;
         var palLen = g2.nloop * 16;
         off += g2.Length;
@@ -326,7 +390,44 @@ public static class TexEncoder
         throw new InvalidOperationException("No image GIF tag found — not a palettised TEX.");
     }
 
-    // ── Pixel helpers ────────────────────────────────────────────────────────
+    // ── 32-bit detection / encode ──────────────────────────────────────────────
+
+    private static bool IsImage32(ReadOnlySpan<byte> t)
+    {
+        if (t.Length < Image32PixelOffset) return false;
+        var off = DataUtil.GetLeInt(t, 16);
+        if (off < 0 || off + GIFTag.Size > t.Length) return false;
+        GIFTag g = new();
+        g.Parse(t[off..]);
+        if (g.nloop != 3) return false;
+        GIFTag g2 = new();
+        g2.Parse(t[0xC0..]);
+        return g2.flg == 2;
+    }
+
+    private static byte[] EncodeImage32(byte[] templateTex, BitmapSource image)
+    {
+        int finalW = DataUtil.GetLeShort(templateTex, 0);
+        int finalH = DataUtil.GetLeShort(templateTex, 2);
+
+        var pixelCount = finalW * finalH;
+        if (Image32PixelOffset + (pixelCount * 4) > templateTex.Length)
+            throw new InvalidOperationException("Template too small for its declared dimensions.");
+
+        var bgra = ToBgra32(image);
+        var outBytes = (byte[])templateTex.Clone();
+        for (var i = 0; i < pixelCount; i++)
+        {
+            var o = Image32PixelOffset + (i * 4);
+            outBytes[o + 0] = bgra[i * 4 + 2];
+            outBytes[o + 1] = bgra[i * 4 + 1];
+            outBytes[o + 2] = bgra[i * 4 + 0];
+            outBytes[o + 3] = ToPs2Alpha32(bgra[i * 4 + 3]);
+        }
+        return outBytes;
+    }
+
+    // ── Pixel / palette helpers ────────────────────────────────────────────────
 
     private static byte[] ToBgra32(BitmapSource image)
     {
@@ -336,28 +437,31 @@ public static class TexEncoder
         var stride = src.PixelWidth * 4;
         var px = new byte[stride * src.PixelHeight];
         src.CopyPixels(px, stride, 0);
-        return px; // B,G,R,A per pixel
+        return px;
     }
 
-    /// <summary>
-    /// Straight 0..255 alpha → PS2 alpha byte for PALETTISED textures
-    /// (0x00 opaque, 0x80 transparent) — matches how the palettised game
-    /// textures store opacity.
-    /// </summary>
+    private static byte[] PaletteToBytes((byte R, byte G, byte B, byte A)[] pal, int count)
+    {
+        var b = new byte[count * 4];
+        for (var i = 0; i < count; i++)
+        {
+            b[i * 4 + 0] = pal[i].R;
+            b[i * 4 + 1] = pal[i].G;
+            b[i * 4 + 2] = pal[i].B;
+            b[i * 4 + 3] = pal[i].A;
+        }
+        return b;
+    }
+
+    /// <summary>Straight alpha → PS2 alpha for PALETTISED textures (0x00 opaque, 0x80 transparent).</summary>
     private static byte ToPs2Alpha(byte a)
     {
         if (a >= 255) return 0x00;
         if (a == 0) return 0x80;
-        var v = (int)Math.Round((255 - a) / 2.0);
-        return (byte)Math.Clamp(v, 1, 127);
+        return (byte)Math.Clamp((int)Math.Round((255 - a) / 2.0), 1, 127);
     }
 
-    /// <summary>
-    /// Straight 0..255 alpha → PS2 alpha byte for 32-bit IMAGE-MODE textures —
-    /// the exact inverse of <c>PalEntry.Argb</c>: 0xFF→0xFF (opaque),
-    /// 0→0x80 (transparent), else round(a/2) in 1..0x7F. Validated byte-exact
-    /// against envtex.etex.
-    /// </summary>
+    /// <summary>Straight alpha → PS2 alpha for 32-bit IMAGE-MODE textures (inverse of PalEntry.Argb).</summary>
     private static byte ToPs2Alpha32(byte a)
     {
         if (a >= 255) return 0xFF;
@@ -365,31 +469,51 @@ public static class TexEncoder
         return (byte)Math.Clamp((int)Math.Round(a / 2.0), 1, 0x7F);
     }
 
-
-    /// <summary>256-entry palette swizzle — an involution (its own inverse).</summary>
     private static void SwizzlePalette256((byte R, byte G, byte B, byte A)[] pal)
     {
         var tmp = new (byte, byte, byte, byte)[256];
         Array.Copy(pal, tmp, 256);
         for (var i = 0; i < 256; i += 32)
+        for (var k = 0; k < 8; k++)
         {
-            for (var k = 0; k < 8; k++)
-            {
-                pal[i + k]      = tmp[i + k];
-                pal[i + 16 + k] = tmp[i + 8 + k];
-                pal[i + 8 + k]  = tmp[i + 16 + k];
-                pal[i + 24 + k] = tmp[i + 24 + k];
-            }
+            pal[i + k]      = tmp[i + k];
+            pal[i + 16 + k] = tmp[i + 8 + k];
+            pal[i + 8 + k]  = tmp[i + 16 + k];
+            pal[i + 24 + k] = tmp[i + 24 + k];
         }
+    }
+
+    // ── Little-endian writers / concat ─────────────────────────────────────────
+
+    private static void PutU16(byte[] a, int o, int v)
+    {
+        a[o] = (byte)(v & 0xFF);
+        a[o + 1] = (byte)((v >> 8) & 0xFF);
+    }
+
+    private static void PutU32(byte[] a, int o, int v)
+    {
+        a[o] = (byte)(v & 0xFF);
+        a[o + 1] = (byte)((v >> 8) & 0xFF);
+        a[o + 2] = (byte)((v >> 16) & 0xFF);
+        a[o + 3] = (byte)((v >> 24) & 0xFF);
+    }
+
+    private static byte[] Concat(params byte[][] parts)
+    {
+        var total = parts.Sum(p => p.Length);
+        var outBytes = new byte[total];
+        var pos = 0;
+        foreach (var p in parts)
+        {
+            Array.Copy(p, 0, outBytes, pos, p.Length);
+            pos += p.Length;
+        }
+        return outBytes;
     }
 
     // ── Quantisation (median cut) ──────────────────────────────────────────────
 
-    /// <summary>
-    /// Quantises BGRA pixels to ≤ <paramref name="maxColors"/> colours (256 or
-    /// 16). Exact when the image already has ≤ maxColors distinct colours;
-    /// otherwise a median-cut over RGB with per-bucket average alpha.
-    /// </summary>
     private static void Quantize(byte[] bgra, int w, int h, int maxColors,
         out (byte R, byte G, byte B, byte A)[] palette, out byte[] indices)
     {
@@ -414,7 +538,6 @@ public static class TexEncoder
 
         if (distinctMap.Count <= maxColors)
         {
-            // Lossless: one palette slot per distinct colour.
             foreach (var (key, slot) in distinctMap)
                 palette[slot] = ((byte)((key >> 16) & 0xFF), (byte)((key >> 8) & 0xFF),
                                  (byte)(key & 0xFF), (byte)((key >> 24) & 0xFF));
@@ -423,7 +546,6 @@ public static class TexEncoder
             return;
         }
 
-        // Median-cut on RGB; alpha averaged per bucket.
         var pixels = new (byte R, byte G, byte B, byte A)[n];
         for (var i = 0; i < n; i++)
             pixels[i] = (bgra[i * 4 + 2], bgra[i * 4 + 1], bgra[i * 4 + 0], bgra[i * 4 + 3]);
