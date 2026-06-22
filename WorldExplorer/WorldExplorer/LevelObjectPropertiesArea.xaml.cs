@@ -182,7 +182,37 @@ public partial class LevelObjectPropertiesArea : UserControl
         }
         ChangesApplied?.Invoke(this, EventArgs.Empty);
     }
-
+    
+    /// <summary>
+    /// Repopulates the element coordinate fields from the live
+    /// <see cref="JetBlackEngineLib.Data.World.WorldElement.Position"/>. Called
+    /// while a gizmo drags so the fields track the element — otherwise
+    /// "Apply Changes" would write the stale (pre-drag) values back and revert
+    /// the move.
+    /// </summary>
+    public void RefreshElementFields()
+    {
+        if (SelectedElement == null) return;
+        var el = SelectedElement.WorldElement;
+        editor_PosXBox.Text = el.Position.X.ToString(CultureInfo.InvariantCulture);
+        editor_PosYBox.Text = el.Position.Y.ToString(CultureInfo.InvariantCulture);
+        editor_PosZBox.Text = el.Position.Z.ToString(CultureInfo.InvariantCulture);
+    }
+ 
+    /// <summary>
+    /// Repopulates the object Float fields from the live
+    /// <c>ObjectData.Floats</c> — the object-gizmo counterpart of
+    /// <see cref="RefreshElementFields"/>.
+    /// </summary>
+    public void RefreshObjectFields()
+    {
+        if (SelectedObject?.ObjectData == null) return;
+        var d = SelectedObject.ObjectData;
+        editor_Obj_Float1Box.Text = d.Floats[0].ToString(CultureInfo.InvariantCulture);
+        editor_Obj_Float2Box.Text = d.Floats[1].ToString(CultureInfo.InvariantCulture);
+        editor_Obj_Float3Box.Text = d.Floats[2].ToString(CultureInfo.InvariantCulture);
+    }
+    
     private void ElementSelected(WorldElementTreeViewModel? ele)
     {
         if (ele == null)

@@ -66,6 +66,12 @@ internal sealed class ObjectDragGizmo
     private bool _dragStarted;       // has TargetTransform changed since attach?
 
     public ObjectDragGizmo(HelixViewport3D viewport) => _viewport = viewport;
+    
+    /// <summary>
+    /// Raised after a drag writes the final position into the object data, so
+    /// the properties panel can refresh its Float fields to match.
+    /// </summary>
+    public event Action? ObjectMoved;
 
     /// <summary>
     /// Shows the gizmo on <paramref name="target"/>, replacing any current
@@ -158,6 +164,8 @@ internal sealed class ObjectDragGizmo
         _target.ObjectData.Floats[0] = (float)(_lastOffset.X * 4.0);
         _target.ObjectData.Floats[1] = (float)(_lastOffset.Y * 4.0);
         _target.ObjectData.Floats[2] = (float)(_lastOffset.Z * 4.0);
+        
+        ObjectMoved?.Invoke();
 
         _lvm.FinalizeEdit();
     }

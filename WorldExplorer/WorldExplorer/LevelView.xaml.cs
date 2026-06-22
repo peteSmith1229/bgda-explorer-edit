@@ -44,6 +44,10 @@ public partial class LevelView
         viewport.ContextMenu = BuildViewportContextMenu(); // ← NEW
         _gizmo = new ObjectDragGizmo(viewport);
         _elementGizmo = new ElementDragGizmo(viewport); 
+        _gizmo.ObjectMoved += () => propertiesArea.RefreshObjectFields(); 
+        _elementGizmo.ElementMoved += () => propertiesArea.RefreshElementFields();
+        
+        
         viewport.AddHandler(
             UIElement.MouseLeftButtonUpEvent,
             new MouseButtonEventHandler(Viewport_DragMouseUp),

@@ -58,6 +58,13 @@ internal sealed class ElementDragGizmo
     private bool _dragStarted;
 
     public ElementDragGizmo(HelixViewport3D viewport) => _viewport = viewport;
+    
+    /// <summary>
+    /// Raised whenever a drag changes the element's position, so the properties
+    /// panel can refresh its coordinate fields to match. Without this, the
+    /// fields keep their pre-drag snapshot and "Apply Changes" reverts the move.
+    /// </summary>
+    public event Action? ElementMoved;
 
     /// <summary>Shows the gizmo on <paramref name="element"/>, replacing any current gizmo.</summary>
     public void Attach(WorldElement element, LevelViewModel lvm)
@@ -127,6 +134,8 @@ internal sealed class ElementDragGizmo
         var visual = _lvm.GetElementVisual(_element);
         if (visual != null)
             visual.Transform = SceneTransforms.BuildElementTransform(_element);
+        
+        ElementMoved?.Invoke();
     }
 
     /// <summary>

@@ -43,7 +43,8 @@
             <Expander x:Name="editorExpander" Grid.Column="2" Header="Properties" HorizontalAlignment="Right"
                       VerticalAlignment="Bottom" Margin="0" Background="#66FFFFFF" ExpandDirection="Up">
                 <Grid Height="280" Width="248">
-                    <local:LevelObjectPropertiesArea SelectedElement="{Binding SelectedElement, Mode=TwoWay}"
+                    <local:LevelObjectPropertiesArea x:Name="propertiesArea" 
+                                                     SelectedElement="{Binding SelectedElement, Mode=TwoWay}"
                                                      SelectedObject="{Binding SelectedObject, Mode=TwoWay}" />
                 </Grid>
             </Expander>
