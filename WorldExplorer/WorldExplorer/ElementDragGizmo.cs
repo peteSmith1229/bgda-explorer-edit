@@ -78,6 +78,7 @@ internal sealed class ElementDragGizmo
         _startPos = new Point3D(element.Position.X, element.Position.Y, element.Position.Z);
         _lastPos  = new Vector3D(element.Position.X, element.Position.Y, element.Position.Z);
 
+        var scale = App.Settings.Get("Editor.GizmoScale", 1.0);
         var diameter = 10.0;
         if (!lvm.WorldBounds.IsEmpty)
         {
@@ -85,6 +86,7 @@ internal sealed class ElementDragGizmo
                        Math.Max(lvm.WorldBounds.SizeY, lvm.WorldBounds.SizeZ));
             diameter = Math.Max(2.0, span * 0.08);
         }
+        diameter *= scale; 
 
         _manip = new CombinedManipulator
         {

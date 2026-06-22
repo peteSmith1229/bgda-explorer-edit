@@ -47,6 +47,7 @@ public partial class SettingsWindow : Window
 
         dataPathTextblock.Text = App.Settings.Get("Files.DataPath", "");
         forceOpaqueCheckBox.IsChecked = App.Settings.Get("Textures.ForceOpaque", false);
+        gizmoSizeSlider.Value = App.Settings.Get("Editor.GizmoScale", 1.0);
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e)
@@ -61,6 +62,7 @@ public partial class SettingsWindow : Window
         App.Settings["Core.EngineVersion"] = GetVersionFromBox();
         App.Settings["Textures.ForceOpaque"] = forceOpaqueCheckBox.IsChecked == true;
         PalEntry.ForceOpaque = forceOpaqueCheckBox.IsChecked == true;
+        App.Settings["Editor.GizmoScale"] = gizmoSizeSlider.Value;
 
         App.SaveSettings();
         DialogResult = true;

@@ -92,6 +92,7 @@ internal sealed class ObjectDragGizmo
         _lastOffset = new Vector3D(_startPos.X, _startPos.Y, _startPos.Z);
 
         // Size the gizmo relative to the level so it's grabbable but not huge.
+        var scale = App.Settings.Get("Editor.GizmoScale", 1.0);
         var diameter = 10.0;
         if (!lvm.WorldBounds.IsEmpty)
         {
@@ -99,6 +100,7 @@ internal sealed class ObjectDragGizmo
                        Math.Max(lvm.WorldBounds.SizeY, lvm.WorldBounds.SizeZ));
             diameter = Math.Max(2.0, span * 0.08);
         }
+        diameter *= scale; 
 
         _manip = new CombinedManipulator
         {
