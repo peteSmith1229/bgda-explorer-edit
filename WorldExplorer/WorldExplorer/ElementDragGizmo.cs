@@ -46,11 +46,11 @@ internal sealed class ElementDragGizmo
 {
     private static readonly DependencyPropertyDescriptor TargetTransformDpd =
         DependencyPropertyDescriptor.FromProperty(
-            CombinedManipulator.TargetTransformProperty, typeof(CombinedManipulator));
+            TranslateGizmoVisual.TargetTransformProperty, typeof(TranslateGizmoVisual));
 
     private readonly HelixViewport3D _viewport;
 
-    private CombinedManipulator? _manip;
+    private TranslateGizmoVisual? _manip;
     private WorldElement? _element;
     private LevelViewModel? _lvm;
     private Point3D _startPos;
@@ -79,23 +79,18 @@ internal sealed class ElementDragGizmo
         _lastPos  = new Vector3D(element.Position.X, element.Position.Y, element.Position.Z);
 
         var scale = App.Settings.Get("Editor.GizmoScale", 1.0);
-        var diameter = 10.0;
+        var size = 10.0;
         if (!lvm.WorldBounds.IsEmpty)
         {
             var span = Math.Max(lvm.WorldBounds.SizeX,
-                       Math.Max(lvm.WorldBounds.SizeY, lvm.WorldBounds.SizeZ));
-            diameter = Math.Max(2.0, span * 0.08);
+                Math.Max(lvm.WorldBounds.SizeY, lvm.WorldBounds.SizeZ));
+            size = Math.Max(2.0, span * 0.08);
         }
-        diameter *= scale; 
-
-        _manip = new CombinedManipulator
-        {
-            CanRotateX = false,
-            CanRotateY = false,
-            CanRotateZ = false,
-            Diameter   = diameter,
-            Position   = _startPos,
-        };
+        size *= scale;
+ 
+        // Translate-only gizmo whose arrow length scales with the level and the
+        // Editor.GizmoScale setting. (CombinedManipulator can't size its arrows.)
+        _manip = new TranslateGizmoVisual(length: size, diameter: size * 0.1, position: _startPos);
 
         TargetTransformDpd.AddValueChanged(_manip, OnTransformChanged);
         _viewport.Children.Add(_manip);
