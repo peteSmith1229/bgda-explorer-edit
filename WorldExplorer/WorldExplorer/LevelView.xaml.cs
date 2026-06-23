@@ -32,6 +32,8 @@ public partial class LevelView
     private LevelViewModel? _lvm;
     private ObjectDragGizmo? _gizmo;
     private ElementDragGizmo? _elementGizmo;
+    private ObjectRotateGizmo? _objectRotateGizmo;
+    private ElementRotateGizmo? _elementRotateGizmo;
 
     public LevelView()
     {
@@ -40,13 +42,16 @@ public partial class LevelView
         viewport.MouseUp += viewport_MouseUp;
         viewport.PreviewKeyDown += Viewport_KeyDown;
         
-        viewport.CalculateCursorPosition = true;        // ← NEW: enables paste-at-cursor
-        viewport.ContextMenu = BuildViewportContextMenu(); // ← NEW
+        viewport.CalculateCursorPosition = true;
+        viewport.ContextMenu = BuildViewportContextMenu();
+        
         _gizmo = new ObjectDragGizmo(viewport);
         _elementGizmo = new ElementDragGizmo(viewport); 
         _gizmo.ObjectMoved += () => propertiesArea.RefreshObjectFields(); 
         _elementGizmo.ElementMoved += () => propertiesArea.RefreshElementFields();
-        
+
+        _objectRotateGizmo = new ObjectRotateGizmo(viewport);
+        _elementRotateGizmo = new ElementRotateGizmo(viewport);
         
         viewport.AddHandler(
             UIElement.MouseLeftButtonUpEvent,
@@ -59,6 +64,8 @@ public partial class LevelView
     {
         _gizmo?.EndDrag();
         _elementGizmo?.EndDrag(); 
+        _objectRotateGizmo?.EndDrag();
+        _elementRotateGizmo?.EndDrag();
     }
 
     private void Viewport_KeyDown(object sender, KeyEventArgs e)
@@ -195,14 +202,21 @@ public partial class LevelView
     private void ElementSelected(WorldElementTreeViewModel? ele)
     {
         _gizmo?.Detach();
+        _objectRotateGizmo?.Detach();
         if (_lvm != null)
         {
             _lvm.SelectedObject = null;
             _lvm.SelectedElement = ele;
             if (ele != null)
+            {
                 _elementGizmo?.Attach(ele.WorldElement, _lvm);
+                _elementRotateGizmo?.Attach(ele.WorldElement, _lvm);
+            }
             else
+            {
                 _elementGizmo?.Detach();
+                _elementRotateGizmo?.Detach();
+            }
         }
 
         // Expand after values have changed
@@ -219,7 +233,9 @@ public partial class LevelView
             _lvm.SelectedElement = null;
             _lvm.SelectedObject = obj;
             _elementGizmo?.Detach();
+            _elementRotateGizmo?.Detach();
             _gizmo?.Attach(obj, _lvm);
+            _objectRotateGizmo?.Attach(obj, _lvm);
         }
 
         // Expand after values have changed
