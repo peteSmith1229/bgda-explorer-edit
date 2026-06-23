@@ -100,7 +100,7 @@ internal sealed class ObjectDragGizmo
                 Math.Max(lvm.WorldBounds.SizeY, lvm.WorldBounds.SizeZ));
             size = Math.Max(2.0, span * 0.08);
         }
-        size *= scale;
+        size *= scale / 2;
  
         // Translate-only gizmo whose arrow length scales with the level and the
         // Editor.GizmoScale setting. (CombinedManipulator can't size its arrows.)
