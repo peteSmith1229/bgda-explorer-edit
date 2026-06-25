@@ -901,21 +901,34 @@ public class MainWindowViewModel : INotifyPropertyChanged
         LogText = log.ToString();
         LogText += World.WorldData.ToString();
 
-        MainWindow.tabControl.SelectedIndex = 3; // Level View
+        MainWindow.tabControl.SelectedIndex = 2; // Level View
         MainWindow.ResetCamera();
-        MainWindow.SetViewportText(3, worldFileModel.Label, ""); // Set Level View Text
+        MainWindow.SetViewportText(2, worldFileModel.Label, ""); // Set Level View Text
     }
 
     private void OnWorldElementSelected(WorldElementTreeViewModel worldElementModel)
     {
+        // Keep the element's model available in the Model view (switch to the
+        // Model tab manually to inspect it in isolation).
         SelectedNodeImage = worldElementModel.WorldElement.Texture;
         _modelViewModel.Texture = SelectedNodeImage;
         _modelViewModel.AnimData = null;
         _modelViewModel.VifModel = worldElementModel.WorldElement.Model;
 
-        MainWindow.tabControl.SelectedIndex = 1; // Model View
-        MainWindow.ResetCamera();
-        MainWindow.SetViewportText(1, worldElementModel.Label, ""); // Set Model View Text           
+        // Drive the Level editor: selecting the element here makes its move +
+        // rotate gizmos and the properties panel follow the tree (LevelView
+        // observes these two properties). Clearing SelectedObject keeps the
+        // selection unambiguous (object-vs-element).
+        _levelViewModel.SelectedObject = null;
+        _levelViewModel.SelectedElement = worldElementModel;
+
+        // Show the Level tab so the gizmo is on screen. We deliberately do NOT
+        // ResetCamera here — that would throw away the user's current viewpoint
+        // on every tree click. (The camera was already framed when the world was
+        // loaded via its .world node.)
+        //MainWindow.ResetCamera();
+        MainWindow.tabControl.SelectedIndex = 2; // Level View
+        MainWindow.SetViewportText(2, worldElementModel.Label, "");
     }
 
     private void OnYakChildElementSelected(YakChildTreeViewItem childEntry)

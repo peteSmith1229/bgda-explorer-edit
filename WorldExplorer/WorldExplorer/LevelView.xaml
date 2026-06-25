@@ -37,7 +37,12 @@
             <Expander Header="Help" Grid.Column="0" Focusable="False" IsTabStop="False" VerticalAlignment="Bottom"
                       ExpandDirection="Up" Background="#66FFFFFF">
                 <StackPanel>
-                    <TextBlock TextWrapping="WrapWithOverflow">L to toggle lighting</TextBlock>
+                    <TextBlock TextWrapping="WrapWithOverflow">L to toggle lighting (can slow performance if ON)</TextBlock>
+                    <TextBlock TextWrapping="WrapWithOverflow">WASD to pan viewport</TextBlock>
+                    <TextBlock TextWrapping="WrapWithOverflow">PgUp/PgDown to zoom viewport</TextBlock>
+                    <TextBlock TextWrapping="WrapWithOverflow">Left-click to rotate viewport</TextBlock>
+                    <TextBlock TextWrapping="WrapWithOverflow">Right-click for context menu</TextBlock>
+                    <TextBlock TextWrapping="WrapWithOverflow">Middle-click to pan viewport</TextBlock>
                 </StackPanel>
             </Expander>
             <Expander x:Name="editorExpander" Grid.Column="2" Header="Properties" HorizontalAlignment="Right"

@@ -21,6 +21,7 @@ using System.Windows.Media.Media3D;
 using WorldExplorer.TreeView;
 using WorldExplorer.WorldDefs;
 using System.Windows.Controls;
+using System.ComponentModel;
 
 namespace WorldExplorer;
 
@@ -34,6 +35,10 @@ public partial class LevelView
     private ElementDragGizmo? _elementGizmo;
     private ObjectRotateGizmo? _objectRotateGizmo;
     private ElementRotateGizmo? _elementRotateGizmo;
+    // True while we set the selection ourselves, so the PropertyChanged observer
+    // syncs the gizmos once at the end instead of on each intermediate change
+    // (and avoids re-entrancy via the properties panel's two-way binding).
+    private bool _suppressSelectionSync;
 
     public LevelView()
     {
@@ -120,15 +125,76 @@ public partial class LevelView
 
     private void LevelView_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
+        // Stop listening to the previous view-model.
+        if (_lvm != null)
+            _lvm.PropertyChanged -= Lvm_PropertyChanged;
+
         if (!(DataContext is LevelViewModel lvm))
         {
             // Cleared level view
             _lvm = null;
+            SyncGizmosToSelection();   // detaches any gizmos
             return;
         }
 
         _lvm = lvm;
+        _lvm.PropertyChanged += Lvm_PropertyChanged;
+        SyncGizmosToSelection();       // reflect any pre-existing selection
     }
+
+    /// <summary>
+    /// Keeps the gizmos in step with the view-model's selection. Any code that
+    /// sets <see cref="LevelViewModel.SelectedObject"/> or
+    /// <see cref="LevelViewModel.SelectedElement"/> — the viewport hit-test, the
+    /// tree, paste/duplicate — drives the gizmos through here.
+    /// </summary>
+    private void Lvm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_suppressSelectionSync) return;
+        if (e.PropertyName == nameof(LevelViewModel.SelectedObject) ||
+            e.PropertyName == nameof(LevelViewModel.SelectedElement))
+        {
+            SyncGizmosToSelection();
+        }
+    }
+
+    /// <summary>
+    /// Attaches the move + rotate gizmos for whichever of object / element is
+    /// currently selected (or detaches all when nothing is). Exactly one of the
+    /// two selections is expected to be non-null; object wins if both are set.
+    /// </summary>
+    private void SyncGizmosToSelection()
+    {
+        var obj = _lvm?.SelectedObject;
+        var ele = _lvm?.SelectedElement;
+
+        if (_lvm != null && obj != null)
+        {
+            _elementGizmo?.Detach();
+            _elementRotateGizmo?.Detach();
+            _gizmo?.Attach(obj, _lvm);
+            _objectRotateGizmo?.Attach(obj, _lvm);
+        }
+        else if (_lvm != null && ele != null)
+        {
+            _gizmo?.Detach();
+            _objectRotateGizmo?.Detach();
+            _elementGizmo?.Attach(ele.WorldElement, _lvm);
+            _elementRotateGizmo?.Attach(ele.WorldElement, _lvm);
+        }
+        else
+        {
+            _gizmo?.Detach();
+            _objectRotateGizmo?.Detach();
+            _elementGizmo?.Detach();
+            _elementRotateGizmo?.Detach();
+        }
+
+        // Open the Properties panel when something is selected (any source).
+        if ((obj != null || ele != null) && !editorExpander.IsExpanded)
+            editorExpander.IsExpanded = true;
+    }
+
 
     private Brush? TryGettingAmbientLightColor()
     {
@@ -145,7 +211,9 @@ public partial class LevelView
     protected void OnSceneUpdated()
     {
         _gizmo?.Detach();
-        _elementGizmo?.Detach(); 
+        _elementGizmo?.Detach();
+        _objectRotateGizmo?.Detach();
+        _elementRotateGizmo?.Detach();
         Background = TryGettingAmbientLightColor() ?? Brushes.White;
     }
 
@@ -201,48 +269,27 @@ public partial class LevelView
 
     private void ElementSelected(WorldElementTreeViewModel? ele)
     {
-        _gizmo?.Detach();
-        _objectRotateGizmo?.Detach();
-        if (_lvm != null)
-        {
-            _lvm.SelectedObject = null;
-            _lvm.SelectedElement = ele;
-            if (ele != null)
-            {
-                _elementGizmo?.Attach(ele.WorldElement, _lvm);
-                _elementRotateGizmo?.Attach(ele.WorldElement, _lvm);
-            }
-            else
-            {
-                _elementGizmo?.Detach();
-                _elementRotateGizmo?.Detach();
-            }
-        }
+        if (_lvm == null) return;
 
-        // Expand after values have changed
-        if (!editorExpander.IsExpanded)
-        {
-            editorExpander.IsExpanded = true;
-        }
+        _suppressSelectionSync = true;
+        _lvm.SelectedObject = null;
+        _lvm.SelectedElement = ele;
+        _suppressSelectionSync = false;
+
+        SyncGizmosToSelection();
     }
 
-    private void ObjectSelected(VisualObjectData obj)
-    {
-        if (_lvm != null)
-        {
-            _lvm.SelectedElement = null;
-            _lvm.SelectedObject = obj;
-            _elementGizmo?.Detach();
-            _elementRotateGizmo?.Detach();
-            _gizmo?.Attach(obj, _lvm);
-            _objectRotateGizmo?.Attach(obj, _lvm);
-        }
 
-        // Expand after values have changed
-        if (!editorExpander.IsExpanded)
-        {
-            editorExpander.IsExpanded = true;
-        }
+    private void ObjectSelected(VisualObjectData? obj)
+    {
+        if (_lvm == null) return;
+
+        _suppressSelectionSync = true;
+        _lvm.SelectedElement = null;
+        _lvm.SelectedObject = obj;
+        _suppressSelectionSync = false;
+
+        SyncGizmosToSelection();
     }
 
     private ModelVisual3D? GetHitTestResult(Point location)
