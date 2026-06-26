@@ -73,8 +73,11 @@ internal sealed class ElementRotateGizmo
         // cos/sin and rot-flags modes (translation doesn't affect M11/M12).
         var m = SceneTransforms.BuildElementTransform(element).Value;
         _startAngleRad = Math.Atan2(m.M12, m.M11);
-
-        var startPos = new Point3D(element.Position.X, element.Position.Y, element.Position.Z);
+ 
+        // The element renders at its VISUAL origin (Position × rotation), which is
+        // the transform matrix's offset row — not raw Position. Using raw Position
+        // put the ring far from rotated, off-origin elements.
+        var startPos = new Point3D(m.OffsetX, m.OffsetY, m.OffsetZ);
 
         var size = GizmoSize(lvm);
         _manip = new RotateGizmoVisual(

@@ -53,8 +53,9 @@ internal sealed class ElementDragGizmo
     private TranslateGizmoVisual? _manip;
     private WorldElement? _element;
     private LevelViewModel? _lvm;
-    private Point3D _startPos;
-    private Vector3D _lastPos;
+    private Point3D _startPos;          // gizmo position = element VISUAL origin
+    private Vector3D _origPosition;     // element.Position captured at attach
+    private Matrix3D _rotInverse;       // inverse of the element's rotation
     private bool _dragStarted;
 
     public ElementDragGizmo(HelixViewport3D viewport) => _viewport = viewport;
@@ -73,10 +74,20 @@ internal sealed class ElementDragGizmo
 
         _element = element;
         _lvm = lvm;
-
-        // World element position is used directly (no ×4 — unlike objects).
-        _startPos = new Point3D(element.Position.X, element.Position.Y, element.Position.Z);
-        _lastPos  = new Vector3D(element.Position.X, element.Position.Y, element.Position.Z);
+ 
+        // The element renders at its VISUAL origin (Position × rotation), the
+        // transform matrix's offset row — NOT raw Position (BuildElementTransform
+        // translates then rotates). Place the gizmo there, and keep the rotation's
+        // inverse so a world-space drag can be mapped back onto Position.
+        var m = SceneTransforms.BuildElementTransform(element).Value;
+        _origPosition = new Vector3D(element.Position.X, element.Position.Y, element.Position.Z);
+        _rotInverse = new Matrix3D(
+            m.M11, m.M12, m.M13, 0,
+            m.M21, m.M22, m.M23, 0,
+            m.M31, m.M32, m.M33, 0,
+            0,     0,     0,     1);   // rotation (linear) part only
+        _rotInverse.Invert();
+        _startPos = new Point3D(m.OffsetX, m.OffsetY, m.OffsetZ);
 
         var scale = App.Settings.Get("Editor.GizmoScale", 1.0);
         var size = 10.0;
@@ -123,15 +134,20 @@ internal sealed class ElementDragGizmo
             _dragStarted = true;
         }
 
+        // World-space drag offset from the gizmo's start position.
         var d = _manip.TargetTransform.Transform(new Point3D(0, 0, 0));
-        _lastPos = new Vector3D(_startPos.X + d.X, _startPos.Y + d.Y, _startPos.Z + d.Z);
-
-        // Update the element and move only its visual live (no scene rebuild).
-        _element.Position = _lastPos;
+ 
+        // The element renders as (p + Position) × rot, so to move the VISUAL by d
+        // we change Position by d × rot⁻¹ — then the rebuilt transform shifts the
+        // mesh by exactly d. (For unrotated elements rot⁻¹ = identity, so this is
+        // the old Position += d behaviour.)
+        var dLocal = _rotInverse.Transform(new Vector3D(d.X, d.Y, d.Z));
+        _element.Position = _origPosition + dLocal;
+ 
         var visual = _lvm.GetElementVisual(_element);
         if (visual != null)
             visual.Transform = SceneTransforms.BuildElementTransform(_element);
-        
+ 
         ElementMoved?.Invoke();
     }
 
