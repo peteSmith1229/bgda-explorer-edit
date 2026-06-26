@@ -132,7 +132,89 @@ public static class WorldElementPatcher
         return result;
     }
     
+    /// <summary>
+    /// Rewrites each element's world-space bounding box (min/max) into its record,
+    /// in place, using the array at the header's ElementArrayStart. Element slots
+    /// are taken from <see cref="WorldElement.ElementIndex"/>, so this matches the
+    /// surgical <see cref="Patch"/> path (count unchanged). V1 bounds live at 0x0C
+    /// (min) / 0x18 (max); V2 at 0x08 / 0x14; BoS bounds offset is unknown and
+    /// skipped.
+    /// </summary>
+    public static void PatchBounds(byte[] world, IReadOnlyList<WorldElement> elements,
+        EngineVersion engineVersion)
+    {
+        int structSize, boundsOff;
+        switch (engineVersion)
+        {
+            case EngineVersion.ReturnToArms:
+            case EngineVersion.JusticeLeagueHeroes: structSize = 0x3C; boundsOff = 0x08; break;
+            case EngineVersion.BrotherhoodOfSteel:  structSize = 0x50; boundsOff = -1;   break;
+            default:                                structSize = 0x38; boundsOff = 0x0C; break;
+        }
+        if (boundsOff < 0) return;   // unsupported layout
+
+        var arrayStart = BitConverter.ToInt32(world, 36);
+        foreach (var el in elements)
+        {
+            var rec = arrayStart + el.ElementIndex * structSize;
+            var min = rec + boundsOff;       // 3 floats
+            var max = rec + boundsOff + 12;  // 3 floats
+            if (min < 0 || max + 12 > world.Length) continue;
+
+            var bb = el.BoundingBox;
+            WriteFloat(world, min + 0, (float)bb.X);
+            WriteFloat(world, min + 4, (float)bb.Y);
+            WriteFloat(world, min + 8, (float)bb.Z);
+            WriteFloat(world, max + 0, (float)(bb.X + bb.SizeX));
+            WriteFloat(world, max + 4, (float)(bb.Y + bb.SizeY));
+            WriteFloat(world, max + 8, (float)(bb.Z + bb.SizeZ));
+        }
+    }
+    
         /// <summary>
+    /// Slides each moved element's 2D footprint in the 0x20 "topo" array (minX,
+    /// minY, maxX, maxY shorts at record start) by the same delta its bounding box
+    /// moved. The delta is (current BoundingBox min) − (bounds min still present in
+    /// <paramref name="world"/>), so this MUST be called before <see cref="PatchBounds"/>
+    /// overwrites the record bounds. Slot = <see cref="WorldElement.ElementIndex"/>
+    /// (matches the surgical patch). BGDA layout only.
+    /// </summary>
+    public static void PatchTopoBounds(byte[] world, IReadOnlyList<WorldElement> elements,
+                                       EngineVersion engineVersion)
+    {
+        if (engineVersion != EngineVersion.DarkAlliance) return;
+
+        const int structSize = 0x38, recBoundsOff = 0x0C, topoRecSize = 0x1C;
+        var arrayStart = BitConverter.ToInt32(world, 36);
+        var offset20   = BitConverter.ToInt32(world, 0x20);
+        var count1c    = BitConverter.ToInt32(world, 0x1C);
+        if (offset20 <= 0) return;
+
+        foreach (var el in elements)
+        {
+            var idx = el.ElementIndex;
+            if (idx < 0 || idx >= count1c) continue;
+
+            var rec = arrayStart + idx * structSize;
+            if (rec + recBoundsOff + 8 > world.Length) continue;
+
+            // Move delta = new bounds min − bounds min currently in the buffer.
+            var origMinX = BitConverter.ToSingle(world, rec + recBoundsOff + 0);
+            var origMinY = BitConverter.ToSingle(world, rec + recBoundsOff + 4);
+            var dX = (int)Math.Round(el.BoundingBox.X - origMinX);
+            var dY = (int)Math.Round(el.BoundingBox.Y - origMinY);
+            if (dX == 0 && dY == 0) continue;
+
+            var t = offset20 + idx * topoRecSize;
+            if (t + 8 > world.Length) continue;
+            WriteInt16(world, t + 0, (short)(BitConverter.ToInt16(world, t + 0) + dX)); // minX
+            WriteInt16(world, t + 2, (short)(BitConverter.ToInt16(world, t + 2) + dY)); // minY
+            WriteInt16(world, t + 4, (short)(BitConverter.ToInt16(world, t + 4) + dX)); // maxX
+            WriteInt16(world, t + 6, (short)(BitConverter.ToInt16(world, t + 6) + dY)); // maxY
+        }
+    }
+    
+    /// <summary>
     /// Re-serialises the element array with a DIFFERENT set/count of elements
     /// (used for add / delete). The resized array is appended at the end of the
     /// file (16-byte aligned) and the header's <c>NumberOfElements</c> (+0x00) and
@@ -290,5 +372,14 @@ public static class WorldElementPatcher
         buf[off + 1] = (byte)((value >> 8) & 0xFF);
         buf[off + 2] = (byte)((value >> 16) & 0xFF);
         buf[off + 3] = (byte)((value >> 24) & 0xFF);
+    }
+    
+    private static void WriteFloat(byte[] buf, int off, float val)
+    {
+        var b = BitConverter.GetBytes(val);
+        buf[off + 0] = b[0];
+        buf[off + 1] = b[1];
+        buf[off + 2] = b[2];
+        buf[off + 3] = b[3];
     }
 }

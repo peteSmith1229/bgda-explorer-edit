@@ -46,6 +46,7 @@ internal class FileTreeViewContextManager
 {
     // ── original items ────────────────────────────────────────────────────────
     private readonly MenuItem _logTexData;
+    private readonly MenuItem _logWorldStructure;
     private readonly ContextMenu _menu = new();
     private readonly MenuItem _saveParsedVifData;
     private readonly MenuItem _saveRawData;
@@ -85,6 +86,7 @@ internal class FileTreeViewContextManager
         _saveRawData      = AddItem("Save Raw Data",    SaveRawDataClicked);
         _saveParsedVifData = AddItem("Save Parsed Data", SaveParsedDataClicked);
         _logTexData       = AddItem("Log .TEX Data",    LogTexDataClicked);
+        _logWorldStructure = AddItem("Log World Structure", LogWorldStructureClicked);
 
         // ── separator ────────────────────────────────────────────────────
         _menu.Items.Add(_sep1);
@@ -193,8 +195,9 @@ internal class FileTreeViewContextManager
 
             // ── .world files ───────────────────────────────────────────────
             case WorldFileTreeViewModel:
-                _logTexData.Visibility = Visibility.Visible;
-                _menu.DataContext      = dataContext;
+                _logTexData.Visibility        = Visibility.Visible;
+                _logWorldStructure.Visibility = Visibility.Visible;
+                _menu.DataContext             = dataContext;
                 break;
 
             // ── world element cells ────────────────────────────────────────
@@ -370,6 +373,33 @@ internal class FileTreeViewContextManager
         }
 
         _window.ViewModel.LogText = sb.ToString();
+        _window.tabControl.SelectedIndex = 4; // Log View
+    }
+    
+    private void LogWorldStructureClicked(object sender, RoutedEventArgs e)
+    {
+        if (_menu.DataContext is not WorldFileTreeViewModel tvm) return;
+
+        var lmpFile = tvm.LmpFileProperty;
+        if (!lmpFile.Directory.TryGetValue(tvm.Label, out var entry)) return;
+
+        // Use the pending (edited) bytes if present, else the original entry —
+        // so the dump reflects whatever the editor would currently save.
+        byte[] bytes;
+        if (lmpFile.PendingEdits.TryGetValue(tvm.Label, out var pending))
+        {
+            bytes = pending;
+        }
+        else
+        {
+            bytes = new byte[entry.Length];
+            Buffer.BlockCopy(lmpFile.FileData, entry.StartOffset, bytes, 0, entry.Length);
+        }
+
+        var engineVersion = _window.ViewModel.World?.EngineVersion
+                            ?? App.Settings.Get<EngineVersion>("Core.EngineVersion");
+
+        _window.ViewModel.LogText = WorldStructureAnalyzer.Analyze(bytes, engineVersion);
         _window.tabControl.SelectedIndex = 4; // Log View
     }
 

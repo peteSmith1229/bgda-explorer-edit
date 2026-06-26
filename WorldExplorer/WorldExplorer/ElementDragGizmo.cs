@@ -56,6 +56,7 @@ internal sealed class ElementDragGizmo
     private Point3D _startPos;          // gizmo position = element VISUAL origin
     private Vector3D _origPosition;     // element.Position captured at attach
     private Matrix3D _rotInverse;       // inverse of the element's rotation
+    private Rect3D _origBounds;     // element bounds captured at attach
     private bool _dragStarted;
 
     public ElementDragGizmo(HelixViewport3D viewport) => _viewport = viewport;
@@ -81,6 +82,7 @@ internal sealed class ElementDragGizmo
         // inverse so a world-space drag can be mapped back onto Position.
         var m = SceneTransforms.BuildElementTransform(element).Value;
         _origPosition = new Vector3D(element.Position.X, element.Position.Y, element.Position.Z);
+        _origBounds = element.BoundingBox;
         _rotInverse = new Matrix3D(
             m.M11, m.M12, m.M13, 0,
             m.M21, m.M22, m.M23, 0,
@@ -143,6 +145,11 @@ internal sealed class ElementDragGizmo
         // the old Position += d behaviour.)
         var dLocal = _rotInverse.Transform(new Vector3D(d.X, d.Y, d.Z));
         _element.Position = _origPosition + dLocal;
+        // Move the world-space AABB by the same world delta as the mesh, so the
+        // game's collision/culling (which reads these bounds) follows the move.
+        _element.BoundingBox = new Rect3D(
+            _origBounds.X + d.X, _origBounds.Y + d.Y, _origBounds.Z + d.Z,
+            _origBounds.SizeX, _origBounds.SizeY, _origBounds.SizeZ);
  
         var visual = _lvm.GetElementVisual(_element);
         if (visual != null)

@@ -564,6 +564,16 @@ public class LevelViewModel : BaseViewModel
 
                 newWorldBytes = WorldElementPatcher.Patch(baseBytes,
                     _worldData.WorldElements, engineVersion);
+                
+                // Slide the 0x20 footprint first (needs the OLD record bounds)...
+                WorldElementPatcher.PatchTopoBounds(newWorldBytes,
+                    _worldData.WorldElements, engineVersion);
+
+                // Also move each element's world-space bounds so collision/culling
+                // tracks the mesh (record holds a static AABB we'd otherwise leave
+                // behind). No-op for elements that didn't move.
+                WorldElementPatcher.PatchBounds(newWorldBytes,
+                    _worldData.WorldElements, engineVersion);
             }
 
             lmpFile.ReplaceEntry(WorldNode.Label, newWorldBytes);
