@@ -47,6 +47,14 @@ public class LevelViewModel : BaseViewModel
     private readonly System.Collections.Generic.Dictionary<
         JetBlackEngineLib.Data.World.WorldElement,
         System.Windows.Media.Media3D.ModelVisual3D> _elementVisuals = new();
+    
+    /// <summary>
+    /// True once an element has been added or removed this session. While set,
+    /// commits go through <see cref="WorldElementPatcher.Rebuild"/> (which can
+    /// change the element count) instead of the surgical in-place patch. Reset
+    /// when a new world is loaded.
+    /// </summary>
+    private bool _elementsDirty;
 
     public Rect3D WorldBounds
     {
@@ -186,7 +194,8 @@ public class LevelViewModel : BaseViewModel
     private void NewWorldLoaded()
     {
         ResetState();
-        _history.Clear();          // ← ADD: undo history must not cross levels
+        _elementsDirty = false;        // structural edits don't carry across levels
+        _history.Clear();
         LoadObjects();
         LoadSkyDome();
         RebuildScene();
@@ -442,6 +451,56 @@ public class LevelViewModel : BaseViewModel
     }
     
     /// <summary>
+    /// Duplicates the selected world element in place (small offset), sharing the
+    /// source's geometry, then selects the copy. Changes the element count, so the
+    /// .world is re-serialised with a relocated element array on commit.
+    /// </summary>
+    public void DuplicateSelectedElement()
+    {
+        var src = SelectedElement?.WorldElement;
+        if (_worldData == null || WorldNode == null || src == null) return;
+
+        PushUndoSnapshot();
+
+        var clone = src.Clone();
+        clone.Position = new Vector3D(src.Position.X + 2.0, src.Position.Y + 2.0, src.Position.Z);
+        clone.ElementIndex = _worldData.WorldElements.Count;   // appended slot
+        _worldData.WorldElements.Add(clone);
+
+        _elementsDirty = true;
+        FinalizeEdit();             // RebuildScene + Rebuild() + renumber + title
+
+        // Rebuild the tree nodes (now renumbered) and select the new element so
+        // its gizmo appears immediately.
+        WorldNode.ReloadChildren();
+        var cloneNode = WorldNode.Children
+            .OfType<WorldElementTreeViewModel>()
+            .FirstOrDefault(n => ReferenceEquals(n.WorldElement, clone));
+        if (cloneNode != null)
+            cloneNode.IsSelected = true;
+    }
+
+    /// <summary>
+    /// Deletes the selected world element. Changes the element count, so the
+    /// .world is re-serialised with a relocated element array on commit.
+    /// </summary>
+    public void DeleteSelectedElement()
+    {
+        var target = SelectedElement?.WorldElement;
+        if (_worldData == null || WorldNode == null || target == null) return;
+
+        PushUndoSnapshot();
+
+        _worldData.WorldElements.Remove(target);
+        SelectedElement = null;     // detaches the gizmo via the LevelView observer
+
+        _elementsDirty = true;
+        FinalizeEdit();             // RebuildScene + Rebuild() + renumber + title
+
+        WorldNode.ReloadChildren(); // refresh the tree with renumbered labels
+    }
+    
+    /// <summary>
     /// Queues all level edits (moved world elements and edited objects) into the
     /// world LMP's pending-edit layer so they are included the next time the
     /// archive is saved (File → Save GOB… / Save Archive…).
@@ -466,27 +525,48 @@ public class LevelViewModel : BaseViewModel
         // ── 1. Patch element transforms back into the .world entry ────────────
         if (_worldData != null && lmpFile.Directory.TryGetValue(WorldNode.Label, out var worldEntry))
         {
-            // Start from the pending bytes if a previous Apply already queued an
-            // edit; otherwise slice the original entry out of FileData.
-            byte[] baseBytes;
-            if (lmpFile.PendingEdits.TryGetValue(WorldNode.Label, out var pendingWorld))
+            var engineVersion = MainViewModel.World?.EngineVersion
+                                ?? App.Settings.Get<EngineVersion>("Core.EngineVersion");
+
+            byte[] newWorldBytes;
+            if (_elementsDirty)
             {
-                baseBytes = pendingWorld;
+                // An element was added/removed → rebuild the array (relocated to
+                // the end of the file) from the PRISTINE bytes + the current list.
+                // Starting from the original (not the pending) stops the appended
+                // array from accumulating across successive edits.
+                var originalBytes = new byte[worldEntry.Length];
+                Buffer.BlockCopy(lmpFile.FileData, worldEntry.StartOffset,
+                                 originalBytes, 0, worldEntry.Length);
+
+                newWorldBytes = WorldElementPatcher.Rebuild(originalBytes,
+                    _worldData.WorldElements, engineVersion);
+
+                // Renumber so each element's slot matches its list position
+                // (keeps any later surgical patch addressing the right records).
+                for (var i = 0; i < _worldData.WorldElements.Count; i++)
+                    _worldData.WorldElements[i].ElementIndex = i;
             }
             else
             {
-                baseBytes = new byte[worldEntry.Length];
-                Buffer.BlockCopy(lmpFile.FileData, worldEntry.StartOffset,
-                                 baseBytes, 0, worldEntry.Length);
+                // Transform-only edit → surgical in-place patch (unchanged path).
+                byte[] baseBytes;
+                if (lmpFile.PendingEdits.TryGetValue(WorldNode.Label, out var pendingWorld))
+                {
+                    baseBytes = pendingWorld;
+                }
+                else
+                {
+                    baseBytes = new byte[worldEntry.Length];
+                    Buffer.BlockCopy(lmpFile.FileData, worldEntry.StartOffset,
+                                     baseBytes, 0, worldEntry.Length);
+                }
+
+                newWorldBytes = WorldElementPatcher.Patch(baseBytes,
+                    _worldData.WorldElements, engineVersion);
             }
-     
-            var engineVersion = MainViewModel.World?.EngineVersion
-                                ?? App.Settings.Get<EngineVersion>("Core.EngineVersion");
-     
-            var patched = WorldElementPatcher.Patch(baseBytes,
-                _worldData.WorldElements, engineVersion);
-     
-            lmpFile.ReplaceEntry(WorldNode.Label, patched);
+
+            lmpFile.ReplaceEntry(WorldNode.Label, newWorldBytes);
             queued = true;
         }
      

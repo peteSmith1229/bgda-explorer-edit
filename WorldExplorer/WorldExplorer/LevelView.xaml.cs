@@ -401,38 +401,68 @@ private void DeleteSelectedObject()
     ObjectSelected(null!);   // collapse selection in the properties panel
 }
  
-/// <summary>
-/// Builds the viewport right-click menu.  Item enablement is refreshed each
-/// time the menu opens, based on the current selection and clipboard state.
-/// </summary>
-private ContextMenu BuildViewportContextMenu()
-{
-    var copyItem      = new MenuItem { Header = "Copy Object\tCtrl+C" };
-    var pasteItem     = new MenuItem { Header = "Paste Object\tCtrl+V" };
-    var duplicateItem = new MenuItem { Header = "Duplicate Object\tCtrl+D" };
-    var deleteItem    = new MenuItem { Header = "Delete Object\tDel" };
- 
-    copyItem.Click      += (_, _) => CopySelectedObject();
-    pasteItem.Click     += (_, _) => PasteObject();
-    duplicateItem.Click += (_, _) => DuplicateSelectedObject();
-    deleteItem.Click    += (_, _) => DeleteSelectedObject();
- 
-    var menu = new ContextMenu();
-    menu.Items.Add(copyItem);
-    menu.Items.Add(pasteItem);
-    menu.Items.Add(duplicateItem);
-    menu.Items.Add(new Separator());
-    menu.Items.Add(deleteItem);
- 
-    menu.Opened += (_, _) =>
+    /// <summary>
+    /// Builds the viewport right-click menu. Item visibility/enablement is
+    /// refreshed each time the menu opens: object actions when an object is
+    /// selected, element actions when an element is selected.
+    /// </summary>
+    private ContextMenu BuildViewportContextMenu()
     {
-        var hasSelection = _lvm?.SelectedObject != null;
-        copyItem.IsEnabled      = hasSelection;
-        duplicateItem.IsEnabled = hasSelection;
-        deleteItem.IsEnabled    = hasSelection;
-        pasteItem.IsEnabled     = _lvm != null && ObjectClipboard.HasObject();
-    };
- 
-    return menu;
-}
+        // ── Object actions (unchanged) ───────────────────────────────────────
+        var copyItem      = new MenuItem { Header = "Copy Object\tCtrl+C" };
+        var pasteItem     = new MenuItem { Header = "Paste Object\tCtrl+V" };
+        var duplicateItem = new MenuItem { Header = "Duplicate Object\tCtrl+D" };
+        var deleteItem    = new MenuItem { Header = "Delete Object\tDel" };
+
+        copyItem.Click      += (_, _) => CopySelectedObject();
+        pasteItem.Click     += (_, _) => PasteObject();
+        duplicateItem.Click += (_, _) => DuplicateSelectedObject();
+        deleteItem.Click    += (_, _) => DeleteSelectedObject();
+
+        var objSeparator = new Separator();
+
+        // ── Element actions (new) ────────────────────────────────────────────
+        var dupElementItem = new MenuItem { Header = "Duplicate Element" };
+        var delElementItem = new MenuItem { Header = "Delete Element" };
+
+        dupElementItem.Click += (_, _) => _lvm?.DuplicateSelectedElement();
+        delElementItem.Click += (_, _) => _lvm?.DeleteSelectedElement();
+
+        var menu = new ContextMenu();
+        menu.Items.Add(copyItem);
+        menu.Items.Add(pasteItem);
+        menu.Items.Add(duplicateItem);
+        menu.Items.Add(objSeparator);
+        menu.Items.Add(deleteItem);
+        menu.Items.Add(dupElementItem);
+        menu.Items.Add(delElementItem);
+
+        menu.Opened += (_, _) =>
+        {
+            var hasObject  = _lvm?.SelectedObject  != null;
+            var hasElement = _lvm?.SelectedElement != null;
+
+            // Object actions: shown unless an element is the current selection.
+            var objVis = hasElement ? Visibility.Collapsed : Visibility.Visible;
+            copyItem.Visibility      = objVis;
+            pasteItem.Visibility     = objVis;
+            duplicateItem.Visibility = objVis;
+            deleteItem.Visibility    = objVis;
+            objSeparator.Visibility  = objVis;
+
+            copyItem.IsEnabled      = hasObject;
+            duplicateItem.IsEnabled = hasObject;
+            deleteItem.IsEnabled    = hasObject;
+            pasteItem.IsEnabled     = _lvm != null && ObjectClipboard.HasObject();
+
+            // Element actions: shown only when an element is selected.
+            var eleVis = hasElement ? Visibility.Visible : Visibility.Collapsed;
+            dupElementItem.Visibility = eleVis;
+            delElementItem.Visibility = eleVis;
+            dupElementItem.IsEnabled  = hasElement;
+            delElementItem.IsEnabled  = hasElement;
+        };
+
+        return menu;
+    }
 }

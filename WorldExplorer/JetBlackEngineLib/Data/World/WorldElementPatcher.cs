@@ -131,6 +131,82 @@ public static class WorldElementPatcher
 
         return result;
     }
+    
+        /// <summary>
+    /// Re-serialises the element array with a DIFFERENT set/count of elements
+    /// (used for add / delete). The resized array is appended at the end of the
+    /// file (16-byte aligned) and the header's <c>NumberOfElements</c> (+0x00) and
+    /// <c>ElementArrayStart</c> (+0x24) are repointed at it. Nothing before the new
+    /// array moves, so all existing absolute offsets (VIF data, texture tables)
+    /// stay valid; the old array becomes unreferenced dead space.
+    ///
+    /// <para>Each element's on-disk record is copied from its
+    /// <see cref="WorldElement.SourceIndex"/> slot in the ORIGINAL array (so
+    /// VifDataOffset, Tex2, bounds, texture fields are preserved), then only its
+    /// transform fields are overwritten. Duplicates therefore reuse their source's
+    /// VIF geometry.</para>
+    /// </summary>
+    /// <param name="originalWorldBytes">Pristine bytes of the .world entry.</param>
+    /// <param name="elements">The desired element list, in final order.</param>
+    /// <param name="engineVersion">Selects the record layout.</param>
+    public static byte[] Rebuild(byte[] originalWorldBytes,
+                                 IReadOnlyList<WorldElement> elements,
+                                 EngineVersion engineVersion)
+    {
+        var (structSize, layout) = engineVersion switch
+        {
+            EngineVersion.ReturnToArms        => (V2Size,  Layout.V2),
+            EngineVersion.JusticeLeagueHeroes => (V2Size,  Layout.V2),
+            EngineVersion.BrotherhoodOfSteel  => (BosSize, Layout.V1Bos),
+            _                                 => (V1Size,  Layout.V1),
+        };
+
+        var origArrayStart = BitConverter.ToInt32(originalWorldBytes, 36);
+        var origCount      = BitConverter.ToInt32(originalWorldBytes, 0);
+
+        // ── Build the new array ──────────────────────────────────────────────
+        var newArray = new byte[elements.Count * structSize];
+        for (var i = 0; i < elements.Count; i++)
+        {
+            var element = elements[i];
+            var dstOff  = i * structSize;
+
+            // Copy the original record for this element's template slot.
+            var srcIdx = element.SourceIndex;
+            if (srcIdx >= 0 && srcIdx < origCount)
+            {
+                var srcOff = origArrayStart + srcIdx * structSize;
+                if (srcOff + structSize <= originalWorldBytes.Length)
+                    Array.Copy(originalWorldBytes, srcOff, newArray, dstOff, structSize);
+            }
+
+            // Overwrite only the transform fields with current values.
+            switch (layout)
+            {
+                case Layout.V1:
+                    PatchV1Style(newArray, dstOff, V1PosOff, V1FlagsOff, V1SinOff, element);
+                    break;
+                case Layout.V1Bos:
+                    PatchV1Style(newArray, dstOff, BosPosOff, BosFlagsOff, BosSinOff, element);
+                    break;
+                case Layout.V2:
+                    PatchV2Style(newArray, dstOff, element);
+                    break;
+            }
+        }
+
+        // ── Append at the end, 16-byte aligned, and repoint the header ───────
+        var newArrayStart = (originalWorldBytes.Length + 15) & ~15;
+        var result = new byte[newArrayStart + newArray.Length];
+        Array.Copy(originalWorldBytes, 0, result, 0, originalWorldBytes.Length);
+        Array.Copy(newArray, 0, result, newArrayStart, newArray.Length);
+
+        WriteInt32(result, 0,  elements.Count);   // NumberOfElements
+        WriteInt32(result, 36, newArrayStart);    // ElementArrayStart
+
+        return result;
+    }
+
 
     // ─────────────────────────────────────────────────────────────────────────
 

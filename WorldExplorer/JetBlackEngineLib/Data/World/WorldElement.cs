@@ -22,6 +22,15 @@ public class WorldElement
     public bool UsesRotFlags { get; set; }
     public int XyzRotFlags { get; set; }
     public int ElementIndex { get; set; }
+
+    /// <summary>
+    /// The element's ORIGINAL on-disk record index, used as the byte template
+    /// when the array is re-serialised (so VifDataOffset / Tex2 / bounds and any
+    /// other unmodelled fields are preserved). Set once at decode time; a
+    /// duplicate inherits its source's value so it reuses the source geometry.
+    /// Unlike <see cref="ElementIndex"/> (the current slot) this never changes.
+    /// </summary>
+    public int SourceIndex { get; set; }
         
     /// <summary>
     /// Contains info on data this element references.
@@ -29,4 +38,30 @@ public class WorldElement
     public WorldElementDataInfo? DataInfo { get; set; }
 
     public int RawFlags { get; set; }
+    
+    /// <summary>
+    /// Returns a copy that shares this element's geometry and texture
+    /// (<see cref="Model"/>, <see cref="Texture"/>, <see cref="DataInfo"/>) and
+    /// the same record template (<see cref="SourceIndex"/>). The caller typically
+    /// offsets <see cref="Position"/> and assigns a new <see cref="ElementIndex"/>.
+    /// </summary>
+    public WorldElement Clone()
+    {
+        return new WorldElement
+        {
+            BoundingBox  = BoundingBox,
+            Model        = Model,
+            Texture      = Texture,
+            Position     = Position,
+            NegYaxis     = NegYaxis,
+            SinAlpha     = SinAlpha,
+            CosAlpha     = CosAlpha,
+            UsesRotFlags = UsesRotFlags,
+            XyzRotFlags  = XyzRotFlags,
+            ElementIndex = ElementIndex,
+            SourceIndex  = SourceIndex,
+            DataInfo     = DataInfo,
+            RawFlags     = RawFlags,
+        };
+    }
 }
