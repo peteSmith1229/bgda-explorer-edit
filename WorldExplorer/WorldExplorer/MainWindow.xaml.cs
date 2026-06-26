@@ -722,11 +722,9 @@ public partial class MainWindow : Window
     }
     
     /// <summary>
-    /// Sets the title and subtitle overlay text on one of the three Helix
-    /// viewports. Called by MainWindowViewModel when a new asset is selected.
-    ///   index 1 → Model viewport
-    ///   index 2 → Skeleton viewport
-    ///   index 3 → Level viewport
+    /// Sets the title/subtitle overlay on one of the Helix viewports, identified
+    /// by tab index. Indices MUST match the XAML tab order:
+    ///   1 → Model, 2 → Level, 3 → Skeleton.
     /// </summary>
     public void SetViewportText(int index, string title, string subTitle)
     {
@@ -737,37 +735,40 @@ public partial class MainWindow : Window
                 if (subTitle != null) ModelView.viewport.SubTitle = subTitle;
                 break;
             case 2:
-                if (title != null) SkeletonView.viewport.Title    = title;
-                if (subTitle != null) SkeletonView.viewport.SubTitle = subTitle;
-                break;
-            case 3:
                 if (title != null) LevelView.viewport.Title    = title;
                 if (subTitle != null) LevelView.viewport.SubTitle = subTitle;
+                break;
+            case 3:
+                if (title != null) SkeletonView.viewport.Title    = title;
+                if (subTitle != null) SkeletonView.viewport.SubTitle = subTitle;
                 break;
         }
     }
  
     /// <summary>
     /// Re-frames the active viewport's camera to fit the currently loaded
-    /// content. For the model and skeleton tabs this calls FrameModel; for the
-    /// level tab it calls ZoomExtents on the world bounding box.
-    /// Called by MainWindowViewModel after loading a world or switching tabs.
+    /// content: ZoomExtents on the world bounds for the Level view, FrameModel
+    /// for the Model / Skeleton views. Matches on the selected tab's CONTENT (the
+    /// view instance) rather than a hard-coded SelectedIndex, so it stays correct
+    /// regardless of tab order. Called after loading a world or switching tabs.
     /// </summary>
     public void ResetCamera()
     {
-        switch (tabControl.SelectedIndex)
+        var content = tabControl.SelectedContent;
+ 
+        if (ReferenceEquals(content, LevelView))
         {
-            case 1:
-                FrameModel(ModelView.viewport, ViewModel.TheModelViewModel.VifModel);
-                break;
-            case 2:
-                FrameModel(SkeletonView.viewport, ViewModel.TheModelViewModel.VifModel);
-                break;
-            case 3:
-                var bounds = ViewModel.TheLevelViewModel.WorldBounds;
-                if (!bounds.IsEmpty)
-                    LevelView.viewport.ZoomExtents(bounds, 1000);
-                break;
+            var bounds = ViewModel.TheLevelViewModel.WorldBounds;
+            if (!bounds.IsEmpty)
+                LevelView.viewport.ZoomExtents(bounds, 1000);
+        }
+        else if (ReferenceEquals(content, ModelView))
+        {
+            FrameModel(ModelView.viewport, ViewModel.TheModelViewModel.VifModel);
+        }
+        else if (ReferenceEquals(content, SkeletonView))
+        {
+            FrameModel(SkeletonView.viewport, ViewModel.TheModelViewModel.VifModel);
         }
     }
     

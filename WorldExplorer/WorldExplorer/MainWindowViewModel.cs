@@ -864,8 +864,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 _levelViewModel.WorldNode = null;
                 _levelViewModel.WorldData = World.WorldData;
                 LogText = World.WorldData.ToString();
-                MainWindow.tabControl.SelectedIndex = 3; // Level View
-                MainWindow.SetViewportText(3, lmpEntry.Label, $"{World.WorldData.WorldElements.Count} elements");
+                MainWindow.tabControl.SelectedIndex = 2; // Level View
+                MainWindow.SetViewportText(2, lmpEntry.Label, $"{World.WorldData.WorldElements.Count} elements");
                 MainWindow.ResetCamera();
                 _modelViewModel.VifModel = null;
                 _modelViewModel.Texture = null;
