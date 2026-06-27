@@ -288,6 +288,113 @@ public static class WorldElementPatcher
 
         return result;
     }
+    
+        /// <summary>
+    /// Registers duplicated elements in the 0x18 per-cell render lists so the game
+    /// actually draws them. The renderer walks these per-cell index lists (not
+    /// numElements), so a clone present only in the element array stays invisible.
+    ///
+    /// <para>A clone is detected as an element whose <see cref="WorldElement.ElementIndex"/>
+    /// differs from its <see cref="WorldElement.SourceIndex"/>: after the post-Rebuild
+    /// renumber an original has the two equal, while a clone carries its source's
+    /// index. For each clone, its render index is added to every cell list that
+    /// already contains the source's index — the clone sits ~2 units from its source
+    /// so it shares the same cell(s), letting us mirror the source's membership
+    /// instead of computing the world→cell grid mapping.</para>
+    ///
+    /// <para>Each affected cell list is rewritten by appending a fresh copy (old
+    /// entries + new indices + the -1 terminator) at the end of the file and
+    /// repointing that cell's offset-table entry. Offsets are absolute file offsets,
+    /// so nothing else moves and the old list becomes dead space. BGDA only; returns
+    /// the input unchanged when there are no clones.</para>
+    ///
+    /// <para>NOTE: assumes no deletions this commit. A delete renumbers render
+    /// indices, which would desync the entries already baked into the cell lists;
+    /// that path needs a full index remap and is handled separately.</para>
+    /// </summary>
+    public static byte[] PatchCellLists(byte[] world, IReadOnlyList<WorldElement> elements,
+                                        EngineVersion engineVersion)
+    {
+        if (engineVersion != EngineVersion.DarkAlliance) return world;
+
+        var perCellTopo = BitConverter.ToInt32(world, 0x18);
+        var cols = BitConverter.ToInt32(world, 0x10);
+        var rows = BitConverter.ToInt32(world, 0x14);
+        long nCells = (long)cols * rows;
+        if (perCellTopo <= 0 || nCells <= 0 || nCells > 100000) return world;
+        if (perCellTopo + nCells * 4 > world.Length) return world;
+
+        // Gather, per cell, the clone render-indices that need adding.
+        var perCellAdds = new Dictionary<int, List<short>>();
+        foreach (var el in elements)
+        {
+            if (el.ElementIndex == el.SourceIndex) continue;            // original
+            if (el.ElementIndex < 0 || el.ElementIndex > short.MaxValue) continue;
+            var cloneIdx = (short)el.ElementIndex;
+            var srcIdx   = (short)el.SourceIndex;
+
+            for (var c = 0; c < nCells; c++)
+            {
+                var listOff = BitConverter.ToInt32(world, perCellTopo + c * 4);
+                if (listOff <= 0 || listOff > world.Length - 2) continue;
+                if (!CellListContains(world, listOff, srcIdx)) continue;
+
+                if (!perCellAdds.TryGetValue(c, out var adds))
+                    perCellAdds[c] = adds = new List<short>();
+                if (!adds.Contains(cloneIdx)) adds.Add(cloneIdx);
+            }
+        }
+        if (perCellAdds.Count == 0) return world;
+
+        // Append each rewritten list; repoint its offset in-place (header region).
+        var buf = new List<byte>(world);
+        foreach (var kv in perCellAdds)
+        {
+            var c       = kv.Key;
+            var listOff = BitConverter.ToInt32(world, perCellTopo + c * 4);
+            var entries = ReadCellList(world, listOff);
+            foreach (var a in kv.Value)
+                if (!entries.Contains(a)) entries.Add(a);
+
+            var newOff = buf.Count;
+            foreach (var e in entries) { buf.Add((byte)e); buf.Add((byte)(e >> 8)); }
+            buf.Add(0xFF); buf.Add(0xFF);                              // -1 terminator
+
+            var slot = perCellTopo + c * 4;                           // absolute offset
+            buf[slot + 0] = (byte)newOff;
+            buf[slot + 1] = (byte)(newOff >> 8);
+            buf[slot + 2] = (byte)(newOff >> 16);
+            buf[slot + 3] = (byte)(newOff >> 24);
+        }
+        return buf.ToArray();
+    }
+
+    /// <summary>True if <paramref name="value"/> appears in the -1-terminated short
+    /// list at <paramref name="off"/>.</summary>
+    private static bool CellListContains(byte[] w, int off, short value)
+    {
+        for (var p = off; p >= 0 && p <= w.Length - 2; p += 2)
+        {
+            var v = BitConverter.ToInt16(w, p);
+            if (v < 0) return false;                                  // -1 terminator
+            if (v == value) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Reads the -1-terminated short list at <paramref name="off"/> (the
+    /// terminator is not included).</summary>
+    private static List<short> ReadCellList(byte[] w, int off)
+    {
+        var list = new List<short>();
+        for (var p = off; p >= 0 && p <= w.Length - 2; p += 2)
+        {
+            var v = BitConverter.ToInt16(w, p);
+            if (v < 0) break;
+            list.Add(v);
+        }
+        return list;
+    }
 
 
     // ─────────────────────────────────────────────────────────────────────────

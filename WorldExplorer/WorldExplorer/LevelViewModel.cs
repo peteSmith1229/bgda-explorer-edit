@@ -546,6 +546,11 @@ public class LevelViewModel : BaseViewModel
                 // (keeps any later surgical patch addressing the right records).
                 for (var i = 0; i < _worldData.WorldElements.Count; i++)
                     _worldData.WorldElements[i].ElementIndex = i;
+
+                // Register any duplicated elements in the 0x18 per-cell render lists
+                // so the game draws them (renderer walks these lists, not numElements).
+                newWorldBytes = WorldElementPatcher.PatchCellLists(newWorldBytes,
+                    _worldData.WorldElements, engineVersion);
             }
             else
             {
