@@ -71,6 +71,7 @@ public class WorldElement
             XyzRotFlags  = XyzRotFlags,
             ElementIndex = ElementIndex,
             SourceIndex  = SourceIndex,
+            OriginalIndex = -1,          // ← clone is NOT an original
             DataInfo     = DataInfo,
             RawFlags     = RawFlags,
         };
