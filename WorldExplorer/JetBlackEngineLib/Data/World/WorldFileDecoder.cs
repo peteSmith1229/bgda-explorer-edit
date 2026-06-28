@@ -76,6 +76,7 @@ public abstract class WorldFileDecoder : ISupportsSpecificEngineVersions
         {
             ElementIndex = elementIdx,
             SourceIndex = elementIdx,
+            OriginalIndex = elementIdx,
             Position = pos / 16.0,
             BoundingBox = new Rect3D(bounds1, bounds2 - bounds1),
             NegYaxis = (flags & 0x40) == 0x40,

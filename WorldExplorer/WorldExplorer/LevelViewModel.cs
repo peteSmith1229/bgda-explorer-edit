@@ -549,7 +549,7 @@ public class LevelViewModel : BaseViewModel
 
                 // Register any duplicated elements in the 0x18 per-cell render lists
                 // so the game draws them (renderer walks these lists, not numElements).
-                newWorldBytes = WorldElementPatcher.PatchCellLists(newWorldBytes,
+                newWorldBytes = WorldElementPatcher.RebuildCellLists(newWorldBytes,
                     _worldData.WorldElements, engineVersion);
             }
             else

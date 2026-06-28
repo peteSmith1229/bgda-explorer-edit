@@ -489,4 +489,113 @@ public static class WorldElementPatcher
         buf[off + 2] = b[2];
         buf[off + 3] = b[3];
     }
+    
+        /// <summary>
+    /// Rebuilds the 0x18 per-cell render lists to match the current element set
+    /// after an add/delete, and clamps the 0x20 footprint count for safety.
+    ///
+    /// <para>Each cell list holds on-disk render indices. A delete renumbers every
+    /// survivor, so this translates each surviving entry old→new via
+    /// <see cref="WorldElement.OriginalIndex"/> → <see cref="WorldElement.ElementIndex"/>,
+    /// drops entries whose element was deleted, and adds each clone
+    /// (<c>OriginalIndex == -1</c>) into whatever cell its source occupied (the clone
+    /// sits ~2 units from its source). Lists are rewritten by appending the new list
+    /// and repointing that cell's absolute offset; unchanged cells are left alone.</para>
+    ///
+    /// <para>count1c (0x1C) is clamped to min(new element count, original count1c) so
+    /// the 0x20 array is never iterated past the new element count after a delete.</para>
+    ///
+    /// BGDA layout only; returns the input unchanged on a non-BGDA or malformed file.
+    /// </summary>
+    public static byte[] RebuildCellLists(byte[] world, IReadOnlyList<WorldElement> elements,
+                                          EngineVersion engineVersion)
+    {
+        if (engineVersion != EngineVersion.DarkAlliance) return world;
+
+        var perCellTopo = BitConverter.ToInt32(world, 0x18);
+        var cols = BitConverter.ToInt32(world, 0x10);
+        var rows = BitConverter.ToInt32(world, 0x14);
+        long nCells = (long)cols * rows;
+        if (perCellTopo <= 0 || nCells <= 0 || nCells > 100000) return world;
+        if (perCellTopo + nCells * 4 > world.Length) return world;
+
+        var buf = new List<byte>(world);
+
+        // (1) Clamp count1c so the 0x20 footprint array isn't read past the new
+        //     element count (delete) — and stays put for duplicates.
+        var origCount1c = BitConverter.ToInt32(world, 0x1C);
+        var safeCount1c = Math.Min(elements.Count, origCount1c);
+        buf[0x1C] = (byte)safeCount1c;
+        buf[0x1D] = (byte)(safeCount1c >> 8);
+        buf[0x1E] = (byte)(safeCount1c >> 16);
+        buf[0x1F] = (byte)(safeCount1c >> 24);
+
+        // (2) old on-disk render index -> new render index (surviving originals);
+        //     and each clone gathered under its source's original index.
+        var remap = new Dictionary<int, int>();
+        var cloneAdds = new Dictionary<int, List<int>>();
+        foreach (var el in elements)
+        {
+            if (el.OriginalIndex >= 0)
+            {
+                remap[el.OriginalIndex] = el.ElementIndex;
+            }
+            else
+            {
+                if (!cloneAdds.TryGetValue(el.SourceIndex, out var lst))
+                    cloneAdds[el.SourceIndex] = lst = new List<int>();
+                lst.Add(el.ElementIndex);
+            }
+        }
+
+        // (3) Remap every cell list; rewrite only those that actually changed.
+        for (var c = 0; c < nCells; c++)
+        {
+            var listOff = BitConverter.ToInt32(world, perCellTopo + c * 4);
+            if (listOff <= 0 || listOff > world.Length - 2) continue;
+
+            var oldList = ReadCellList(world, listOff);
+            var newList = new List<int>();
+            foreach (var v in oldList)
+            {
+                if (remap.TryGetValue(v, out var nv) && !newList.Contains(nv))
+                    newList.Add(nv);                       // survivor: old -> new
+                if (cloneAdds.TryGetValue(v, out var clones))
+                    foreach (var cn in clones)             // clones of v go where v was
+                        if (!newList.Contains(cn)) newList.Add(cn);
+                // (entries not in remap and not a clone source = deleted -> dropped)
+            }
+
+            if (CellListEquals(world, listOff, newList)) continue;
+
+            var newOff = buf.Count;
+            foreach (var e in newList) { buf.Add((byte)e); buf.Add((byte)(e >> 8)); }
+            buf.Add(0xFF); buf.Add(0xFF);                  // -1 terminator
+
+            var slot = perCellTopo + c * 4;                // absolute offset, in place
+            buf[slot + 0] = (byte)newOff;
+            buf[slot + 1] = (byte)(newOff >> 8);
+            buf[slot + 2] = (byte)(newOff >> 16);
+            buf[slot + 3] = (byte)(newOff >> 24);
+        }
+
+        return buf.ToArray();
+    }
+
+    /// <summary>True if the -1-terminated short list at <paramref name="off"/> is
+    /// exactly <paramref name="list"/> (used to skip cells that didn't change).</summary>
+    private static bool CellListEquals(byte[] w, int off, List<int> list)
+    {
+        var i = 0;
+        for (var p = off; p >= 0 && p <= w.Length - 2; p += 2)
+        {
+            int v = BitConverter.ToInt16(w, p);
+            if (v < 0) return i == list.Count;             // terminator: equal iff all consumed
+            if (i >= list.Count || v != list[i]) return false;
+            i++;
+        }
+        return false;
+    }
+
+    // ReadCellList(byte[], int) is reused unchanged from the previous cell-list work.
 }

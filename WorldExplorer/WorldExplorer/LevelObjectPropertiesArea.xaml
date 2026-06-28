@@ -125,6 +125,18 @@
                     Grid.Column="1"
                     TextWrapping="Wrap" />
             </Grid>
+
+            <!-- Persistent reminder: element editing is visual-only. Collision was
+                 proven (by elimination across transform, bounds, footprint, mesh
+                 vertices and the 0x38 grid) to be baked per-level and not editable
+                 from the .world, so a moved/duplicated element's collision stays put. -->
+            <TextBlock
+                Margin="0,12,0,2"
+                FontSize="11"
+                FontStyle="Italic"
+                Opacity="0.7"
+                TextWrapping="Wrap"
+                Text="Note: element edits are visual only. Collision is baked into the level." />
         </StackPanel>
         <StackPanel x:Name="editor_ObjectGrid" Style="{DynamicResource FormStack}">
             <Grid Style="{DynamicResource FormRow}">

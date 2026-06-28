@@ -31,6 +31,16 @@ public class WorldElement
     /// Unlike <see cref="ElementIndex"/> (the current slot) this never changes.
     /// </summary>
     public int SourceIndex { get; set; }
+    
+    /// <summary>
+    /// This element's index in the ORIGINAL on-disk array — fixed at decode and
+    /// never renumbered. Unique per original element; -1 for elements created in
+    /// the editor (duplicates). Used to remap the 0x18 render lists old→new when the
+    /// array is rebuilt after add/delete, and to tell originals from clones (a clone
+    /// has -1). Distinct from <see cref="SourceIndex"/>, the template-copy index a
+    /// clone shares with its source.
+    /// </summary>
+    public int OriginalIndex { get; set; } = -1;
         
     /// <summary>
     /// Contains info on data this element references.
@@ -38,6 +48,7 @@ public class WorldElement
     public WorldElementDataInfo? DataInfo { get; set; }
 
     public int RawFlags { get; set; }
+    
     
     /// <summary>
     /// Returns a copy that shares this element's geometry and texture

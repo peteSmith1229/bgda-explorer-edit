@@ -50,6 +50,7 @@ public class WorldFileV2Decoder : WorldFileDecoder
         {
             ElementIndex = elementIdx,
             SourceIndex = elementIdx,
+            
             Position = rawEl.Pos / 16.0,
             BoundingBox = new Rect3D(rawEl.Bounds1, rawEl.Bounds2 - rawEl.Bounds1),
             NegYaxis = (rawEl.UnknownFlag36 & 0x40) == 0x40, // Just guessing
