@@ -521,15 +521,6 @@ public static class WorldElementPatcher
 
         var buf = new List<byte>(world);
 
-        // (1) Clamp count1c so the 0x20 footprint array isn't read past the new
-        //     element count (delete) — and stays put for duplicates.
-        var origCount1c = BitConverter.ToInt32(world, 0x1C);
-        var safeCount1c = Math.Min(elements.Count, origCount1c);
-        buf[0x1C] = (byte)safeCount1c;
-        buf[0x1D] = (byte)(safeCount1c >> 8);
-        buf[0x1E] = (byte)(safeCount1c >> 16);
-        buf[0x1F] = (byte)(safeCount1c >> 24);
-
         // (2) old on-disk render index -> new render index (surviving originals);
         //     and each clone gathered under its source's original index.
         var remap = new Dictionary<int, int>();
@@ -597,5 +588,55 @@ public static class WorldElementPatcher
         return false;
     }
 
-    // ReadCellList(byte[], int) is reused unchanged from the previous cell-list work.
+        /// <summary>
+    /// Rebuilds the 0x20 per-element footprint array to match the current element
+    /// set after an add/delete. The array feeds the game's visibility culling, so a
+    /// delete (which renumbers everything) or a duplicate (a new index with no entry)
+    /// leaves it misaligned and causes culling artifacts. Each new entry is copied
+    /// from its element's template slot — a survivor from its own original slot, a
+    /// clone from its source's — so footprint[i] always matches element i. The array
+    /// is appended (16-byte aligned), header 0x20 repointed, and count1c (0x1C) set
+    /// to the new element count. BGDA layout only; unchanged on a malformed file.
+    /// </summary>
+    public static byte[] RebuildTopoArray(byte[] world, IReadOnlyList<WorldElement> elements,
+                                          EngineVersion engineVersion)
+    {
+        if (engineVersion != EngineVersion.DarkAlliance) return world;
+
+        const int recSize = 0x1C;
+        var offset20  = BitConverter.ToInt32(world, 0x20);
+        var origCount = BitConverter.ToInt32(world, 0x1C);   // ORIGINAL count (template bound)
+        if (offset20 <= 0 || origCount <= 0) return world;
+        if (offset20 + (long)origCount * recSize > world.Length) return world;
+
+        var newCount = elements.Count;
+        var newArray = new byte[newCount * recSize];
+
+        for (var i = 0; i < newCount; i++)
+        {
+            var el = elements[i];
+            // Template slot in the original array: survivor → its own original slot;
+            // clone → its source's slot (shares the source's footprint/fields).
+            var srcSlot = el.OriginalIndex >= 0 ? el.OriginalIndex : el.SourceIndex;
+            if (srcSlot < 0 || srcSlot >= origCount) continue;   // leave zeroed (defensive)
+            Array.Copy(world, offset20 + srcSlot * recSize, newArray, i * recSize, recSize);
+        }
+
+        // Append 16-byte aligned; repoint header 0x20; set count1c = new element count.
+        var newOff = (world.Length + 15) & ~15;
+        var result = new byte[newOff + newArray.Length];
+        Array.Copy(world, 0, result, 0, world.Length);
+        Array.Copy(newArray, 0, result, newOff, newArray.Length);
+
+        result[0x20] = (byte)newOff;          // offset20 → relocated array
+        result[0x21] = (byte)(newOff >> 8);
+        result[0x22] = (byte)(newOff >> 16);
+        result[0x23] = (byte)(newOff >> 24);
+        result[0x1C] = (byte)newCount;        // count1c → new element count
+        result[0x1D] = (byte)(newCount >> 8);
+        result[0x1E] = (byte)(newCount >> 16);
+        result[0x1F] = (byte)(newCount >> 24);
+
+        return result;
+    }
 }
