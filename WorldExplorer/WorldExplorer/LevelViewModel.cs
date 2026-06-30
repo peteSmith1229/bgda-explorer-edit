@@ -162,6 +162,7 @@ public class LevelViewModel : BaseViewModel
         {
             foreach (var element in _worldData.WorldElements)
             {
+                if (element.IsDeleted) continue;  
                 var elementModel = _worldData.GetElementModel(element);
                 if (elementModel == null) continue;
                 ModelVisual3D mv3d = new();
@@ -491,7 +492,7 @@ public class LevelViewModel : BaseViewModel
 
         PushUndoSnapshot();
 
-        _worldData.WorldElements.Remove(target);
+        target.IsDeleted = true;   // keep as a dead slot — no renumber/reorder
         SelectedElement = null;     // detaches the gizmo via the LevelView observer
 
         _elementsDirty = true;

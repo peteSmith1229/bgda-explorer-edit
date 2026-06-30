@@ -49,6 +49,15 @@ public class WorldElement
 
     public int RawFlags { get; set; }
     
+    /// <summary>
+    /// Editor-only: this element has been deleted. It is kept in the array as a dead
+    /// slot (so deleting never renumbers/reorders the array, which would corrupt the
+    /// 0x20-indexed cell-list references) and is dropped from every 0x18 cell list, so
+    /// the game never draws it. Hidden in the scene and tree. Not persisted; re-derived
+    /// on load (an element referenced by no cell list is marked deleted).
+    /// </summary>
+    public bool IsDeleted { get; set; }
+    
     
     /// <summary>
     /// Returns a copy that shares this element's geometry and texture

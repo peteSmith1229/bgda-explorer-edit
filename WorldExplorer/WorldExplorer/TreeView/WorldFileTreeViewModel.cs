@@ -44,7 +44,10 @@ public class WorldFileTreeViewModel : AbstractLmpTreeViewModel
         {
             foreach (var element in _world.WorldData.WorldElements)
             {
-                Children.Add(new WorldElementTreeViewModel(element, "Element " + element.ElementIndex + " 0x" + element.RawFlags.ToString("X4"), Parent, _world.WorldData));
+                if (element.IsDeleted) continue;            // ← hide deleted elements
+                Children.Add(new WorldElementTreeViewModel(element,
+                    "Element " + element.ElementIndex + " 0x" + element.RawFlags.ToString("X4"),
+                    Parent, _world.WorldData));
             }
         }
     }

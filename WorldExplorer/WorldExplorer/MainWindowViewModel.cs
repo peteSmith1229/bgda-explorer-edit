@@ -894,7 +894,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
             
         if (World == null) return;
 
-        World.WorldData = decoder.Decode(lmpFile.FileData.AsSpan(entry.StartOffset, entry.Length), _worldTreeViewModel?.World.WorldTex);
+        World.WorldData = decoder.Decode(
+            lmpFile.FileData.AsSpan(entry.StartOffset, entry.Length),
+            _worldTreeViewModel?.World.WorldTex);
+
         worldFileModel.ReloadChildren();
         _levelViewModel.WorldNode = worldFileModel;
         _levelViewModel.WorldData = World.WorldData;

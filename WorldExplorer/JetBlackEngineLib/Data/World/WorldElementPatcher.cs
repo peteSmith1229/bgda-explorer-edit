@@ -527,6 +527,7 @@ public static class WorldElementPatcher
         var cloneAdds = new Dictionary<int, List<int>>();
         foreach (var el in elements)
         {
+            if (el.IsDeleted) continue;                     // ← deleted → drop from cell lists
             if (el.OriginalIndex >= 0)
             {
                 remap[el.OriginalIndex] = el.ElementIndex;
@@ -556,6 +557,8 @@ public static class WorldElementPatcher
                         if (!newList.Contains(cn)) newList.Add(cn);
                 // (entries not in remap and not a clone source = deleted -> dropped)
             }
+            
+            newList.Sort();   // ← cell lists must stay ascending; the game relies on it
 
             if (CellListEquals(world, listOff, newList)) continue;
 
@@ -639,4 +642,5 @@ public static class WorldElementPatcher
 
         return result;
     }
+
 }
