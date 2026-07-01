@@ -22,6 +22,7 @@ using WorldExplorer.TreeView;
 using WorldExplorer.WorldDefs;
 using System.Windows.Controls;
 using System.ComponentModel;
+using System.Linq;
 
 namespace WorldExplorer;
 
@@ -253,14 +254,11 @@ public partial class LevelView
 
             if (levelViewModel.Scene != null)
             {
-                for (var i = 0; i < worldNode.Children.Count; i++)
-                {
-                    if (levelViewModel.Scene[i + 2] == hitResult)
-                    {
-                        selectedElement = (WorldElementTreeViewModel)worldNode.Children[i];
-                        break;
-                    }
-                }
+                var hitElement = levelViewModel.GetElementForVisual(hitResult);
+                if (hitElement != null)
+                    selectedElement = worldNode.Children
+                        .OfType<WorldElementTreeViewModel>()
+                        .FirstOrDefault(n => ReferenceEquals(n.WorldElement, hitElement));
             }
 
             ElementSelected(selectedElement);

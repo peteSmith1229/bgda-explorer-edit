@@ -624,4 +624,19 @@ public class LevelViewModel : BaseViewModel
         JetBlackEngineLib.Data.World.WorldElement element)
         => _elementVisuals.TryGetValue(element, out var v) ? v : null;
     
+    /// <summary>
+    /// Reverse of <see cref="GetElementVisual"/>: returns the element whose scene
+    /// visual is <paramref name="visual"/>, or null. Lets the viewport hit-test
+    /// resolve a clicked model to its element without assuming the scene and tree
+    /// are index-aligned (they diverge whenever an element is hidden, e.g. deleted).
+    /// </summary>
+    public JetBlackEngineLib.Data.World.WorldElement? GetElementForVisual(
+        System.Windows.Media.Media3D.ModelVisual3D visual)
+    {
+        foreach (var kv in _elementVisuals)
+            if (ReferenceEquals(kv.Value, visual))
+                return kv.Key;
+        return null;
+    }
+    
 }
