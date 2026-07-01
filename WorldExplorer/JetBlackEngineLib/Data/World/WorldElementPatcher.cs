@@ -275,6 +275,11 @@ public static class WorldElementPatcher
                     PatchV2Style(newArray, dstOff, element);
                     break;
             }
+            // Deleted element: keep its slot (so nothing renumbers/reorders) but zero
+            // its mesh length so the game uploads no geometry — i.e. draws nothing.
+            // VifLength is the i32 at record offset 0x08 (BGDA / V1 layout).
+            if (element.IsDeleted && layout == Layout.V1)
+                WriteInt32(newArray, dstOff + 0x08, 0);
         }
 
         // ── Append at the end, 16-byte aligned, and repoint the header ───────
@@ -527,7 +532,6 @@ public static class WorldElementPatcher
         var cloneAdds = new Dictionary<int, List<int>>();
         foreach (var el in elements)
         {
-            if (el.IsDeleted) continue;                     // ← deleted → drop from cell lists
             if (el.OriginalIndex >= 0)
             {
                 remap[el.OriginalIndex] = el.ElementIndex;
