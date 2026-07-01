@@ -552,8 +552,6 @@ public class LevelViewModel : BaseViewModel
                 // so the game draws them (renderer walks these lists, not numElements).
                 newWorldBytes = WorldElementPatcher.RebuildCellLists(newWorldBytes,
                     _worldData.WorldElements, engineVersion);
-                newWorldBytes = WorldElementPatcher.RebuildTopoArray(newWorldBytes,
-                    _worldData.WorldElements, engineVersion);
             }
             else
             {
