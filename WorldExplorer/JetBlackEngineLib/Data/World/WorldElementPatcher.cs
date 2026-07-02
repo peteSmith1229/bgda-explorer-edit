@@ -594,5 +594,60 @@ public static class WorldElementPatcher
         }
         return false;
     }
+        /// <summary>
+    /// Extends the 0x20 per-element record array for appended clones. The game's
+    /// draw loop covers elements 0..count1c-1 via the parallel 0x20 record, so a
+    /// clone with no record (index >= count1c) is never drawn. Slot order is
+    /// PRESERVED exactly — original i stays at slot i (the records carry
+    /// slot-sensitive data, and shifting them is what caused the old middle-delete
+    /// artifacts); each clone appends at the end with a copy of its source's record.
+    /// Sets count1c to the new element count and repoints header 0x20 at the
+    /// relocated array. Returns the input unchanged when there are no clones, on a
+    /// non-BGDA file, or on a malformed header.
+    /// </summary>
+    public static byte[] ExtendTopoArray(byte[] world, IReadOnlyList<WorldElement> elements,
+                                         EngineVersion engineVersion)
+    {
+        if (engineVersion != EngineVersion.DarkAlliance) return world;
+
+        const int recSize = 0x1C;
+        var offset20  = BitConverter.ToInt32(world, 0x20);
+        var origCount = BitConverter.ToInt32(world, 0x1C);
+        if (offset20 <= 0 || origCount <= 0) return world;
+        if (offset20 + (long)origCount * recSize > world.Length) return world;
+        if (elements.Count <= origCount) return world;          // no clones → untouched
+
+        var newCount = elements.Count;
+        var newArray = new byte[newCount * recSize];
+
+        // Originals: identity copy — slot i stays slot i, byte-for-byte.
+        var copyCount = Math.Min(origCount, newCount);
+        Array.Copy(world, offset20, newArray, 0, copyCount * recSize);
+
+        // Clones (slots beyond origCount): copy the source's record.
+        for (var i = origCount; i < newCount; i++)
+        {
+            var srcSlot = elements[i].SourceIndex;
+            if (srcSlot < 0 || srcSlot >= origCount) continue;   // leave zeroed (defensive)
+            Array.Copy(world, offset20 + srcSlot * recSize, newArray, i * recSize, recSize);
+        }
+
+        // Append 16-byte aligned; repoint header 0x20; count1c = new element count.
+        var newOff = (world.Length + 15) & ~15;
+        var result = new byte[newOff + newArray.Length];
+        Array.Copy(world, 0, result, 0, world.Length);
+        Array.Copy(newArray, 0, result, newOff, newArray.Length);
+
+        result[0x20] = (byte)newOff;
+        result[0x21] = (byte)(newOff >> 8);
+        result[0x22] = (byte)(newOff >> 16);
+        result[0x23] = (byte)(newOff >> 24);
+        result[0x1C] = (byte)newCount;
+        result[0x1D] = (byte)(newCount >> 8);
+        result[0x1E] = (byte)(newCount >> 16);
+        result[0x1F] = (byte)(newCount >> 24);
+
+        return result;
+    }
 
 }
