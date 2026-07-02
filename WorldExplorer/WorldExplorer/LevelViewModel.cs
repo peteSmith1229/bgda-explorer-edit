@@ -465,8 +465,27 @@ public class LevelViewModel : BaseViewModel
 
         var clone = src.Clone();
         clone.Position = new Vector3D(src.Position.X + 2.0, src.Position.Y + 2.0, src.Position.Z);
-        clone.ElementIndex = _worldData.WorldElements.Count;   // appended slot
-        _worldData.WorldElements.Add(clone);
+        // Prefer a freed (deleted) slot: the game only draws the original slot
+        // range, so a clone appended beyond it is editor-only. In a freed slot it
+        // renders in-game like any edited element, and the file keeps its shape.
+        var freeIdx = -1;
+        for (var i = 0; i < _worldData.WorldElements.Count; i++)
+            if (_worldData.WorldElements[i].IsDeleted) { freeIdx = i; break; }
+
+        if (freeIdx >= 0)
+        {
+            clone.ElementIndex  = freeIdx;
+            clone.OriginalIndex = freeIdx;   // owns that original slot now →
+            // cell lists / 0x20 stay untouched
+            _worldData.WorldElements[freeIdx] = clone;
+        }
+        else
+        {
+            // No freed slot: append. Renders in the EDITOR only — the game will
+            // not draw past its fixed element count (engine-side, not in .world).
+            clone.ElementIndex = _worldData.WorldElements.Count;
+            _worldData.WorldElements.Add(clone);
+        }
 
         _elementsDirty = true;
         FinalizeEdit();             // RebuildScene + Rebuild() + renumber + title
@@ -553,7 +572,8 @@ public class LevelViewModel : BaseViewModel
                 newWorldBytes = WorldElementPatcher.RebuildCellLists(newWorldBytes,
                     _worldData.WorldElements, engineVersion);
 
-                newWorldBytes = WorldElementPatcher.ExtendTopoArray(newWorldBytes,
+                // Reused-slot clones: give each its source's culling footprint.
+                WorldElementPatcher.PatchReusedSlotTopo(newWorldBytes,
                     _worldData.WorldElements, engineVersion);
             }
             else
