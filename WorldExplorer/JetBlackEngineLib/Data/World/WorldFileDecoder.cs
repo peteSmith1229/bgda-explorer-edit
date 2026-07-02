@@ -89,7 +89,11 @@ public abstract class WorldFileDecoder : ISupportsSpecificEngineVersions
                 VifDataOffset = vifDataOffset,
                 VifDataLength = vifLength,
             },
-            RawFlags = flags & 0xFFFF
+            RawFlags = flags & 0xFFFF,
+            // A zero-length mesh is the degenerate-delete marker (the game uploads
+            // no geometry). Re-derive the deleted state so dead slots stay hidden
+            // and remain available for slot-reuse duplication after a reopen.
+            IsDeleted = vifLength == 0,
         };
 
         if (element.UsesRotFlags)

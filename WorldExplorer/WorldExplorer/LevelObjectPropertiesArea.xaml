@@ -136,7 +136,7 @@
                 FontStyle="Italic"
                 Opacity="0.7"
                 TextWrapping="Wrap"
-                Text="Note: element edits are visual only. Collision is baked into the level." />
+                Text="Note: element edits are visual only. Collision always remains (for now)." />
         </StackPanel>
         <StackPanel x:Name="editor_ObjectGrid" Style="{DynamicResource FormStack}">
             <Grid Style="{DynamicResource FormRow}">
