@@ -31,6 +31,15 @@ public class ScriptRewardCall
     public string ItemName = "";
     public int StringScrOffset = -1;
     public int StringMaxLen;
+    
+    // Call-site geometry (instruction-stream addresses unless named ScrOffset).
+    public int CallAddr;                  // address of the 0x7B CALL instruction
+    public int CallExtIdxScrOffset = -1;  // file offset of the CALL's external index
+    public int ArgPushCount;              // pushes belonging to this call (incl. count)
+    public int SiteFirstPushScrOffset;    // file offset of the site's first push OPCODE
+    public int SiteFirstPushAddr;         // its instruction-stream address
+    public int AfterAddr;                 // address just past the site's pop
+    public bool StructuralSafe;           // geometry verified → swap/remove/detour OK
 }
 
 public static class ScriptRewardScanner
@@ -127,6 +136,25 @@ public static class ScriptRewardScanner
                             call.IntValue = arg.Value;
                             call.IntValueScrOffset = arg.ScrOff + HeaderSize;
                         }
+                        
+                        // ---- call-site geometry (for swap / remove / detour) ----
+                        call.CallAddr = i;
+                        call.CallExtIdxScrOffset = B(instOff + i + 4);
+                        call.ArgPushCount = name == "givePlayerItem" ? 3 : 2;
+
+                        // a patchable site is: ArgPushCount contiguous immediate
+                        // pushes, then CALL, then pop — verify before trusting it
+                        var first = i - 8 * call.ArgPushCount;
+                        var ok = first >= 0;
+                        for (var p = 0; ok && p < call.ArgPushCount; p++)
+                            ok = I32(B(instOff + first + p * 8)) == 0x27;
+                        ok = ok && i + 8 < codeLen && I32(B(instOff + i + 8)) == 0x2C;
+
+                        call.SiteFirstPushAddr = first;
+                        call.SiteFirstPushScrOffset = B(instOff + first);
+                        call.AfterAddr = i + 16;          // past CALL(8) + pop(8)
+                        call.StructuralSafe = ok;
+                        
                         results.Add(call);
                     }
                     i += 8; break;

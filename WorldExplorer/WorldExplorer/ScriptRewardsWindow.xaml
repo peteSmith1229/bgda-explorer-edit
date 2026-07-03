@@ -13,10 +13,32 @@
         <DataGrid x:Name="grid" AutoGenerateColumns="False" CanUserAddRows="False"
                   HeadersVisibility="Column">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Function"  Binding="{Binding FunctionName}" IsReadOnly="True" Width="180"/>
-                <DataGridTextColumn Header="Call"      Binding="{Binding ExternalName}" IsReadOnly="True" Width="120"/>
-                <DataGridTextColumn Header="Current"   Binding="{Binding Current}"      IsReadOnly="True" Width="140"/>
-                <DataGridTextColumn Header="New value" Binding="{Binding NewValue}"     Width="*"/>
+                <DataGridTextColumn Header="Function" Binding="{Binding FunctionName}" IsReadOnly="True" Width="160"/>
+                <DataGridComboBoxColumn Header="Call" Width="130"
+                                        SelectedItemBinding="{Binding SelectedCall, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                    <DataGridComboBoxColumn.ElementStyle>
+                        <Style TargetType="ComboBox">
+                            <Setter Property="ItemsSource" Value="{Binding CallOptions}"/>
+                            <Setter Property="IsEnabled" Value="{Binding StructuralSafe}"/>
+                        </Style>
+                    </DataGridComboBoxColumn.ElementStyle>
+                    <DataGridComboBoxColumn.EditingElementStyle>
+                        <Style TargetType="ComboBox">
+                            <Setter Property="ItemsSource" Value="{Binding CallOptions}"/>
+                        </Style>
+                    </DataGridComboBoxColumn.EditingElementStyle>
+                </DataGridComboBoxColumn>
+                <DataGridTextColumn Header="Current" Binding="{Binding Current}" IsReadOnly="True" Width="120"/>
+                <DataGridTemplateColumn Header="New value" Width="*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBox Text="{Binding NewValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridCheckBoxColumn Header="Remove" Width="60"
+                                        Binding="{Binding Remove, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
             </DataGrid.Columns>
         </DataGrid>
     </DockPanel>

@@ -526,7 +526,7 @@ internal class FileTreeViewContextManager
         var wnd = new ScriptRewardsWindow(scrBytes) { Owner = Application.Current.MainWindow };
         if (wnd.ShowDialog() == true && wnd.Modified)
         {
-            lmpFile.ReplaceEntry(lmpEntry.Label, scrBytes);   // same path texture import uses
+            lmpFile.ReplaceEntry(lmpEntry.Label, wnd.ResultBytes);
             MessageBox.Show(
                 "Script updated. Use Save Archive to write the modified GOB to disk.",
                 "Script Rewards", MessageBoxButton.OK, MessageBoxImage.Information);
