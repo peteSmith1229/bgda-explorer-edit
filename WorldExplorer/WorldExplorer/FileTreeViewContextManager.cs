@@ -34,6 +34,7 @@ using WorldExplorer.DataExporters;
 using WorldExplorer.DataImporters;
 using WorldExplorer.Logging;
 using WorldExplorer.TreeView;
+using Application = System.Windows.Application;
 using ContextMenu = System.Windows.Controls.ContextMenu;
 using MenuItem = System.Windows.Controls.MenuItem;
 using MessageBox  = System.Windows.MessageBox;
@@ -59,6 +60,7 @@ internal class FileTreeViewContextManager
     private readonly MenuItem _exportAsModel;
     private readonly MenuItem _importTexture;
     private readonly MenuItem _replaceEntry;
+    private readonly MenuItem _editScriptRewards;
     private readonly MenuItem _deleteEntry;
 
     // ── new: per-archive (LmpTree) actions ───────────────────────────────────
@@ -101,6 +103,7 @@ internal class FileTreeViewContextManager
 
         // ── per-entry edit actions ────────────────────────────────────────
         _replaceEntry  = AddItem("Replace Entry…", ReplaceEntryClicked);
+        _editScriptRewards = AddItem("Edit Script Rewards…", EditScriptRewardsClicked);
         _deleteEntry   = AddItem("Delete Entry",   DeleteEntryClicked);
 
         // ── separator ────────────────────────────────────────────────────
@@ -133,7 +136,7 @@ internal class FileTreeViewContextManager
             _saveParsedVifData, _logTexData,
             _sep1, _exportAsPng, _exportAsModel, _importTexture,
             _sep2, _replaceEntry, _deleteEntry,
-            _sep3, _addNewEntry, _batchExportTextures, _batchExportAll, _saveArchive, _saveGob);
+            _sep3, _addNewEntry, _batchExportTextures, _batchExportAll, _saveArchive, _saveGob, _editScriptRewards);
 
         switch (dataContext)
         {
@@ -145,6 +148,10 @@ internal class FileTreeViewContextManager
                 // Parsed VIF data
                 if (ext == ".VIF")
                     _saveParsedVifData.Visibility = Visibility.Visible;
+                
+                _editScriptRewards.Visibility =
+                    lmpEntry.Label.EndsWith(".scr", StringComparison.OrdinalIgnoreCase)
+                        ? Visibility.Visible : Visibility.Collapsed;
 
                 // Export shortcuts
                 _sep1.Visibility = Visibility.Visible;
@@ -501,6 +508,28 @@ internal class FileTreeViewContextManager
         {
             MessageBox.Show($"Replace failed: {ex.Message}", "Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+    
+    private void EditScriptRewardsClicked(object sender, RoutedEventArgs e)
+    {
+        if (_treeView.SelectedItem is not LmpEntryTreeViewModel lmpEntry) return;
+        var lmpFile = lmpEntry.LmpFileProperty;
+
+        // Pull the current entry bytes. Uses the same entry lookup as the existing
+        // save/replace handlers (adapt the two lines below to the local API if the
+        // member names differ — the pattern matches SaveLmpEntryData).
+        var entry = lmpFile.Directory[lmpEntry.Label];
+        var scrBytes = lmpFile.FileData
+            .AsSpan(entry.StartOffset, entry.Length).ToArray();
+
+        var wnd = new ScriptRewardsWindow(scrBytes) { Owner = Application.Current.MainWindow };
+        if (wnd.ShowDialog() == true && wnd.Modified)
+        {
+            lmpFile.ReplaceEntry(lmpEntry.Label, scrBytes);   // same path texture import uses
+            MessageBox.Show(
+                "Script updated. Use Save Archive to write the modified GOB to disk.",
+                "Script Rewards", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
     private void ImportTextureClicked(object sender, RoutedEventArgs e)
