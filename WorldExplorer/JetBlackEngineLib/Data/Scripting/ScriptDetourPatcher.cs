@@ -37,12 +37,16 @@ public static class ScriptDetourPatcher
         BitConverter.GetBytes(extIdx).CopyTo(scr, call.CallExtIdxScrOffset);
     }
 
-    /// <summary>Jumps over the whole call site, in place. The call never runs.</summary>
+    /// <summary>Overwrites the whole call site with stack-neutral fillers
+    /// (acc = 0). The call is gone; no dead code remains to confuse the
+    /// viewer or scanner.</summary>
     public static void RemoveCall(byte[] scr, ScriptRewardCall call)
     {
         if (!call.StructuralSafe) throw new ArgumentException("call site not structurally safe");
-        BitConverter.GetBytes(0x33).CopyTo(scr, call.SiteFirstPushScrOffset);          // jump
-        BitConverter.GetBytes(call.AfterAddr).CopyTo(scr, call.SiteFirstPushScrOffset + 4);
+        var instOff = BitConverter.ToInt32(scr, HeaderSize + 0x0C);
+        var afterScr = HeaderSize + instOff + call.AfterAddr;
+        for (var o = call.SiteFirstPushScrOffset; o < afterScr; o += 4)
+            BitConverter.GetBytes(0x59).CopyTo(scr, o);
     }
 
     /// <summary>
@@ -99,7 +103,10 @@ public static class ScriptDetourPatcher
         var d2 = appended.Count;                                        // string growth
 
         // -- assemble: [..code][stub][strings][new strings][tables..] --
-        var result = new byte[scr.Length + d1 + d2];
+        var nInt   = BitConverter.ToInt32(scr, HeaderSize + 0x20);
+        var intOff = BitConverter.ToInt32(scr, HeaderSize + 0x24);
+        var d3 = (nInt + 1) * 0x18;
+        var result = new byte[scr.Length + d1 + d2 + d3];
         Array.Copy(scr, 0, result, 0, HeaderSize + strOff);
         stub.CopyTo(result, HeaderSize + strOff);
         Array.Copy(scr, HeaderSize + strOff, result, HeaderSize + strOff + d1, strTabLen);
@@ -110,11 +117,45 @@ public static class ScriptDetourPatcher
         // -- header fixups (off5 is -1/unused in BGDA scripts; leave it) --
         BitConverter.GetBytes(strOff + d1).CopyTo(result, HeaderSize + 0x10);
         BitConverter.GetBytes(off3 + d1 + d2).CopyTo(result, HeaderSize + 0x14);
-        if (off4 != -1) BitConverter.GetBytes(off4 + d1 + d2).CopyTo(result, HeaderSize + 0x18);
+        // -- relocated internals table with a sorted "<function>_mod" entry --
+        var entries = new List<(string Name, int Addr)>();
+        for (var i = 0; i < nInt; i++)
+        {
+            var o = HeaderSize + intOff + 0x18 * i;
+            var e = o + 4; while (e < scr.Length && scr[e] != 0) e++;
+            entries.Add((Encoding.ASCII.GetString(scr, o + 4, e - o - 4),
+                BitConverter.ToInt32(scr, o)));
+        }
+        var baseName = anchor.FunctionName.Length > 15
+            ? anchor.FunctionName.Substring(0, 15) : anchor.FunctionName;
+        var stubName = baseName + "_mod";
+        var suffix = 2;                                   // avoid duplicates on re-edit
+        while (entries.Any(t => t.Name == stubName)) stubName = baseName + "_mod" + suffix++;
+        entries.Add((stubName, codeLen));                 // stub addr = old code end
+        entries.Sort((a, b2) => string.CompareOrdinal(a.Name, b2.Name));
 
-        // -- detour: site's first push becomes jump -> stub (stub addr = old codeLen) --
+        var newIntOff = result.Length - HeaderSize - d3;  // table at new body end
+        for (var i = 0; i < entries.Count; i++)
+        {
+            var o = HeaderSize + newIntOff + 0x18 * i;
+            BitConverter.GetBytes(entries[i].Addr).CopyTo(result, o);
+            var nb = Encoding.ASCII.GetBytes(entries[i].Name);
+            Array.Clear(result, o + 4, 0x14);
+            Array.Copy(nb, 0, result, o + 4, Math.Min(nb.Length, 0x13));
+        }
+        BitConverter.GetBytes(nInt + 1).CopyTo(result, HeaderSize + 0x20);
+        BitConverter.GetBytes(newIntOff).CopyTo(result, HeaderSize + 0x24);
+        // off4 == body end (verified invariant), now including the relocated table
+        if (off4 != -1)
+            BitConverter.GetBytes(result.Length - HeaderSize).CopyTo(result, HeaderSize + 0x18);
+
+        // -- detour: jump -> stub, then fill the rest of the old site with
+        //    "acc = 0" fillers so no dead instructions remain --
         BitConverter.GetBytes(0x33).CopyTo(result, anchor.SiteFirstPushScrOffset);
         BitConverter.GetBytes(codeLen).CopyTo(result, anchor.SiteFirstPushScrOffset + 4);
+        var afterScrOff = HeaderSize + instOff + anchor.AfterAddr;
+        for (var o = anchor.SiteFirstPushScrOffset + 8; o < afterScrOff; o += 4)
+            BitConverter.GetBytes(0x59).CopyTo(result, o);
 
         stringShift = d1;
         return result;
