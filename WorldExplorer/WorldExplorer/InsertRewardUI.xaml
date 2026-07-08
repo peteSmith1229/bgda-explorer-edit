@@ -1,0 +1,44 @@
+<Window x:Class="WorldExplorer.InsertRewardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Insert Reward at Call Site" Height="500" Width="700"
+        WindowStartupLocation="CenterOwner">
+    <DockPanel Margin="8">
+        <TextBlock DockPanel.Dock="Top" Margin="0,0,0,8" TextWrapping="Wrap"
+            Text="Pick a call site to anchor to — the reward(s) run just before that call, which is then replayed unchanged, so the original behavior still happens. Anchor on an event that occurs when you want the reward (e.g. a dialogue or spawn). Reward externals are added automatically if the script doesn't already import them."/>
+
+        <GroupBox DockPanel.Dock="Top" Header="1. Anchor call site" Padding="4" Margin="0,0,0,8">
+            <ComboBox x:Name="anchorCombo" DisplayMemberPath="Display" Height="26"/>
+        </GroupBox>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Content="Insert" Width="90" Margin="0,0,8,0" Click="Insert_Click"/>
+            <Button Content="Cancel" Width="90" IsCancel="True"/>
+        </StackPanel>
+
+        <GroupBox Header="2. Rewards to grant" Padding="4">
+            <DataGrid x:Name="rewardGrid" AutoGenerateColumns="False" CanUserAddRows="True"
+                      HeadersVisibility="Column">
+                <DataGrid.Columns>
+                    <DataGridComboBoxColumn Header="Call" Width="150"
+                        SelectedItemBinding="{Binding ExternalName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                        <DataGridComboBoxColumn.ElementStyle>
+                            <Style TargetType="ComboBox"><Setter Property="ItemsSource" Value="{Binding CallOptions}"/></Style>
+                        </DataGridComboBoxColumn.ElementStyle>
+                        <DataGridComboBoxColumn.EditingElementStyle>
+                            <Style TargetType="ComboBox"><Setter Property="ItemsSource" Value="{Binding CallOptions}"/></Style>
+                        </DataGridComboBoxColumn.EditingElementStyle>
+                    </DataGridComboBoxColumn>
+                    <DataGridTemplateColumn Header="Amount / Item name" Width="*">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBox Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </GroupBox>
+    </DockPanel>
+</Window>

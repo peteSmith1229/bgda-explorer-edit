@@ -60,6 +60,7 @@ internal class FileTreeViewContextManager
     private readonly MenuItem _exportAsModel;
     private readonly MenuItem _importTexture;
     private readonly MenuItem _replaceEntry;
+    private readonly MenuItem _insertReward;
     private readonly MenuItem _editScriptRewards;
     private readonly MenuItem _deleteEntry;
 
@@ -103,6 +104,7 @@ internal class FileTreeViewContextManager
 
         // ── per-entry edit actions ────────────────────────────────────────
         _replaceEntry  = AddItem("Replace Entry…", ReplaceEntryClicked);
+        _insertReward = AddItem("Insert Reward at Call Site…", InsertRewardClicked);
         _editScriptRewards = AddItem("Edit Script Rewards…", EditScriptRewardsClicked);
         _deleteEntry   = AddItem("Delete Entry",   DeleteEntryClicked);
 
@@ -136,7 +138,8 @@ internal class FileTreeViewContextManager
             _saveParsedVifData, _logTexData,
             _sep1, _exportAsPng, _exportAsModel, _importTexture,
             _sep2, _replaceEntry, _deleteEntry,
-            _sep3, _addNewEntry, _batchExportTextures, _batchExportAll, _saveArchive, _saveGob, _editScriptRewards);
+            _sep3, _addNewEntry, _batchExportTextures, _batchExportAll, _saveArchive, _saveGob, _editScriptRewards,
+            _insertReward);
 
         switch (dataContext)
         {
@@ -148,6 +151,10 @@ internal class FileTreeViewContextManager
                 // Parsed VIF data
                 if (ext == ".VIF")
                     _saveParsedVifData.Visibility = Visibility.Visible;
+                
+                _insertReward.Visibility =
+                    lmpEntry.Label.EndsWith(".scr", StringComparison.OrdinalIgnoreCase)
+                        ? Visibility.Visible : Visibility.Collapsed;
                 
                 _editScriptRewards.Visibility =
                     lmpEntry.Label.EndsWith(".scr", StringComparison.OrdinalIgnoreCase)
@@ -508,6 +515,22 @@ internal class FileTreeViewContextManager
         {
             MessageBox.Show($"Replace failed: {ex.Message}", "Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+    
+    private void InsertRewardClicked(object sender, RoutedEventArgs e)
+    {
+        if (_treeView.SelectedItem is not LmpEntryTreeViewModel lmpEntry) return;
+        var lmpFile = lmpEntry.LmpFileProperty;
+        var entry = lmpFile.Directory[lmpEntry.Label];
+        var scrBytes = lmpFile.FileData.AsSpan(entry.StartOffset, entry.Length).ToArray();
+
+        var wnd = new InsertRewardWindow(scrBytes) { Owner = Application.Current.MainWindow };
+        if (wnd.ShowDialog() == true && wnd.Modified)
+        {
+            lmpFile.ReplaceEntry(lmpEntry.Label, wnd.ResultBytes);
+            MessageBox.Show("Reward inserted. Use Save Archive to write the modified GOB.",
+                "Insert Reward", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
     

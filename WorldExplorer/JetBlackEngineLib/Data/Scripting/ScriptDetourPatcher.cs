@@ -48,6 +48,143 @@ public static class ScriptDetourPatcher
         for (var o = call.SiteFirstPushScrOffset; o < afterScr; o += 4)
             BitConverter.GetBytes(0x59).CopyTo(scr, o);
     }
+    
+        public static byte[] InsertRewardsBeforeCall(byte[] scr, ScriptCallSite anchor,
+        IReadOnlyList<NewRewardCall> newCalls)
+    {
+        if (!anchor.Insertable) throw new ArgumentException("anchor call site not insertable");
+
+        int I32(int o) => BitConverter.ToInt32(scr, o);
+        var instOff = I32(HeaderSize + 0x0C);
+        var strOff  = I32(HeaderSize + 0x10);
+        var off3    = I32(HeaderSize + 0x14);
+        var off4    = I32(HeaderSize + 0x18);
+        var nInt    = I32(HeaderSize + 0x20);
+        var intOff  = I32(HeaderSize + 0x24);
+        var nExt    = I32(HeaderSize + 0x28);
+        var extOff  = I32(HeaderSize + 0x2C);
+        var codeLen = strOff - instOff;
+        var strLen  = off3 - strOff;
+        // region (VM workspace) is off3..off4 in front-loaded-table scripts; when off4
+        // is -1/absent, the body simply ends after the last table.
+        var regionEnd = off4 != -1 ? off4 : scr.Length - HeaderSize;
+
+        // -- externals: reuse or append the reward natives --
+        var extNames = new List<string>();
+        for (var i = 0; i < nExt; i++) extNames.Add(ReadCStr(scr, HeaderSize + extOff + 0x18 * i + 4));
+        var newExts = new List<string>();
+        int ExtIdx(string name)
+        {
+            var k = extNames.IndexOf(name);
+            if (k >= 0) return k;
+            k = newExts.IndexOf(name);
+            if (k >= 0) return nExt + k;
+            newExts.Add(name); return nExt + newExts.Count - 1;
+        }
+
+        // -- strings: reuse or append (word-reversed) --
+        var appended = new List<byte>();
+        var strRefs = new int[newCalls.Count];
+        for (var c = 0; c < newCalls.Count; c++)
+        {
+            if (newCalls[c].ExternalName != "givePlayerItem") continue;
+            var existing = FindString(scr, strOff, strLen, newCalls[c].ItemName);
+            strRefs[c] = existing >= 0 ? existing : strLen + AppendWordReversed(appended, newCalls[c].ItemName);
+        }
+
+        // -- read the anchor's ORIGINAL argument immediates, to replay faithfully --
+        var origArgs = new int[anchor.ArgCount];
+        for (var p = 0; p < anchor.ArgCount; p++)
+            origArgs[p] = I32(HeaderSize + instOff + anchor.SiteFirstPushAddr + p * 8 + 4);
+
+        // -- build the stub: new calls, then replay original, then jump back --
+        var stub = new List<byte>();
+        void Emit(int a, int b2) { stub.AddRange(BitConverter.GetBytes(a)); stub.AddRange(BitConverter.GetBytes(b2)); }
+        for (var c = 0; c < newCalls.Count; c++)
+        {
+            var nc = newCalls[c];
+            if (nc.ExternalName == "givePlayerItem")
+            { Emit(0x27, 0); Emit(0x27, strRefs[c]); Emit(0x27, 8); Emit(0x7B, ExtIdx(nc.ExternalName)); Emit(0x2C, 12); }
+            else
+            { Emit(0x27, nc.IntValue); Emit(0x27, 4); Emit(0x7B, ExtIdx(nc.ExternalName)); Emit(0x2C, 8); }
+        }
+        foreach (var a in origArgs) Emit(0x27, a);            // replay original pushes
+        Emit(0x7B, anchor.ExtIndex);                          // replay original CALL
+        Emit(0x2C, anchor.ArgCount * 4);                      // replay original pop
+        Emit(0x33, anchor.AfterAddr);                         // jump back
+        var d1 = stub.Count;
+        var d2 = appended.Count;
+
+        // -- internals: relocate with a sorted "<function>_mod" entry --
+        var entries = new List<(string Name, int Addr)>();
+        for (var i = 0; i < nInt; i++)
+        {
+            var o = HeaderSize + intOff + 0x18 * i;
+            var e = o + 4; while (e < scr.Length && scr[e] != 0) e++;
+            entries.Add((Encoding.ASCII.GetString(scr, o + 4, e - o - 4), I32(o)));
+        }
+        var baseName = anchor.FunctionName.Length > 15 ? anchor.FunctionName[..15] : anchor.FunctionName;
+        var stubName = baseName + "_mod"; var sfx = 2;
+        while (entries.Any(t => t.Name == stubName)) stubName = baseName + "_mod" + sfx++;
+        entries.Add((stubName, codeLen));                     // stub addr = old code end
+        entries.Sort((a, b2) => string.CompareOrdinal(a.Name, b2.Name));
+
+        // -- assemble APPEND-AFTER-REGION: [code+stub][strings+new][region][ext'][int'] --
+        var d3ext = (nExt + newExts.Count) * 0x18;
+        var d3int = entries.Count * 0x18;
+        var body = new List<byte>(scr.Length - HeaderSize + d1 + d2 + d3ext + d3int);
+
+        void Copy(int srcRel, int len) { for (var k = 0; k < len; k++) body.Add(scr[HeaderSize + srcRel + k]); }
+        Copy(0, strOff);                                      // header..end of code
+        body.AddRange(stub);                                  // stub after code
+        Copy(strOff, strLen);                                 // strings
+        body.AddRange(appended);                              // new strings
+        Copy(off3, regionEnd - off3);                         // VM workspace region verbatim
+        var extTblOff = body.Count;
+        Copy(extOff, nExt * 0x18);                            // original externals
+        foreach (var name in newExts)                         // appended externals
+        { body.AddRange(BitConverter.GetBytes(0)); var nb = Encoding.ASCII.GetBytes(name);
+          for (var k = 0; k < 0x14; k++) body.Add(k < nb.Length ? nb[k] : (byte)0); }
+        var intTblOff = body.Count;
+        foreach (var (name, addr) in entries)                 // relocated internals
+        { body.AddRange(BitConverter.GetBytes(addr)); var nb = Encoding.ASCII.GetBytes(name);
+          for (var k = 0; k < 0x14; k++) body.Add(k < nb.Length ? nb[k] : (byte)0); }
+
+        var result = new byte[HeaderSize + body.Count];
+        Array.Copy(scr, 0, result, 0, HeaderSize);
+        for (var k = 0; k < body.Count; k++) result[HeaderSize + k] = body[k];
+
+        // -- header fixups (0x00 == region start is a required invariant) --
+        void Set(int o, int v) => BitConverter.GetBytes(v).CopyTo(result, HeaderSize + o);
+        Set(0x00, off3 + d1 + d2);                            // region-start pointer
+        Set(0x10, strOff + d1);
+        Set(0x14, off3 + d1 + d2);
+        if (off4 != -1) Set(0x18, regionEnd + d1 + d2);       // region end (tables follow)
+        Set(0x20, entries.Count); Set(0x24, intTblOff);
+        Set(0x28, nExt + newExts.Count); Set(0x2C, extTblOff);
+
+        // -- detour: anchor's first push → jump to stub, rest of site → fillers --
+        Set(instOff + anchor.SiteFirstPushAddr, 0x33);
+        Set(instOff + anchor.SiteFirstPushAddr + 4, codeLen);
+        for (var o = anchor.SiteFirstPushAddr + 8; o < anchor.AfterAddr; o += 4)
+            Set(instOff + o, 0x59);
+
+        return result;
+    }
+
+    private static int AppendWordReversed(List<byte> appended, string s)
+    {
+        var off = appended.Count;
+        var plain = Encoding.ASCII.GetBytes(s);
+        var padded = new byte[((plain.Length + 1 + 3) / 4) * 4];
+        plain.CopyTo(padded, 0);
+        for (var i = 0; i < padded.Length; i += 4)
+        { appended.Add(padded[i + 3]); appended.Add(padded[i + 2]); appended.Add(padded[i + 1]); appended.Add(padded[i]); }
+        return off;
+    }
+    private static string ReadCStr(byte[] d, int o)
+    { var e = o; while (e < d.Length && d[e] != 0) e++; return Encoding.ASCII.GetString(d, o, e - o); }
+
 
     /// <summary>
     /// Replaces a call site with a stub of new calls (detour). Returns the grown
