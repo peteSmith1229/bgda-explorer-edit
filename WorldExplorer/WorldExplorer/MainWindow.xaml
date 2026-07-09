@@ -85,6 +85,7 @@
             <!-- Tools menu (unchanged) -->
             <MenuItem Header="_Tools">
                 <MenuItem Header="_Settings" Command="Properties" />
+                <MenuItem Header="Edit Executable Tuning (XP &amp; Stats)…" Click="MenuEditExecutableClick" />
             </MenuItem>
 
         </Menu>

@@ -815,4 +815,29 @@ public partial class MainWindow : Window
     
     private void Menu_Redo_Click(object sender, RoutedEventArgs e)
         => ViewModel.TheLevelViewModel.Redo();
+    
+    private void MenuEditExecutableClick(object sender, RoutedEventArgs e)
+    {
+        var open = new Microsoft.Win32.OpenFileDialog
+        {
+            Title  = "Open the BGDA executable (e.g. SLES_506.72)",
+            Filter = "PS2 Executable|SLES_506.72;SLUS_*;SLES_*;*.*|All Files|*.*",
+            Multiselect = false
+        };
+        if (open.ShowDialog(this) != true) return;
+
+        JetBlackEngineLib.Data.Executable.BgdaExecutable exe;
+        try
+        {
+            exe = JetBlackEngineLib.Data.Executable.BgdaExecutable.Open(open.FileName);
+        }
+        catch (System.NotSupportedException ex)
+        {
+            MessageBox.Show(this, ex.Message, "Unsupported file",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        new ExecutableEditorWindow(exe) { Owner = this }.ShowDialog();
+    }
 }
