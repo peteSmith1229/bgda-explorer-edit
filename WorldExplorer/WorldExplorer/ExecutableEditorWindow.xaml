@@ -46,6 +46,30 @@
                     </DataGrid>
                 </DockPanel>
             </TabItem>
+            
+                        <TabItem Header="Feats &amp; Spells">
+                <DockPanel Margin="8">
+                    <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,8"
+                        Text="Energy cost, effect colour, and the displayed range for each feat/spell. Channeled spells bill energy per frame; the /sec figure the game shows is this ×50. NOTE: the in-game combat DAMAGE is computed per character at cast time and is not editable here — changing the range only affects the tooltip text."/>
+                    <DataGrid x:Name="featGrid" AutoGenerateColumns="False" CanUserAddRows="False"
+                              HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Feat / Spell" Binding="{Binding Name}" IsReadOnly="True" Width="170"/>
+                            <DataGridTextColumn Header="Energy" Width="80"
+                                Binding="{Binding Energy, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            <DataGridTextColumn Header="/sec" Binding="{Binding PerSecond}" IsReadOnly="True" Width="70"/>
+                            <DataGridTextColumn Header="Range Min" Width="80"
+                                Binding="{Binding RangeMin, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            <DataGridTextColumn Header="Range Max" Width="80"
+                                Binding="{Binding RangeMax, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            <DataGridTextColumn Header="R" Binding="{Binding R, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="45"/>
+                            <DataGridTextColumn Header="G" Binding="{Binding G, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="45"/>
+                            <DataGridTextColumn Header="B" Binding="{Binding B, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="45"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+            
         </TabControl>
     </DockPanel>
 </Window>
