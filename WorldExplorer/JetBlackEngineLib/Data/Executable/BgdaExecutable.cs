@@ -39,20 +39,37 @@ public sealed class FeatSpell
     /// <summary>Internal name, e.g. "fireball", "coneofcold".</summary>
     public string Name { get; init; } = "";
 
-    /// <summary>Displayed minimum of the tooltip range (+0x26). Text only.</summary>
-    public int DisplayMin { get; init; }
+    /// <summary>Damage range minimum (+0x26).</summary>
+    public int DamageMin { get; init; }
 
-    /// <summary>Displayed maximum of the tooltip range (+0x28). Text only.</summary>
-    public int DisplayMax { get; init; }
+    /// <summary>Damage range maximum (+0x28).</summary>
+    public int DamageMax { get; init; }
 
     /// <summary>Energy cost (+0x2C). Channeled spells store a per-frame value.</summary>
     public float EnergyCost { get; init; }
 
-    public int ColorR { get; init; }
-    public int ColorG { get; init; }
-    public int ColorB { get; init; }
+    // Hand-glow colour (+0x30/+0x32/+0x34): the aura over the caster's hands.
+    public int GlowR { get; init; }
+    public int GlowG { get; init; }
+    public int GlowB { get; init; }
 
-    public bool HasColor => ColorR != 0 || ColorG != 0 || ColorB != 0;
+    // Light-emit colour (+0x38/+0x3A/+0x3C): the light the effect casts on the
+    // surrounding environment. Channels are u16 and CAN exceed 255 (e.g. coneofcold
+    // ships with values above 255), so treat as 0..65535.
+    public int LightR { get; init; }
+    public int LightG { get; init; }
+    public int LightB { get; init; }
+
+    /// <summary>Per-level scaling coefficient (+0x40). Effect not yet fully confirmed.</summary>
+    public float Coefficient { get; init; }
+
+    /// <summary>
+    /// True for the spells confirmed in-game to take their damage from the min/max
+    /// range (editing those fields changes real combat damage). For other spells the
+    /// range is display/secondary — see <see cref="DamageIsEditable"/> usage in the UI.
+    /// The character's stats still apply a spread on top (e.g. INT gives fireball ±5).
+    /// </summary>
+    public bool DamageIsEditable { get; init; }
 
     /// <summary>Energy per second as the game displays it (PAL: 50 frames/sec).</summary>
     public float EnergyPerSecond => EnergyCost * 50f;
@@ -72,13 +89,29 @@ public class BgdaExecutable
     private const int FeatMaxRecords  = 60;           // hard cap while walking to "END"
 
     // field offsets within a feat/spell record
-    private const int FeatName   = 0x00;   // ASCII, NUL-terminated
-    private const int FeatDmgMin = 0x26;   // u16
-    private const int FeatDmgMax = 0x28;   // u16
-    private const int FeatEnergy = 0x2C;   // f32
-    private const int FeatColR   = 0x30;   // u16
-    private const int FeatColG   = 0x32;   // u16
-    private const int FeatColB   = 0x34;   // u16
+    private const int FeatName    = 0x00;   // ASCII, NUL-terminated
+    private const int FeatDmgMin  = 0x26;   // u16 — damage range min
+    private const int FeatDmgMax  = 0x28;   // u16 — damage range max
+    private const int FeatEnergy  = 0x2C;   // f32 — energy cost (per-frame; UI ×50)
+    private const int FeatGlowR   = 0x30;   // u16 — hand-glow colour
+    private const int FeatGlowG   = 0x32;   // u16
+    private const int FeatGlowB   = 0x34;   // u16
+    private const int FeatLightR  = 0x38;   // u16 — environment light-emit colour
+    private const int FeatLightG  = 0x3A;   // u16
+    private const int FeatLightB  = 0x3C;   // u16
+    private const int FeatCoef    = 0x40;   // f32 — per-level scaling coefficient
+
+    /// <summary>
+    /// Internal names of the spells confirmed in-game to draw combat damage from the
+    /// min/max range fields. Editing the range for these changes real damage; for
+    /// others it is display/secondary (multi-projectile spells, per-second channels,
+    /// and charge moves use different damage handling keyed by the engine).
+    /// </summary>
+    private static readonly HashSet<string> DamageEditableSpells = new()
+    {
+        "fireball", "acidarrow", "Otilukes", "knockback", "ClangeddinsFist",
+        "flamingarrow", "explodingarrow", "icearrow", "shockarrow"
+    };
 
     public static readonly string[] StatNames  = { "STR", "INT", "WIS", "DEX", "CON", "CHA" };
     public static readonly string[] ClassNames =
@@ -215,14 +248,19 @@ public class BgdaExecutable
 
             list.Add(new FeatSpell
             {
-                Index      = i,
-                Name       = name,
-                DisplayMin = ReadU16(rec + FeatDmgMin),
-                DisplayMax = ReadU16(rec + FeatDmgMax),
-                EnergyCost = BitConverter.ToSingle(_data, rec + FeatEnergy),
-                ColorR     = ReadU16(rec + FeatColR),
-                ColorG     = ReadU16(rec + FeatColG),
-                ColorB     = ReadU16(rec + FeatColB)
+                Index            = i,
+                Name             = name,
+                DamageMin        = ReadU16(rec + FeatDmgMin),
+                DamageMax        = ReadU16(rec + FeatDmgMax),
+                EnergyCost       = BitConverter.ToSingle(_data, rec + FeatEnergy),
+                GlowR            = ReadU16(rec + FeatGlowR),
+                GlowG            = ReadU16(rec + FeatGlowG),
+                GlowB            = ReadU16(rec + FeatGlowB),
+                LightR           = ReadU16(rec + FeatLightR),
+                LightG           = ReadU16(rec + FeatLightG),
+                LightB           = ReadU16(rec + FeatLightB),
+                Coefficient      = BitConverter.ToSingle(_data, rec + FeatCoef),
+                DamageIsEditable = DamageEditableSpells.Contains(name)
             });
         }
 
@@ -236,14 +274,37 @@ public class BgdaExecutable
         BitConverter.GetBytes(energy).CopyTo(_data, RecordOffset(index) + FeatEnergy);
     }
 
-    public void SetFeatColor(int index, int r, int g, int b)
+    /// <summary>Hand-glow colour (aura over the caster's hands). 0–255 per channel.</summary>
+    public void SetFeatGlow(int index, int r, int g, int b)
     {
         if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255)
-            throw new ArgumentException("Colour channels must be between 0 and 255.");
+            throw new ArgumentException("Glow colour channels must be between 0 and 255.");
         var rec = RecordOffset(index);
-        WriteU16(rec + FeatColR, r);
-        WriteU16(rec + FeatColG, g);
-        WriteU16(rec + FeatColB, b);
+        WriteU16(rec + FeatGlowR, r);
+        WriteU16(rec + FeatGlowG, g);
+        WriteU16(rec + FeatGlowB, b);
+    }
+
+    /// <summary>
+    /// Light the effect casts on the environment. Channels are u16 and the stock data
+    /// uses values above 255 (e.g. coneofcold), so the range is 0–65535, not 0–255.
+    /// </summary>
+    public void SetFeatLight(int index, int r, int g, int b)
+    {
+        if (r < 0 || r > 65535 || g < 0 || g > 65535 || b < 0 || b > 65535)
+            throw new ArgumentException("Light colour channels must be between 0 and 65535.");
+        var rec = RecordOffset(index);
+        WriteU16(rec + FeatLightR, r);
+        WriteU16(rec + FeatLightG, g);
+        WriteU16(rec + FeatLightB, b);
+    }
+
+    /// <summary>Per-level scaling coefficient (+0x40). Effect still under investigation.</summary>
+    public void SetFeatCoefficient(int index, float value)
+    {
+        if (float.IsNaN(value) || value < 0f || value > 1000f)
+            throw new ArgumentException("Coefficient must be between 0 and 1000.");
+        BitConverter.GetBytes(value).CopyTo(_data, RecordOffset(index) + FeatCoef);
     }
 
     /// <summary>

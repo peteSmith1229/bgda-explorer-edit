@@ -39,13 +39,20 @@ public partial class ExecutableEditorWindow : Window
     {
         public int Index { get; init; }
         public string Name { get; init; } = "";
+        public bool DamageIsEditable { get; init; }
+        /// <summary>Name annotated so the grid shows which spells have live damage.</summary>
+        public string DisplayName => DamageIsEditable ? Name + "  \u2605" : Name;
         public string Energy { get; set; } = "";
         public string PerSecond { get; set; } = "";
-        public string RangeMin { get; set; } = "";
-        public string RangeMax { get; set; } = "";
-        public string R { get; set; } = "";
-        public string G { get; set; } = "";
-        public string B { get; set; } = "";
+        public string DamageMin { get; set; } = "";
+        public string DamageMax { get; set; } = "";
+        public string GlowR { get; set; } = "";
+        public string GlowG { get; set; } = "";
+        public string GlowB { get; set; } = "";
+        public string LightR { get; set; } = "";
+        public string LightG { get; set; } = "";
+        public string LightB { get; set; } = "";
+        public string Coefficient { get; set; } = "";
     }
 
     private readonly BgdaExecutable _exe;
@@ -84,13 +91,18 @@ public partial class ExecutableEditorWindow : Window
         {
             Index = f.Index,
             Name = f.Name,
+            DamageIsEditable = f.DamageIsEditable,
             Energy = FormatEnergy(f.EnergyCost),
             PerSecond = f.EnergyPerSecond.ToString("0.##"),
-            RangeMin = f.DisplayMin.ToString(),
-            RangeMax = f.DisplayMax.ToString(),
-            R = f.ColorR.ToString(),
-            G = f.ColorG.ToString(),
-            B = f.ColorB.ToString()
+            DamageMin = f.DamageMin.ToString(),
+            DamageMax = f.DamageMax.ToString(),
+            GlowR = f.GlowR.ToString(),
+            GlowG = f.GlowG.ToString(),
+            GlowB = f.GlowB.ToString(),
+            LightR = f.LightR.ToString(),
+            LightG = f.LightG.ToString(),
+            LightB = f.LightB.ToString(),
+            Coefficient = FormatEnergy(f.Coefficient)
         }).ToList();
         featGrid.ItemsSource = _featRows;
     }
@@ -175,22 +187,35 @@ public partial class ExecutableEditorWindow : Window
                 throw new ArgumentException($"{row.Name}: energy '{row.Energy}' is not a number.");
             _exe.SetFeatEnergy(row.Index, energy); // validates 0..1000
 
-            if (!int.TryParse(row.RangeMin?.Trim(), out var min) ||
-                !int.TryParse(row.RangeMax?.Trim(), out var max))
+            if (!int.TryParse(row.DamageMin?.Trim(), out var min) ||
+                !int.TryParse(row.DamageMax?.Trim(), out var max))
             {
-                throw new ArgumentException($"{row.Name}: range values must be whole numbers.");
+                throw new ArgumentException($"{row.Name}: damage values must be whole numbers.");
             }
 
-            _exe.SetFeatRange(row.Index, min, max); // validates min <= max
+            _exe.SetFeatRange(row.Index, min, max); // validates 0..65535 (no max>=min: see library)
 
-            if (!int.TryParse(row.R?.Trim(), out var r) ||
-                !int.TryParse(row.G?.Trim(), out var g) ||
-                !int.TryParse(row.B?.Trim(), out var b))
+            if (!int.TryParse(row.GlowR?.Trim(), out var gr) ||
+                !int.TryParse(row.GlowG?.Trim(), out var gg) ||
+                !int.TryParse(row.GlowB?.Trim(), out var gb))
             {
-                throw new ArgumentException($"{row.Name}: colour channels must be whole numbers.");
+                throw new ArgumentException($"{row.Name}: glow colour channels must be whole numbers.");
             }
 
-            _exe.SetFeatColor(row.Index, r, g, b); // validates 0..255
+            _exe.SetFeatGlow(row.Index, gr, gg, gb); // validates 0..255
+
+            if (!int.TryParse(row.LightR?.Trim(), out var lr) ||
+                !int.TryParse(row.LightG?.Trim(), out var lg) ||
+                !int.TryParse(row.LightB?.Trim(), out var lb))
+            {
+                throw new ArgumentException($"{row.Name}: light colour channels must be whole numbers.");
+            }
+
+            _exe.SetFeatLight(row.Index, lr, lg, lb); // validates 0..65535
+
+            if (!float.TryParse(row.Coefficient?.Trim(), out var coef))
+                throw new ArgumentException($"{row.Name}: coefficient '{row.Coefficient}' is not a number.");
+            _exe.SetFeatCoefficient(row.Index, coef); // validates 0..1000
         }
     }
 }
