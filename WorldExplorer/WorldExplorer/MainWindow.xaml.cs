@@ -840,4 +840,24 @@ public partial class MainWindow : Window
 
         new ExecutableEditorWindow(exe) { Owner = this }.ShowDialog();
     }
+         private void MenuEditSaveClick(object sender, RoutedEventArgs e)
+     {
+         var open = new Microsoft.Win32.OpenFileDialog
+         {
+             Title  = "Open a BGDA PS2 save export (.psu)",
+             Filter = "PS2 Save Export|*.psu|All Files|*.*"
+         };
+         if (open.ShowDialog(this) != true) return;
+
+         var save = JetBlackEngineLib.Data.Save.BgdaSave.Open(open.FileName);
+         if (save.GetSlots().Count == 0)
+         {
+             MessageBox.Show(this,
+                 "No BGDA save slots found in this file. Expected a .psu export of a " +
+                 "BESLES-50672 save.", "Unsupported file",
+                 MessageBoxButton.OK, MessageBoxImage.Warning);
+             return;
+         }
+         new SaveEditorWindow(save) { Owner = this }.ShowDialog();
+     }
 }
