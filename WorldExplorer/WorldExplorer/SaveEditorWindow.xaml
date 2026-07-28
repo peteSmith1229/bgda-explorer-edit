@@ -1,26 +1,59 @@
 <Window x:Class="WorldExplorer.SaveEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Edit Save (Difficulty)" Height="360" Width="560"
+        Title="Edit Save (.psu)" Height="440" Width="1100"
         WindowStartupLocation="CenterOwner">
     <DockPanel Margin="10">
-        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,10"
-                   Text="Edit the difficulty of each save slot in a PS2 memory-card export (.psu). Difficulty is per character/save. Save writes a modified .psu — keep a backup of your original card. Re-import the .psu to your memory card with your card-transfer tool." />
+        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,8"
+                   Text="Edit a PS2 memory-card export (.psu). Changes are written to a new file — keep a backup of your original card, then re-import with your card-transfer tool." />
 
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
             <Button Content="Save As…" Width="100" Margin="0,0,8,0" Click="SaveAs_Click" />
             <Button Content="Close" Width="90" IsCancel="True" />
         </StackPanel>
 
-        <DataGrid x:Name="slotGrid" AutoGenerateColumns="False" CanUserAddRows="False"
-                  HeadersVisibility="Column" RowHeight="30">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Slot" Binding="{Binding SlotNumber}" IsReadOnly="True" Width="55" />
-                <DataGridTextColumn Header="Character" Binding="{Binding CharacterName}" IsReadOnly="True" Width="140" />
-                <DataGridTextColumn Header="Level" Binding="{Binding LevelName}" IsReadOnly="True" Width="120" />
-                <DataGridComboBoxColumn x:Name="difficultyColumn" Header="Difficulty" Width="*"
-                                        SelectedItemBinding="{Binding DifficultyText, Mode=TwoWay}" />
-            </DataGrid.Columns>
-        </DataGrid>
+        <TabControl>
+            <TabItem Header="Difficulty">
+                <DataGrid x:Name="slotGrid" AutoGenerateColumns="False" CanUserAddRows="False"
+                          HeadersVisibility="Column" RowHeight="30" Margin="0,8,0,0">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Slot" Binding="{Binding SlotNumber}" IsReadOnly="True" Width="55" />
+                        <DataGridTextColumn Header="Character" Binding="{Binding CharacterName}" IsReadOnly="True" Width="140" />
+                        <DataGridTextColumn Header="Level" Binding="{Binding LevelName}" IsReadOnly="True" Width="120" />
+                        <DataGridComboBoxColumn x:Name="difficultyColumn" Header="Difficulty" Width="*"
+                                                SelectedItemBinding="{Binding DifficultyText, Mode=TwoWay}" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <TabItem Header="Character">
+                <DockPanel Margin="0,8,0,0">
+                    <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,6"
+                               Foreground="#555"
+                               Text="Ability scores persist through a load (confirmed in-game). Each score is stored three times - base (original rolled score), current (effective, including points you spent and equipment), and display - and all three are written so the value you enter becomes both. Level 1-16, scores 1-99.&#10;HP/MP are read-only: the engine derives them on load as level x (class base + CON modifier) — e.g. level 5, CON 14 gives 70 HP. Raise CON or Level to raise HP.&#10;NOTE: raising Level grants ability points (one per 4 levels) but does NOT grant feat points - those come from the runtime level-up routine. Set Feat Pts directly if you want them." />
+                    <DataGrid x:Name="characterGrid" AutoGenerateColumns="False" CanUserAddRows="False"
+                              HeadersVisibility="Column" RowHeight="28">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Slot"   Binding="{Binding SlotNumber}"   IsReadOnly="True" Width="45" />
+                            <DataGridTextColumn Header="Name"   Binding="{Binding Name}"         IsReadOnly="True" Width="95" />
+                            <DataGridTextColumn Header="Level"  Binding="{Binding LevelText, Mode=TwoWay}"  Width="55" />
+                            <DataGridTextColumn Header="XP"     Binding="{Binding XpText, Mode=TwoWay}"     Width="75" />
+                            <DataGridTextColumn Header="STR"    Binding="{Binding StrText, Mode=TwoWay}"    Width="50" />
+                            <DataGridTextColumn Header="INT"    Binding="{Binding IntText, Mode=TwoWay}"    Width="50" />
+                            <DataGridTextColumn Header="WIS"    Binding="{Binding WisText, Mode=TwoWay}"    Width="50" />
+                            <DataGridTextColumn Header="DEX"    Binding="{Binding DexText, Mode=TwoWay}"    Width="50" />
+                            <DataGridTextColumn Header="CON"    Binding="{Binding ConText, Mode=TwoWay}"    Width="50" />
+                            <DataGridTextColumn Header="CHA"    Binding="{Binding ChaText, Mode=TwoWay}"    Width="50" />
+                            <DataGridTextColumn Header="HP"     Binding="{Binding HpCurrentText}" IsReadOnly="True" Width="60" />
+                            <DataGridTextColumn Header="HP Max" Binding="{Binding HpMaxText}" IsReadOnly="True"  Width="65" />
+                            <DataGridTextColumn Header="MP"     Binding="{Binding MpCurrentText}" IsReadOnly="True" Width="60" />
+                            <DataGridTextColumn Header="MP Max" Binding="{Binding MpMaxText}" IsReadOnly="True"  Width="65" />
+                            <DataGridTextColumn Header="Gold"   Binding="{Binding GoldText, Mode=TwoWay}"   Width="80" />
+                            <DataGridTextColumn Header="Feat Pts" Binding="{Binding FeatPointsText, Mode=TwoWay}" Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+        </TabControl>
     </DockPanel>
 </Window>
