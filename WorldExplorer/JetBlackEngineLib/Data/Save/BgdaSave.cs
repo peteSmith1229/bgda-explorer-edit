@@ -102,6 +102,35 @@ public sealed class BgdaCharacter
     public uint FeatPoints { get; init; }
 }
 
+/// <summary>
+/// One enemy instance found in the save's serialised object array.
+/// HP is editable; alive/dead state is NOT (see BgdaSave.SetEnemyHp).
+/// </summary>
+public sealed class BgdaEnemy
+{
+    public int SlotNumber { get; init; }
+    /// <summary>Record offset within the save region (reference/diagnostics).</summary>
+    public int RecordOffset { get; init; }
+    /// <summary>Record length. A dead enemy's record is 4 bytes longer than a live one.</summary>
+    public int RecordLength { get; init; }
+    /// <summary>Absolute file offset of the HP u16 (record end - 2).</summary>
+    public int HpFileOffset { get; init; }
+    public uint TypeId { get; init; }
+    public string TypeName { get; init; } = "";
+    public float X { get; init; }
+    public float Y { get; init; }
+    public float Z { get; init; }
+    /// <summary>Current HP (u16). Difficulty-scaled - see BgdaSave remarks.</summary>
+    public ushort Hp { get; init; }
+    /// <summary>
+    /// State byte at record_end-4. Non-zero on an enemy killed in this save.
+    /// Read-only: reviving requires resizing the record, which corrupts the level.
+    /// </summary>
+    public byte StateByte { get; init; }
+
+    public bool IsDead => StateByte != 0 || Hp == 0;
+}
+
 public class BgdaSave
 {
     // ── save-region layout ──────────────────────────────────────────────────────
@@ -261,6 +290,133 @@ public class BgdaSave
             throw new ArgumentException($"Feat points must be 0-{MaxFeatPoints}.");
         BitConverter.GetBytes(points).CopyTo(_data, RequireStructBase(slotNumber) + OffFeatPoints);
     }
+
+    // ── enemy enumeration + HP editing ──────────────────────────────────────────
+    // The save's object array is a chain of variable-length records:
+    //     +0x00 u32 type-id | +0x04 u16 record length | +0x06 u16 instance handle
+    //     +0x08/+0x0C/+0x10 float X/Y/Z | ... | trailing state block
+    //
+    // CRITICAL: the trailing block is addressed from the END of the record, because
+    // record lengths vary (0x1C..0x30+). The engine's deserialiser (0x0011DA48) reads:
+    //     record_end - 8 : u32 -> entity +0x17C
+    //     record_end - 4 : u8  -> entity +0x172  (state; non-zero on a dead enemy)
+    //     record_end - 2 : u16 -> entity +0x15A  (HP)
+    //
+    // Verified in-game: editing the HP field changes enemy health (confirmed on both
+    // Kobolds and Rats). Enemy HP is a 16-bit INTEGER - the player's is a 32-bit float.
+    private const int ObjectArrayScanStart = 0x8000;
+    private const int ObjectArrayScanEnd   = 0x1A000;
+    private const int MinRecordLength      = 0x10;
+    private const int MaxRecordLength      = 0x80;
+    private const uint MaxTypeId           = 0x3FF;
+
+    public const ushort MinEnemyHp = 1;
+    public const ushort MaxEnemyHp = 9999;
+
+    /// <summary>
+    /// Enemy type-ids, confirmed against an in-game census of CELLAR1.GOB
+    /// (34 rats / 15 kobolds / 3 spiders) matching exactly.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<uint, string> EnemyTypeNames =
+        new Dictionary<uint, string>
+        {
+            { 664, "Rat" },
+            { 198, "Kobold" },
+            { 327, "Spider" }
+        };
+
+    /// <summary>
+    /// Walks the object-record chain. On a malformed header it resyncs by stepping
+    /// 4 bytes rather than stopping - a strict walk halts early and misses over half
+    /// the enemies. Enemy counts are stable across start offsets with this approach.
+    /// </summary>
+    private List<(int Offset, uint TypeId, int Length)> WalkRecords(int regionStart)
+    {
+        var recs = new List<(int, uint, int)>();
+        var limit = Math.Min(ObjectArrayScanEnd, _data.Length - regionStart - 8);
+        var off = ObjectArrayScanStart;
+        while (off < limit)
+        {
+            var at = regionStart + off;
+            var typeId = BitConverter.ToUInt32(_data, at);
+            int len = BitConverter.ToUInt16(_data, at + 4);
+            if (len >= MinRecordLength && len <= MaxRecordLength && len % 4 == 0 &&
+                typeId <= MaxTypeId)
+            {
+                recs.Add((off, typeId, len));
+                off += len;
+            }
+            else
+            {
+                off += 4;
+            }
+        }
+        return recs;
+    }
+
+    /// <summary>Enemy instances in one slot, with HP and alive/dead state.</summary>
+    public List<BgdaEnemy> GetEnemies(int slotNumber)
+    {
+        var region = RequireRegion(slotNumber);
+        var list = new List<BgdaEnemy>();
+
+        foreach (var (off, typeId, len) in WalkRecords(region))
+        {
+            if (!EnemyTypeNames.TryGetValue(typeId, out var name)) continue;
+
+            var end = region + off + len;
+            var state = _data[end - 4];
+            var hp = BitConverter.ToUInt16(_data, end - 2);
+
+            var x = BitConverter.ToSingle(_data, region + off + 0x08);
+            var y = BitConverter.ToSingle(_data, region + off + 0x0C);
+            var z = BitConverter.ToSingle(_data, region + off + 0x10);
+            if (!IsPlausibleCoordinate(x) || !IsPlausibleCoordinate(y) ||
+                !IsPlausibleCoordinate(z)) continue;
+
+            list.Add(new BgdaEnemy
+            {
+                SlotNumber   = slotNumber,
+                RecordOffset = off,
+                RecordLength = len,
+                HpFileOffset = end - 2,
+                TypeId       = typeId,
+                TypeName     = name,
+                X = x, Y = y, Z = z,
+                Hp           = hp,
+                StateByte    = state
+            });
+        }
+        return list;
+    }
+
+    public List<BgdaEnemy> GetAllEnemies()
+    {
+        var all = new List<BgdaEnemy>();
+        foreach (var slot in GetSlots()) all.AddRange(GetEnemies(slot.SlotNumber));
+        return all;
+    }
+
+    /// <summary>
+    /// Sets an enemy's HP. In-place 2-byte write - the record is NOT resized, which is
+    /// essential: a dead enemy's record is 4 bytes longer than a live one, and
+    /// resizing records corrupts the level (tested - it removed every object in the
+    /// area). Only edit HP of enemies that are alive.
+    /// </summary>
+    public void SetEnemyHp(BgdaEnemy enemy, ushort hp)
+    {
+        if (hp < MinEnemyHp || hp > MaxEnemyHp)
+            throw new ArgumentException($"Enemy HP must be {MinEnemyHp}-{MaxEnemyHp}.");
+        if (enemy.IsDead)
+            throw new ArgumentException(
+                "Cannot set HP on an enemy that is already dead in this save.");
+        if (enemy.HpFileOffset + 2 > _data.Length)
+            throw new ArgumentException("Enemy record lies outside the file.");
+        BitConverter.GetBytes(hp).CopyTo(_data, enemy.HpFileOffset);
+    }
+
+    private static bool IsPlausibleCoordinate(float v) =>
+        !float.IsNaN(v) && !float.IsInfinity(v) && Math.Abs(v) < 100000f;
 
     public void Save(string path) => File.WriteAllBytes(path, _data);
 

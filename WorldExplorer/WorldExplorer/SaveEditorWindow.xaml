@@ -54,6 +54,25 @@
                     </DataGrid>
                 </DockPanel>
             </TabItem>
+            <TabItem Header="Enemies">
+                <DockPanel Margin="0,8,0,0">
+                    <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,6" Foreground="#555"
+                               Text="Enemy HP can be edited (1-9999). Confirmed in-game on Rats and Kobolds.&#10;IMPORTANT: enemy HP is scaled by the save's difficulty, and randomised per instance. In CELLAR1 a Rat has 1-2 HP on Easy but 31-44 on Extreme, and a Spider 19-20 on Easy but 311-415 on Extreme — so check the Difficulty tab before deciding what a given value means.&#10;Enemies already killed in this save are shown greyed with 'dead' and cannot be edited: reviving requires resizing the record, which corrupts the level." />
+                    <DataGrid x:Name="enemyGrid" AutoGenerateColumns="False" CanUserAddRows="False"
+                              HeadersVisibility="Column" RowHeight="26">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Slot" Binding="{Binding SlotNumber}" IsReadOnly="True" Width="45" />
+                            <DataGridTextColumn Header="Type" Binding="{Binding TypeName}" IsReadOnly="True" Width="80" />
+                            <DataGridTextColumn Header="Type ID" Binding="{Binding TypeId}" IsReadOnly="True" Width="60" />
+                            <DataGridTextColumn Header="HP" Binding="{Binding HpText, Mode=TwoWay}" Width="70" />
+                            <DataGridTextColumn Header="State" Binding="{Binding StateText}" IsReadOnly="True" Width="70" />
+                            <DataGridTextColumn Header="Position" Binding="{Binding Position}" IsReadOnly="True" Width="190" />
+                            <DataGridTextColumn Header="Record" Binding="{Binding RecordText}" IsReadOnly="True" Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
         </TabControl>
     </DockPanel>
 </Window>

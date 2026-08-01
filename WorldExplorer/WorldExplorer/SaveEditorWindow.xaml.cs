@@ -53,11 +53,25 @@ public partial class SaveEditorWindow : Window
         public string FeatPointsText { get; set; } = "";
     }
 
+    public sealed class EnemyRow
+    {
+        /// <summary>The enemy this row came from; used to write HP back.</summary>
+        public BgdaEnemy Source { get; init; } = null!;
+        public int SlotNumber { get; init; }
+        public string TypeName { get; init; } = "";
+        public uint TypeId { get; init; }
+        public string HpText { get; set; } = "";
+        public string StateText { get; init; } = "";
+        public string Position { get; init; } = "";
+        public string RecordText { get; init; } = "";
+    }
+
     private static readonly string[] DifficultyNames = { "Easy", "Normal", "Hard", "Extreme" };
 
     private readonly BgdaSave _save;
     private readonly List<SlotRow> _slotRows;
     private readonly List<CharacterRow> _charRows;
+    private readonly List<EnemyRow> _enemyRows;
 
     public SaveEditorWindow(BgdaSave save)
     {
@@ -95,6 +109,21 @@ public partial class SaveEditorWindow : Window
             FeatPointsText = c.FeatPoints.ToString(CultureInfo.InvariantCulture)
         }).ToList();
         characterGrid.ItemsSource = _charRows;
+
+        _enemyRows = _save.GetAllEnemies().Select(en => new EnemyRow
+        {
+            Source     = en,
+            SlotNumber = en.SlotNumber,
+            TypeName   = en.TypeName,
+            TypeId     = en.TypeId,
+            HpText     = en.Hp.ToString(CultureInfo.InvariantCulture),
+            StateText  = en.IsDead ? "dead" : "alive",
+            Position   = string.Format(CultureInfo.InvariantCulture,
+                             "({0:0.#}, {1:0.#}, {2:0.#})", en.X, en.Y, en.Z),
+            RecordText = string.Format(CultureInfo.InvariantCulture,
+                             "0x{0:X5} len 0x{1:X2}", en.RecordOffset, en.RecordLength)
+        }).ToList();
+        enemyGrid.ItemsSource = _enemyRows;
     }
 
     private static string FormatFloat(float value) =>
@@ -104,11 +133,13 @@ public partial class SaveEditorWindow : Window
     {
         CommitGrid(slotGrid);
         CommitGrid(characterGrid);
+        CommitGrid(enemyGrid);
 
         try
         {
             ApplyDifficulty();
             ApplyCharacters();
+            ApplyEnemies();
         }
         catch (ArgumentException ex)
         {
@@ -166,6 +197,20 @@ public partial class SaveEditorWindow : Window
 
             _save.SetGold(slot, ParseUInt(row.GoldText, slot, "Gold"));
             _save.SetFeatPoints(slot, ParseUInt(row.FeatPointsText, slot, "Feat Points"));
+        }
+    }
+
+    private void ApplyEnemies()
+    {
+        foreach (var row in _enemyRows)
+        {
+            if (row.Source.IsDead) continue;   // dead enemies are not editable
+            if (!ushort.TryParse(row.HpText, NumberStyles.Integer,
+                                 CultureInfo.InvariantCulture, out var hp))
+                throw new ArgumentException(
+                    $"Slot {row.SlotNumber}: {row.TypeName} HP must be a whole number.");
+            if (hp == row.Source.Hp) continue; // unchanged
+            _save.SetEnemyHp(row.Source, hp);
         }
     }
 
