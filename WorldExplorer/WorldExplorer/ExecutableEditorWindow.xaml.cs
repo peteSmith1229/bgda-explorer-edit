@@ -6,6 +6,8 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -55,10 +57,96 @@ public partial class ExecutableEditorWindow : Window
         public string Coefficient { get; set; } = "";
     }
 
+    /// <summary>
+    /// A row in the Monster HP tab. Implements INotifyPropertyChanged so the four
+    /// predicted-HP columns refresh as soon as the user edits the multiplier.
+    /// </summary>
+    public sealed class MonsterRow : INotifyPropertyChanged
+    {
+        // ── HP model, derived from the executable and verified against in-game saves ──
+        //   HP = (rand%6 + 12) x ((f07 + extremeBonus + 2.33) x 0.3) x (f12 x difficulty)
+        // Difficulty dispatch at 0x0010D7C4:
+        //   Easy x0.7 | Normal x1.0 | Hard x1.3 | Extreme x1.3 AND f07 += 30
+        // Predictions using the default f07 (1.0) reproduce measured values exactly for
+        // Kobold (4-5 / 5-8 / 7-11 / 77-110) and closely for SmallSpider. A few monsters
+        // carry a higher f07 (Slime measured 3.0), so estimates for those read low.
+        private const float RollMin = 12f, RollMax = 17f;
+        private const float StatBase = 2.33f, StatScale = 0.3f;
+        private const float ExtremeBonus = 30f, DefaultF07 = 1f;
+        private static readonly float[] DifficultyScale = { 0.7f, 1.0f, 1.3f, 1.3f };
+        // Bosses that write HP directly are scaled by a SEPARATE table (0x0012C930),
+        // where Extreme is 5.0 rather than 1.3. Verified against Eldrith (literal 1500):
+        // measured 1128 / 1508 / 2010 / 7500, the last read exactly from memory.
+        //
+        // That routine also applies a x1.7 CO-OP multiplier when the player count is 2,
+        // stacked on top of the difficulty scalar. Confirmed live: Eldrith in 2-player
+        // Extreme read exactly 12750 = 1500 x 5.0 x 1.7. The columns below show
+        // SINGLE-PLAYER values; multiply by 1.7 for two players.
+        private static readonly float[] BossDifficultyScale = { 0.7f, 1.0f, 1.3f, 5.0f };
+
+        public MonsterHp Source { get; init; } = null!;
+        public string Name { get; init; } = "";
+        public string KindText { get; init; } = "";
+        public string Notes { get; init; } = "";
+
+        private string _multiplier = "";
+        public string Multiplier
+        {
+            get => _multiplier;
+            set
+            {
+                if (_multiplier == value) return;
+                _multiplier = value;
+                OnChanged(nameof(Multiplier));
+                OnChanged(nameof(EasyHp));
+                OnChanged(nameof(NormalHp));
+                OnChanged(nameof(HardHp));
+                OnChanged(nameof(ExtremeHp));
+            }
+        }
+
+        public string EasyHp    => Predict(0);
+        public string NormalHp  => Predict(1);
+        public string HardHp    => Predict(2);
+        public string ExtremeHp => Predict(3);
+
+        private string Predict(int difficulty)
+        {
+            // Bosses write HP straight to the entity, overriding the stat routine, so
+            // the value is the same on every difficulty.
+            if (Source.Kind == MonsterHpKind.DirectHp)
+            {
+                if (!int.TryParse(_multiplier, NumberStyles.Integer,
+                                  CultureInfo.InvariantCulture, out var flat) || flat <= 0)
+                    return "";
+                return ((int)(flat * BossDifficultyScale[difficulty]))
+                       .ToString(CultureInfo.InvariantCulture);
+            }
+
+            if (!float.TryParse(_multiplier, NumberStyles.Float,
+                                CultureInfo.InvariantCulture, out var mult) || mult <= 0f)
+                return "";
+            var f07 = DefaultF07 + (difficulty == 3 ? ExtremeBonus : 0f);
+            var factor = (f07 + StatBase) * StatScale * mult * DifficultyScale[difficulty];
+            var lo = (int)(RollMin * factor);
+            var hi = (int)(RollMax * factor);
+            if (hi < 1) hi = 1;
+            if (lo < 1) lo = 1;
+            return lo == hi ? lo.ToString(CultureInfo.InvariantCulture)
+                            : $"{lo}-{hi}";
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        private void OnChanged(string name) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
+
     private readonly BgdaExecutable _exe;
     private readonly List<XpRow> _xpRows;
     private readonly List<StatRow> _statRows;
     private readonly List<FeatRow> _featRows;
+    private readonly BgdaMonsters _monsters;
+    private readonly List<MonsterRow> _monsterRows;
 
     public ExecutableEditorWindow(BgdaExecutable exe)
     {
@@ -105,6 +193,33 @@ public partial class ExecutableEditorWindow : Window
             Coefficient = FormatEnergy(f.Coefficient)
         }).ToList();
         featGrid.ItemsSource = _featRows;
+
+        _monsters = BgdaMonsters.Open(exe.FilePath);
+        _monsterRows = _monsters.GetMonsters().Select(mon => new MonsterRow
+        {
+            Source     = mon,
+            Name       = mon.Name,
+            Multiplier = mon.Kind == MonsterHpKind.DirectHp
+                ? (mon.DirectHp?.ToString(CultureInfo.InvariantCulture) ?? "")
+                : (mon.Multiplier.HasValue
+                    ? mon.Multiplier.Value.ToString("0.####")
+                    : ""),
+            KindText   = mon.Kind switch
+            {
+                MonsterHpKind.Immediate   => "Editable",
+                MonsterHpKind.DirectHp    => "Editable (HP)",
+                MonsterHpKind.Global      => "Global",
+                _                         => "MultiBranch"
+            },
+            Notes      = mon.Kind switch
+            {
+                MonsterHpKind.Immediate => $"multiplier — patch at 0x{mon.PatchFileOffset:X6}",
+                MonsterHpKind.DirectHp  => $"fixed HP, overrides the formula — patch at 0x{mon.PatchFileOffset:X6}",
+                MonsterHpKind.Global    => "shared global value — read-only here",
+                _                       => $"{mon.BranchCount} runtime branches — read-only here"
+            }
+        }).ToList();
+        monsterGrid.ItemsSource = _monsterRows;
     }
 
     /// <summary>Trims trailing zeros: 10.0 shows as "10", 0.25 stays "0.25".</summary>
@@ -115,12 +230,14 @@ public partial class ExecutableEditorWindow : Window
         CommitGrid(xpGrid);
         CommitGrid(statsGrid);
         CommitGrid(featGrid);
+        CommitGrid(monsterGrid);
 
         try
         {
             ApplyXpEdits();
             ApplyStatEdits();
             ApplyFeatEdits();
+            ApplyMonsterEdits();
         }
         catch (ArgumentException ex)
         {
@@ -137,6 +254,7 @@ public partial class ExecutableEditorWindow : Window
         if (dialog.ShowDialog(this) != true) return;
 
         _exe.Save(dialog.FileName);
+        WriteMonsterEdits(dialog.FileName);
         MessageBox.Show(this,
             "Saved. Replace the executable in your game image with this file " +
             "(keep your original as a backup). Changes affect new characters and future level-ups.",
@@ -148,6 +266,80 @@ public partial class ExecutableEditorWindow : Window
         grid.CommitEdit(DataGridEditingUnit.Cell, true);
         grid.CommitEdit(DataGridEditingUnit.Row, true);
     }
+
+    /// <summary>
+    /// Validates the monster multiplier column. The write itself happens in
+    /// <see cref="WriteMonsterEdits"/> AFTER the executable is saved: BgdaExecutable
+    /// and BgdaMonsters each hold their own copy of the file, so writing both here
+    /// would make one overwrite the other's edits.
+    /// </summary>
+    private void ApplyMonsterEdits()
+    {
+        _monstersChanged = false;
+        foreach (var row in _monsterRows)
+        {
+            if (!row.Source.IsEditable) continue;
+
+            if (row.Source.Kind == MonsterHpKind.DirectHp)
+            {
+                if (!int.TryParse(row.Multiplier, NumberStyles.Integer,
+                                  CultureInfo.InvariantCulture, out var hp))
+                    throw new ArgumentException(
+                        $"{row.Name}: HP must be a whole number.");
+                if (hp < 1 || hp > 65535)
+                    throw new ArgumentException($"{row.Name}: HP must be 1-65535.");
+                if (row.Source.DirectHp != hp) _monstersChanged = true;
+                continue;
+            }
+
+            if (!float.TryParse(row.Multiplier, NumberStyles.Float,
+                                CultureInfo.InvariantCulture, out var value))
+                throw new ArgumentException(
+                    $"{row.Name}: HP multiplier must be a number.");
+            if (value < BgdaMonsters.MinMultiplier || value > BgdaMonsters.MaxMultiplier)
+                throw new ArgumentException(
+                    $"{row.Name}: HP multiplier must be " +
+                    $"{BgdaMonsters.MinMultiplier}-{BgdaMonsters.MaxMultiplier}.");
+            if (row.Source.Multiplier.HasValue &&
+                Math.Abs(value - row.Source.Multiplier.Value) < 1e-6f) continue;
+            _monstersChanged = true;
+        }
+    }
+
+    /// <summary>Re-applies monster edits to the file just written by BgdaExecutable.</summary>
+    private void WriteMonsterEdits(string path)
+    {
+        if (!_monstersChanged) return;
+        var monsters = BgdaMonsters.Open(path);
+        var byName = new Dictionary<(string, int), MonsterHp>();
+        foreach (var mon in monsters.GetMonsters())
+            byName[(mon.Name, mon.PatchFileOffset)] = mon;
+
+        foreach (var row in _monsterRows)
+        {
+            if (!row.Source.IsEditable) continue;
+            if (!byName.TryGetValue((row.Source.Name, row.Source.PatchFileOffset),
+                                    out var target)) continue;
+
+            if (row.Source.Kind == MonsterHpKind.DirectHp)
+            {
+                if (!int.TryParse(row.Multiplier, NumberStyles.Integer,
+                                  CultureInfo.InvariantCulture, out var hp)) continue;
+                if (row.Source.DirectHp == hp) continue;
+                monsters.SetDirectHp(target, hp);
+                continue;
+            }
+
+            if (!float.TryParse(row.Multiplier, NumberStyles.Float,
+                                CultureInfo.InvariantCulture, out var value)) continue;
+            if (row.Source.Multiplier.HasValue &&
+                Math.Abs(value - row.Source.Multiplier.Value) < 1e-6f) continue;
+            monsters.SetMultiplier(target, value, out _);
+        }
+        monsters.Save(path);
+    }
+
+    private bool _monstersChanged;
 
     private void ApplyXpEdits()
     {
