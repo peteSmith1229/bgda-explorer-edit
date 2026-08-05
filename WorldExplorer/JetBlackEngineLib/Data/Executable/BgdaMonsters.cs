@@ -72,6 +72,11 @@ public sealed class MonsterHp
     public int BranchCount { get; init; }
     /// <summary>Literal HP written straight to +0x15A (DirectHp kind only).</summary>
     public int? DirectHp { get; init; }
+    /// <summary>
+    /// Elemental resistance bitmask written to entity +0x3C, or null if the
+    /// constructor sets none. See <see cref="BgdaMonsters.DescribeResistances"/>.
+    /// </summary>
+    public uint? ResistMask { get; init; }
 
     public bool IsEditable =>
         Kind == MonsterHpKind.Immediate || Kind == MonsterHpKind.DirectHp;
@@ -100,6 +105,81 @@ public class BgdaMonsters
     private const uint AddiuA1Mask  = 0xFFFF0000;
     private const uint AddiuA1      = 0x24A50000;   // addiu a1, imm
     private const uint LuiA1        = 0x3C050000;   // lui a1, imm
+
+    // ── elemental resistance (entity +0x3C) ─────────────────────────────────────
+    // The damage dispatcher at 0x0011F838 tests the attack's damage type against this
+    // mask. Each element has a PAIR of bits - one halves damage, one nullifies it:
+    //
+    //     andi v0, s5, <attack type>     ; s5 = the attack's element
+    //     lw   v0, 0x3C(s1)              ; the defender's resistance mask
+    //     andi v1, v0, <resist bit>      ; -> damage >> 1   (0x001207A4)
+    //     andi v0, v0, <immune bit>      ; -> damage  = 0   (0x001207AC movn s4, zero, t0)
+    //
+    // CONFIRMED IN-GAME: FireElemental has 0x8040; bit 0x8000 is the immune bit for
+    // attack type 0x0020. A melee hit passed damage 121, burning hands passed 0.
+    //
+    // Confirmed by in-game A/B tests (melee vs elemental against a creature whose mask
+    // is known):
+    //   0x0020 = fire  - FireElemental (mask 0x8040): melee 121, Burning Hands 0
+    //   0x0400 = cold  - creature with mask 0x2100:   melee   3, Snowblind      0
+    //   0x0080 = lightning - Wisp (mask 0x1000):      melee   2, Lightning Bolt 0
+    //   0x0004 / 0x0008 = the two bladed physical types (slashing + piercing).
+    //   0x0001 = blunt  - club on a Skeleton: s5 = 0x1001, full damage 6
+    //   0x0008 = bladed - dagger, spear AND sword all report s5 = 0x1008 and are
+    //     halved by the Skeleton (mask 0x0105 carries resist bit 0x0004).
+    //     The game does NOT distinguish slashing from piercing - all edged
+    //     weapons share one type.
+    //   0x0004 = ranged/arrows - bow on a Skeleton: s5 = 0x0004, damage halved.
+    //   The 0x1000 bit seen on melee hits (0x1001, 0x1008) is a MELEE marker: a
+    //     bow shot reports a bare 0x0004 with no such flag. It is not part of
+    //     any resistance pair.
+    // Remaining types are unlabelled and reported by number rather than guessed at.
+    private static readonly (uint Attack, uint Immune, uint Resist)[] ResistPairs =
+    {
+        (0x0001u, 0x000020u, 0x000010u),   // blunt (confirmed)
+        (0x0004u, 0x000002u, 0x000001u),   // ranged / arrows (confirmed)
+        (0x0008u, 0x000008u, 0x000004u),   // bladed/edged weapons (confirmed)
+        (0x0020u, 0x008000u, 0x004000u),   // fire (confirmed)
+        (0x0080u, 0x001000u, 0x000800u),   // lightning (confirmed)
+        (0x0200u, 0x000400u, 0x000200u),
+        (0x0400u, 0x000100u, 0x000080u),   // cold (confirmed)
+        (0x40000u, 0x080000u, 0x040000u)
+    };
+    private const uint GenericImmune = 0x020000u;
+    private const uint GenericResist = 0x010000u;
+    private const uint FireAttackType = 0x0020u;
+    private const uint ColdAttackType = 0x0400u;
+    private const uint LightningAttackType = 0x0080u;
+    private const uint BluntAttackType = 0x0001u;
+    private const uint BladedAttackType = 0x0008u;
+    private const uint RangedAttackType = 0x0004u;
+
+    /// <summary>Human-readable description of a +0x3C resistance mask.</summary>
+    public static string DescribeResistances(uint? mask)
+    {
+        if (mask is null || mask.Value == 0) return "";
+        var v = mask.Value;
+        var parts = new List<string>();
+        var known = 0u;
+        foreach (var (attack, immune, resist) in ResistPairs)
+        {
+            var label = attack == FireAttackType ? "fire"
+                      : attack == ColdAttackType ? "cold"
+                      : attack == LightningAttackType ? "lightning"
+                      : attack == BluntAttackType ? "blunt"
+                      : attack == BladedAttackType ? "bladed"
+                      : attack == RangedAttackType ? "ranged"
+                      : $"type 0x{attack:X}";
+            if ((v & immune) != 0) { parts.Add($"immune {label}"); known |= immune; }
+            else if ((v & resist) != 0) { parts.Add($"resist {label}"); known |= resist; }
+        }
+        if ((v & GenericImmune) != 0) { parts.Add("immune magic"); known |= GenericImmune; }
+        else if ((v & GenericResist) != 0) { parts.Add("resist magic"); known |= GenericResist; }
+
+        var leftover = v & ~known;
+        if (leftover != 0) parts.Add($"+unmapped 0x{leftover:X}");
+        return string.Join(", ", parts);
+    }
 
     public const float MinMultiplier = 0.01f;
     public const float MaxMultiplier = 1000f;
@@ -206,6 +286,27 @@ public class BgdaMonsters
 
             MonsterHp? pending = null;
             var calls = 0;
+            uint? resistMask = null;
+
+            // `sw rt, 0x3C(rs)` - the elemental resistance mask
+            for (var a = start; a + 4 <= end; a += 4)
+            {
+                var sw = Word(a);
+                if ((sw >> 26) != 0x2B || (sw & 0xFFFF) != 0x003C) continue;
+                var srt = (sw >> 16) & 0x1F;
+                uint acc = 0; var got = false;
+                for (var b = 1; b <= 7; b++)
+                {
+                    if (a - b * 4 < start) break;
+                    var pw = Word(a - b * 4);
+                    var pop = pw >> 26;
+                    if (((pw >> 16) & 0x1F) != srt) continue;
+                    if (pop == 0x09 && ((pw >> 21) & 0x1F) == 0) { acc |= pw & 0xFFFF; got = true; break; }
+                    if (pop == 0x0D) { acc |= pw & 0xFFFF; got = true; }
+                    if (pop == 0x0F) { acc |= (pw & 0xFFFF) << 16; got = true; break; }
+                }
+                if (got) { resistMask = acc; break; }
+            }
 
             for (var a = start; a + 4 <= end; a += 4)
             {
@@ -225,6 +326,7 @@ public class BgdaMonsters
                         pending = new MonsterHp
                         {
                             Name = name,
+                            ResistMask = resistMask,
                             Kind = MonsterHpKind.Immediate,
                             Multiplier = BitConverter.ToSingle(
                                 BitConverter.GetBytes((pw & 0xFFFF) << 16), 0),
@@ -242,6 +344,7 @@ public class BgdaMonsters
                     pending = new MonsterHp
                     {
                         Name = name,
+                        ResistMask = resistMask,
                         Kind = MonsterHpKind.Global,
                         Multiplier = go >= 0 && go + 4 <= _data.Length
                             ? BitConverter.ToSingle(_data, go) : null,
@@ -273,6 +376,7 @@ public class BgdaMonsters
                     {
                         Name = name,
                         Kind = MonsterHpKind.DirectHp,
+                        ResistMask = resistMask,
                         DirectHp = (int)(pw & 0xFFFF),
                         PatchFileOffset = a - b * 4,
                         ConstructorVa = ctorVa
@@ -287,6 +391,7 @@ public class BgdaMonsters
                 {
                     Name = name,
                     Kind = MonsterHpKind.MultiBranch,
+                    ResistMask = resistMask,
                     ConstructorVa = ctorVa,
                     BranchCount = calls
                 });

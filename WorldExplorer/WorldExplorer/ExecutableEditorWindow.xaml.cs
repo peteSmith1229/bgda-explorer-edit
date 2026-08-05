@@ -87,6 +87,7 @@ public partial class ExecutableEditorWindow : Window
         public MonsterHp Source { get; init; } = null!;
         public string Name { get; init; } = "";
         public string KindText { get; init; } = "";
+        public string Resistances { get; init; } = "";
         public string Notes { get; init; } = "";
 
         private string _multiplier = "";
@@ -204,6 +205,7 @@ public partial class ExecutableEditorWindow : Window
                 : (mon.Multiplier.HasValue
                     ? mon.Multiplier.Value.ToString("0.####")
                     : ""),
+            Resistances = BgdaMonsters.DescribeResistances(mon.ResistMask),
             KindText   = mon.Kind switch
             {
                 MonsterHpKind.Immediate   => "Editable",
