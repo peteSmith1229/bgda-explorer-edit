@@ -82,6 +82,23 @@ public class WorldTexFile
         return null;
     }
 
+    /// <summary>
+    /// Freezes every decoded bitmap held in the cache. A level decoded on a
+    /// worker thread must call this before its textures are used on the UI
+    /// thread: a frozen bitmap can be shared across threads, an unfrozen one
+    /// stays tied to the thread that created it.
+    /// </summary>
+    public void FreezeCachedBitmaps()
+    {
+        foreach (var bitmap in _texMap.Values)
+        {
+            if (!bitmap.IsFrozen && bitmap.CanFreeze)
+            {
+                bitmap.Freeze();
+            }
+        }
+    }
+
     public WriteableBitmap? GetBitmap(int chunkStartOffset, int textureNumber)
     {
         // textureNumber is the byte offset within the chunk to the descriptor.

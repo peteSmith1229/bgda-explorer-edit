@@ -1,4 +1,4 @@
-﻿/*  Copyright (C) 2012 Ian Brown
+/*  Copyright (C) 2012 Ian Brown
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using WorldExplorer.Infrastructure;
+
 namespace WorldExplorer.TreeView;
 
 /// <summary>
@@ -23,11 +25,21 @@ public class GobTreeViewModel : TreeViewItemViewModel
 {
     private readonly World _world;
 
-    public GobTreeViewModel(World world, TreeViewItemViewModel parent)
+    public GobTreeViewModel(World world, TreeViewItemViewModel? parent)
         : base(world.WorldGob?.Name ?? "[ERROR: NO GOB FILE]", parent, true)
     {
         _world = world;
     }
+
+    public World World => _world;
+
+    public override NodeKind Kind => NodeKind.Gob;
+
+    public override string? Detail => _world.WorldGob is { } gob ? Plural.Of(gob.Directory.Count, "archive") : null;
+
+    public override bool IsModified => _world.HasUnsavedChanges();
+
+    protected override bool SearchLoadsChildren => true;
 
     protected override void LoadChildren()
     {

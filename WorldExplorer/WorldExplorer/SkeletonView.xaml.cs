@@ -1,4 +1,4 @@
-﻿/*  Copyright (C) 2012 Ian Brown
+/*  Copyright (C) 2012 Ian Brown
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,6 +16,8 @@
 
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using WorldExplorer.Infrastructure;
 
 namespace WorldExplorer;
 
@@ -27,10 +29,23 @@ public partial class SkeletonView : UserControl
     public SkeletonView()
     {
         InitializeComponent();
+        viewport.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Space && DataContext is SkeletonViewModel vm)
+            {
+                vm.TogglePlay();
+                e.Handled = true;
+            }
+        };
     }
 
     private void playButton_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is SkeletonViewModel vm) vm.TogglePlay();
+    }
+
+    private void Frame_Click(object sender, RoutedEventArgs e)
+    {
+        (Window.GetWindow(this) as MainWindow)?.ResetCamera(ContentView.Skeleton, animate: true);
     }
 }

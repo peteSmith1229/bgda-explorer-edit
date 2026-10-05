@@ -26,222 +26,207 @@ using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using WorldExplorer.Controls;
 using WorldExplorer.DataExporters;
 using WorldExplorer.DataImporters;
 using WorldExplorer.Logging;
 using WorldExplorer.TreeView;
-using Application = System.Windows.Application;
-using ContextMenu = System.Windows.Controls.ContextMenu;
-using MenuItem = System.Windows.Controls.MenuItem;
-using MessageBox  = System.Windows.MessageBox;
-using OpenFileDialog  = Microsoft.Win32.OpenFileDialog;
-using SaveFileDialog  = Microsoft.Win32.SaveFileDialog;
+using FolderBrowserDialog = System.Windows.Forms.FolderBrowserDialog;
 
 namespace WorldExplorer;
 
+/// <summary>
+/// The explorer's right-click menu, plus the archive/entry actions it offers.
+/// The actions are public so the main menu and the Overview page reuse them.
+/// </summary>
 internal class FileTreeViewContextManager
 {
-    // ── original items ────────────────────────────────────────────────────────
-    private readonly MenuItem _logTexData;
-    private readonly MenuItem _logWorldStructure;
     private readonly ContextMenu _menu = new();
-    private readonly MenuItem _saveParsedVifData;
-    private readonly MenuItem _saveRawData;
     private readonly System.Windows.Controls.TreeView _treeView;
     private readonly MainWindow _window;
-    private readonly MenuItem _saveGob;
 
-    // ── new: per-entry actions ────────────────────────────────────────────────
-    private readonly MenuItem _exportAsPng;
-    private readonly MenuItem _exportAsModel;
-    private readonly MenuItem _importTexture;
-    private readonly MenuItem _replaceEntry;
-    private readonly MenuItem _insertReward;
-    private readonly MenuItem _editScriptRewards;
-    private readonly MenuItem _deleteEntry;
+    // The node the menu was opened for.
+    private TreeViewItemViewModel? _target;
 
-    // ── new: per-archive (LmpTree) actions ───────────────────────────────────
-    private readonly MenuItem _addNewEntry;
-    private readonly MenuItem _batchExportTextures;
-    private readonly MenuItem _batchExportAll;
-    private readonly MenuItem _saveArchive;
-
-    // ── separator items ───────────────────────────────────────────────────────
-    private readonly Separator _sep1 = new();
-    private readonly Separator _sep2 = new();
-    private readonly Separator _sep3 = new();
-
-    // ─────────────────────────────────────────────────────────────────────────
-
-    public FileTreeViewContextManager(MainWindow window,
-                                      System.Windows.Controls.TreeView treeView)
+    public FileTreeViewContextManager(MainWindow window, System.Windows.Controls.TreeView treeView)
     {
-        _window   = window;
+        _window = window;
         _treeView = treeView;
         _treeView.ContextMenu = _menu;
-        _treeView.ContextMenuOpening += MenuOnContextMenuOpening;
-
-        // ── original items ────────────────────────────────────────────────
-        _saveRawData      = AddItem("Save Raw Data",    SaveRawDataClicked);
-        _saveParsedVifData = AddItem("Save Parsed Data", SaveParsedDataClicked);
-        _logTexData       = AddItem("Log .TEX Data",    LogTexDataClicked);
-        _logWorldStructure = AddItem("Log World Structure", LogWorldStructureClicked);
-
-        // ── separator ────────────────────────────────────────────────────
-        _menu.Items.Add(_sep1);
-
-        // ── per-entry export shortcuts ────────────────────────────────────
-        _exportAsPng   = AddItem("Export Entry as PNG",       ExportAsPngClicked);
-        _exportAsModel = AddItem("Export Entry as GLTF/OBJ…", ExportAsModelClicked);
-        _importTexture = AddItem("Import Texture (PNG→TEX)…", ImportTextureClicked);
-
-        // ── separator ────────────────────────────────────────────────────
-        _menu.Items.Add(_sep2);
-
-        // ── per-entry edit actions ────────────────────────────────────────
-        _replaceEntry  = AddItem("Replace Entry…", ReplaceEntryClicked);
-        _insertReward = AddItem("Insert Reward at Call Site…", InsertRewardClicked);
-        _editScriptRewards = AddItem("Edit Script Rewards…", EditScriptRewardsClicked);
-        _deleteEntry   = AddItem("Delete Entry",   DeleteEntryClicked);
-
-        // ── separator ────────────────────────────────────────────────────
-        _menu.Items.Add(_sep3);
-
-        // ── per-archive actions ───────────────────────────────────────────
-        _addNewEntry        = AddItem("Add New Entry…",              AddNewEntryClicked);
-        _batchExportTextures = AddItem("Batch Export All Textures…", BatchExportTexturesClicked);
-        _batchExportAll     = AddItem("Batch Export All Entries…",   BatchExportAllClicked);
-        _saveArchive        = AddItem("Save Archive…",               SaveArchiveClicked);
-        _saveGob            = AddItem("Save GOB…", SaveGobClicked);
+        _treeView.ContextMenuOpening += OnContextMenuOpening;
     }
 
+    private MainWindowViewModel ViewModel => _window.ViewModel;
+
     // ─────────────────────────────────────────────────────────────────────────
-    // Visibility wiring
+    // Menu construction
     // ─────────────────────────────────────────────────────────────────────────
 
-    private void MenuOnContextMenuOpening(object sender, ContextMenuEventArgs e)
+    private void OnContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
-        var child = GetTreeViewItemFromPoint(_treeView, Mouse.GetPosition(_treeView));
-        if (child == null) { e.Handled = true; return; }
-
-        var dataContext = child.DataContext;
-        _menu.DataContext = null;
-
-        // Default: hide everything new, show Save Raw Data
-        SetVisibility(Visibility.Visible,
-            _saveRawData);
-        SetVisibility(Visibility.Collapsed,
-            _saveParsedVifData, _logTexData,
-            _sep1, _exportAsPng, _exportAsModel, _importTexture,
-            _sep2, _replaceEntry, _deleteEntry,
-            _sep3, _addNewEntry, _batchExportTextures, _batchExportAll, _saveArchive, _saveGob, _editScriptRewards,
-            _insertReward);
-
-        switch (dataContext)
+        // Opened with the mouse: the row under the cursor (right-click also
+        // selects it). From the keyboard: the selected row.
+        var item = GetTreeViewItemFromPoint(_treeView, Mouse.GetPosition(_treeView));
+        _target = (item?.DataContext ?? _treeView.SelectedItem) as TreeViewItemViewModel;
+        if (_target == null)
         {
-            // ── individual entry inside an LMP / CLP ───────────────────────
-            case LmpEntryTreeViewModel lmpEntry:
-            {
-                var ext = (Path.GetExtension(lmpEntry.Label) ?? "").ToUpperInvariant();
+            e.Handled = true;
+            return;
+        }
 
-                // Parsed VIF data
-                if (ext == ".VIF")
-                    _saveParsedVifData.Visibility = Visibility.Visible;
-                
-                _insertReward.Visibility =
-                    lmpEntry.Label.EndsWith(".scr", StringComparison.OrdinalIgnoreCase)
-                        ? Visibility.Visible : Visibility.Collapsed;
-                
-                _editScriptRewards.Visibility =
-                    lmpEntry.Label.EndsWith(".scr", StringComparison.OrdinalIgnoreCase)
-                        ? Visibility.Visible : Visibility.Collapsed;
+        _menu.Items.Clear();
+        BuildItems(_target);
 
-                // Export shortcuts
-                _sep1.Visibility = Visibility.Visible;
-                if (ext == ".TEX" || ext == ".ETEX") 
-                    _importTexture.Visibility = Visibility.Visible;
-                if (ext == ".TEX" || ext == ".ETEX") 
-                    _exportAsPng.Visibility = Visibility.Visible;
-                if (ext is ".VIF")
-                    _exportAsModel.Visibility = Visibility.Visible;
-
-                // Edit actions — only for plain LmpFile, not CLP
-                if (lmpEntry.LmpFileProperty is not ClpFile)
-                {
-                    _sep2.Visibility     = Visibility.Visible;
-                    _replaceEntry.Visibility = Visibility.Visible;
-                    _deleteEntry.Visibility  = Visibility.Visible;
-                }
-
-                _menu.DataContext = lmpEntry;
-                break;
-            }
-
-            // ── LMP file node ──────────────────────────────────────────────
-            case LmpTreeViewModel lmpTree:
-            {
-                var isInGob = lmpTree.Parent is GobTreeViewModel;
-
-                _sep3.Visibility            = Visibility.Visible;
-                _batchExportTextures.Visibility = Visibility.Visible;
-                _batchExportAll.Visibility      = Visibility.Visible;
-
-                if (isInGob)
-                {
-                    // Editing individual LMP entries is already handled; here we offer
-                    // saving the whole GOB so the modified offsets stay consistent.
-                    _saveGob.Visibility = Visibility.Visible;
-                }
-                else if (lmpTree.LmpFileProperty is not ClpFile)
-                {
-                    // Standalone LMP (not embedded in a GOB).
-                    _addNewEntry.Visibility  = Visibility.Visible;
-                    _saveArchive.Visibility  = Visibility.Visible;
-                }
-
-                _menu.DataContext = lmpTree;
-                break;
-            }
-
-            // ── .world files ───────────────────────────────────────────────
-            case WorldFileTreeViewModel:
-                _logTexData.Visibility        = Visibility.Visible;
-                _logWorldStructure.Visibility = Visibility.Visible;
-                _menu.DataContext             = dataContext;
-                break;
-
-            // ── world element cells ────────────────────────────────────────
-            case WorldElementTreeViewModel worldElement:
-                _saveRawData.Visibility      = Visibility.Collapsed;
-                _saveParsedVifData.Visibility = Visibility.Visible;
-                _menu.DataContext             = worldElement;
-                break;
-
-            default:
-                e.Handled = true;
-                return;
+        if (_menu.Items.Count == 0)
+        {
+            e.Handled = true;
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private MenuItem AddItem(string text, RoutedEventHandler clickHandler)
+    private void BuildItems(TreeViewItemViewModel node)
     {
-        MenuItem item = new() { Header = text };
-        item.Click += clickHandler;
-        _menu.Items.Add(item);
-        return item;
+        switch (node)
+        {
+            case LmpEntryTreeViewModel entry:
+                BuildEntryItems(entry);
+                break;
+            case WorldFileTreeViewModel worldFile:
+                Add("Log World Structure", "Icon.View.Details", () => LogWorldStructure(worldFile));
+                if (!ViewModel.IsDarkAlliance)
+                {
+                    // Dark Alliance level textures don't use this table layout.
+                    Add("Log .TEX Data", "Icon.View.Texture", LogTexData);
+                }
+                AddSeparator();
+                Add("Save Raw Data…", "Icon.Save", () => SaveRawData(worldFile));
+                break;
+            case WorldElementTreeViewModel element:
+                Add("Save Parsed VIF Data…", "Icon.Save", () => SaveParsedElementData(element));
+                break;
+            case LmpTreeViewModel archive:
+                BuildArchiveItems(archive);
+                break;
+            case GobTreeViewModel:
+                if (ViewModel.World?.WorldGob is { } gob)
+                {
+                    Add("Save GOB…", "Icon.Save", () => _window.SaveGob());
+                    AddSeparator();
+                    Add("Export All Textures as PNG…", "Icon.Export", () => BatchExportTextures(gob));
+                }
+                break;
+        }
+
+        AddSeparator();
+        Add("Copy Name", "Icon.Copy", () => CopyName(node));
+        RemoveTrailingSeparators();
     }
 
-    private static void SetVisibility(Visibility v, params UIElement[] items)
+    private void BuildEntryItems(LmpEntryTreeViewModel entry)
     {
-        foreach (var item in items) item.Visibility = v;
+        var editable = entry.LmpFileProperty is not ClpFile;
+
+        switch (entry.Kind)
+        {
+            case NodeKind.Texture:
+                Add("Export as PNG…", "Icon.Export", () => ExportTexturePng(entry));
+                if (editable)
+                {
+                    Add("Import PNG…", "Icon.Import", () => ImportTexture(entry));
+                }
+                AddSeparator();
+                break;
+            case NodeKind.Model:
+                Add("Export Model (glTF / OBJ)…", "Icon.Export", () => ExportModel(entry));
+                Add("Save Parsed VIF Data…", "Icon.Save", () => SaveParsedVifData(entry));
+                AddSeparator();
+                break;
+            case NodeKind.Script when ViewModel.IsDarkAlliance && editable:
+                // Reward patching follows the Dark Alliance script calling convention.
+                Add("Edit Script Rewards…", "Icon.Kind.Script", () => EditScriptRewards(entry));
+                Add("Insert Reward at Call Site…", "Icon.Add", () => InsertReward(entry));
+                AddSeparator();
+                break;
+        }
+
+        Add("Save Raw Data…", "Icon.Save", () => SaveRawData(entry));
+
+        if (editable)
+        {
+            AddSeparator();
+            Add("Replace with File…", "Icon.Replace", () => ReplaceEntry(entry));
+            if (entry.IsDeleted)
+            {
+                Add("Restore Entry", "Icon.Undo", () => RestoreEntry(entry));
+            }
+            else
+            {
+                Add("Delete Entry", "Icon.Delete", () => DeleteEntry(entry));
+            }
+        }
+    }
+
+    private void BuildArchiveItems(LmpTreeViewModel archive)
+    {
+        var lmp = archive.LmpFileProperty;
+        var inGob = archive.Parent is GobTreeViewModel;
+
+        if (lmp is not ClpFile)
+        {
+            if (inGob)
+            {
+                Add("Save GOB…", "Icon.Save", () => _window.SaveGob());
+            }
+            Add(inGob ? "Save This Archive As .LMP…" : "Save Archive…", "Icon.Save",
+                () => _window.SaveArchive(lmp));
+            if (!inGob)
+            {
+                Add("Add Entry…", "Icon.Add", () => AddEntry(lmp));
+            }
+            AddSeparator();
+        }
+
+        Add("Export All Textures as PNG…", "Icon.Export", () => BatchExportTextures(lmp));
+        Add("Export All Entries…", "Icon.Export", () => BatchExportAll(lmp));
+    }
+
+    private void Add(string header, string iconKey, Action action)
+    {
+        var item = new MenuItem
+        {
+            Header = header,
+            Icon = new GeometryIcon { Data = _window.TryFindResource(iconKey) as Geometry }
+        };
+        item.Click += (_, _) =>
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                ViewModel.ShowFailure($"{header.TrimEnd('…')} failed", ex);
+            }
+        };
+        _menu.Items.Add(item);
+    }
+
+    private void AddSeparator()
+    {
+        if (_menu.Items.Count > 0 && _menu.Items[^1] is not Separator)
+        {
+            _menu.Items.Add(new Separator());
+        }
+    }
+
+    private void RemoveTrailingSeparators()
+    {
+        while (_menu.Items.Count > 0 && _menu.Items[^1] is Separator)
+        {
+            _menu.Items.RemoveAt(_menu.Items.Count - 1);
+        }
     }
 
     private static TreeViewItem? GetTreeViewItemFromPoint(UIElement treeView, Point point)
@@ -253,657 +238,403 @@ internal class FileTreeViewContextManager
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Click handlers — original
+    // Helpers
     // ─────────────────────────────────────────────────────────────────────────
 
-    #region Original click handlers
-
-    private void SaveRawDataClicked(object sender, RoutedEventArgs e)
+    /// <summary>The entry's current bytes: the pending edit if there is one, else the original.</summary>
+    /// <summary>
+    /// The entry's current bytes (pending edit or original) as a private copy:
+    /// some editors patch in place, and a pending edit's array must never
+    /// change under it (unsaved-change tracking compares arrays by identity).
+    /// </summary>
+    private static byte[] GetEntryBytes(LmpFile lmp, string entryName)
     {
-        switch (_menu.DataContext)
-        {
-            case LmpTreeViewModel lmpItem:
-            {
-                var lmpFile = lmpItem.LmpFileProperty;
-                PromptToSaveData(lmpItem.Label, saveFilePath =>
-                {
-                    using FileStream stream = new(saveFilePath, FileMode.Create);
-                    stream.Write(lmpFile.FileData, 0, lmpFile.FileData.Length);
-                    stream.Flush();
-                });
-                break;
-            }
-
-            case LmpEntryTreeViewModel lmpEntry:
-                SaveLmpEntryData(lmpEntry.LmpFileProperty, lmpEntry.Label);
-                break;
-
-            case WorldFileTreeViewModel tvm:
-                SaveLmpEntryData(tvm.LmpFileProperty, tvm.Label);
-                break;
-
-            case WorldElementTreeViewModel:
-                MessageBox.Show(
-                    "Saving raw world element data is not supported due to the " +
-                    "scattered layout of the data.",
-                    "Error");
-                break;
-        }
+        if (lmp.PendingEdits.TryGetValue(entryName, out var pending)) return (byte[])pending.Clone();
+        var entry = lmp.Directory[entryName];
+        var bytes = new byte[entry.Length];
+        Buffer.BlockCopy(lmp.FileData, entry.StartOffset, bytes, 0, entry.Length);
+        return bytes;
     }
 
-    private void SaveLmpEntryData(LmpFile lmpFile, string entryName)
+    private static string? PickFolder(string description)
     {
-        var entry = lmpFile.Directory[entryName];
-        PromptToSaveData(entryName, saveFilePath =>
-        {
-            using FileStream stream = new(saveFilePath, FileMode.Create);
-            stream.Write(lmpFile.FileData, entry.StartOffset, entry.Length);
-            stream.Flush();
-        });
+        using var dialog = new FolderBrowserDialog { Description = description, UseDescriptionForTitle = true };
+        return dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK ? dialog.SelectedPath : null;
     }
 
-    private void SaveParsedDataClicked(object sender, RoutedEventArgs e)
+    private string? PromptSavePath(string fileName, string filter = "All Files|*.*")
     {
-        switch (_menu.DataContext)
-        {
-            case LmpEntryTreeViewModel lmpEntry:
-            {
-                var lmpFile = lmpEntry.LmpFileProperty;
-                var entry   = lmpFile.Directory[lmpEntry.Label];
-
-                if (!lmpEntry.Label.EndsWith(".vif", StringComparison.OrdinalIgnoreCase))
-                {
-                    MessageBox.Show("Not a .vif file!", "Error");
-                    return;
-                }
-
-                PromptToSaveVifData(lmpEntry.Label + ".txt", () =>
-                {
-                    var texEntry =
-                        lmpFile.Directory[
-                            Path.GetFileNameWithoutExtension(lmpEntry.Label) + ".tex"];
-                    var texData = lmpFile.FileData.AsSpan()
-                        .Slice(texEntry.StartOffset, texEntry.Length);
-                    var tex    = TexDecoder.Decode(texData);
-                    var vifData = lmpFile.FileData.AsSpan()
-                        .Slice(entry.StartOffset, entry.Length);
-                    return VifDecoder.DecodeChunks(
-                        NullLogger.Instance,
-                        vifData,
-                        tex?.PixelWidth  ?? 0,
-                        tex?.PixelHeight ?? 0);
-                });
-                break;
-            }
-
-            case WorldElementTreeViewModel itemModel:
-            {
-                var lmpFile = (itemModel.Parent as LmpTreeViewModel)?.LmpFileProperty;
-                var element = itemModel.WorldElement;
-                if (lmpFile == null || element.DataInfo == null) return;
-
-                PromptToSaveVifData(itemModel.Label + ".txt", () =>
-                {
-                    var vifData = lmpFile.FileData.AsSpan().Slice(
-                        element.DataInfo.VifDataOffset,
-                        element.DataInfo.VifDataOffset + element.DataInfo.VifDataLength);
-                    return VifDecoder.ReadVerts(NullLogger.Instance, vifData);
-                });
-                break;
-            }
-        }
+        var dialog = new SaveFileDialog { FileName = fileName, Filter = filter };
+        return dialog.ShowDialog(_window) == true ? dialog.FileName : null;
     }
 
-    private void LogTexDataClicked(object sender, RoutedEventArgs e)
+    private void EditApplied()
     {
-        var engineVersion = App.Settings.Get<EngineVersion>("Core.EngineVersion");
-        if (EngineVersion.DarkAlliance == engineVersion)
+        _window.UpdateTitle();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Export
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public void ExportTexturePng(LmpEntryTreeViewModel entry)
+    {
+        var bitmap = TexDecoder.Decode(GetEntryBytes(entry.LmpFileProperty, entry.Label));
+        if (bitmap == null)
         {
-            MessageBox.Show(_window, "Not supported for Dark Alliance files.",
-                "Error", MessageBoxButton.OK);
+            ViewModel.Notifications.Warning("Couldn't decode texture", entry.Label);
             return;
         }
 
-        var worldTex = _window.ViewModel.World?.WorldTex;
+        var path = PromptSavePath(Path.GetFileNameWithoutExtension(entry.Label) + ".png", "PNG Image|*.png");
+        if (path == null) return;
+
+        using (var stream = new FileStream(path, FileMode.Create))
+        {
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            encoder.Save(stream);
+        }
+
+        ViewModel.Notifications.Success("Texture exported", path);
+    }
+
+    public void ExportModel(LmpEntryTreeViewModel entry)
+    {
+        // Right-click selects the row, so the model is already decoded.
+        if (!ReferenceEquals(ViewModel.SelectedNode, entry) || ViewModel.TheModelViewModel.VifModel == null)
+        {
+            ViewModel.Notifications.Info("Select the model first",
+                "The model is exported as it is shown in the Model view.");
+            return;
+        }
+
+        ViewModel.TheModelViewModel.ShowExportForPosedModel();
+    }
+
+    public void SaveRawData(TreeViewItemViewModel node)
+    {
+        switch (node)
+        {
+            case LmpTreeViewModel archive:
+            {
+                var lmp = archive.LmpFileProperty;
+                var path = PromptSavePath(archive.Label);
+                if (path == null) return;
+                File.WriteAllBytes(path, lmp.FileData);
+                ViewModel.Notifications.Success("Raw data saved", path);
+                break;
+            }
+            case AbstractLmpTreeViewModel entryNode:
+            {
+                var path = PromptSavePath(entryNode.Label);
+                if (path == null) return;
+                File.WriteAllBytes(path, GetEntryBytes(entryNode.LmpFileProperty, entryNode.Label));
+                ViewModel.Notifications.Success("Raw data saved", path);
+                break;
+            }
+        }
+    }
+
+    public void SaveParsedVifData(LmpEntryTreeViewModel entry)
+    {
+        var lmp = entry.LmpFileProperty;
+        var path = PromptSavePath(entry.Label + ".txt", "Text File|*.txt|All Files|*.*");
+        if (path == null) return;
+
+        var texName = Path.GetFileNameWithoutExtension(entry.Label) + ".tex";
+        var tex = lmp.Directory.ContainsKey(texName) ? TexDecoder.Decode(GetEntryBytes(lmp, texName)) : null;
+        var chunks = VifDecoder.DecodeChunks(NullLogger.Instance, GetEntryBytes(lmp, entry.Label),
+            tex?.PixelWidth ?? 0, tex?.PixelHeight ?? 0);
+        VifChunkExporter.WriteChunks(path, chunks);
+        ViewModel.Notifications.Success("Parsed VIF data saved", path);
+    }
+
+    /// <summary>
+    /// Writes the vertex chunks of one level element. The element's VIF data
+    /// lives inside its .world entry: <c>VifDataOffset</c> is relative to that
+    /// entry, <c>VifDataLength</c> counts 16-byte quadwords, and the VIF stream
+    /// starts after an (nRegs + 2)-quadword header (mirrors WorldFileDecoder).
+    /// </summary>
+    public void SaveParsedElementData(WorldElementTreeViewModel element)
+    {
+        var info = element.WorldElement.DataInfo;
+        if (element.Parent is not WorldFileTreeViewModel worldNode || info == null)
+        {
+            ViewModel.Notifications.Warning("No VIF data", "This element has no VIF data reference.");
+            return;
+        }
+
+        var lmp = worldNode.LmpFileProperty;
+        var worldEntry = lmp.Directory[worldNode.Label];
+        var world = lmp.FileData.AsSpan(worldEntry.StartOffset, worldEntry.Length);
+
+        var fullLength = info.VifDataLength * 0x10;
+        if (fullLength <= 0 || info.VifDataOffset + 0x10 >= world.Length)
+        {
+            ViewModel.Notifications.Warning("No VIF data", "This element's VIF data is empty.");
+            return;
+        }
+
+        var headerLength = (world[info.VifDataOffset + 0x10] + 2) * 0x10;
+        var vifStart = info.VifDataOffset + headerLength;
+        var vifLength = Math.Min(fullLength - headerLength, world.Length - vifStart);
+        if (vifLength <= 0)
+        {
+            ViewModel.Notifications.Warning("No VIF data", "This element's VIF data is empty.");
+            return;
+        }
+
+        var path = PromptSavePath(element.Label + ".txt", "Text File|*.txt|All Files|*.*");
+        if (path == null) return;
+
+        VifChunkExporter.WriteChunks(path, VifDecoder.ReadVerts(NullLogger.Instance, world.Slice(vifStart, vifLength)));
+        ViewModel.Notifications.Success("Parsed VIF data saved", path);
+    }
+
+    public void BatchExportTextures(LmpFile lmp)
+    {
+        var folder = PickFolder($"Choose a folder for the textures from '{lmp.Name}'");
+        if (folder == null) return;
+
+        if (lmp.Directory.Count == 0) lmp.ReadDirectory();
+        var count = AssetImporter.BatchExportTextures(lmp, folder);
+        ViewModel.Notifications.Success($"Exported {count} texture{(count == 1 ? "" : "s")}", folder);
+    }
+
+    /// <summary>Exports the textures of every archive in a GOB, one sub-folder per archive.</summary>
+    public void BatchExportTextures(GobFile gob)
+    {
+        var folder = PickFolder($"Choose a folder for the textures from '{gob.Name}'");
+        if (folder == null) return;
+
+        var count = 0;
+        foreach (var lmp in gob.Directory.Values)
+        {
+            if (lmp.Directory.Count == 0) lmp.ReadDirectory();
+            count += AssetImporter.BatchExportTextures(lmp,
+                Path.Combine(folder, Path.GetFileNameWithoutExtension(lmp.Name)));
+        }
+
+        ViewModel.Notifications.Success($"Exported {count} texture{(count == 1 ? "" : "s")}", folder);
+    }
+
+    public void BatchExportAll(LmpFile lmp)
+    {
+        var folder = PickFolder($"Choose a folder for all entries from '{lmp.Name}'");
+        if (folder == null) return;
+
+        if (lmp.Directory.Count == 0) lmp.ReadDirectory();
+        var count = AssetImporter.BatchExportAllEntries(lmp, folder);
+        ViewModel.Notifications.Success($"Exported {count} entr{(count == 1 ? "y" : "ies")}", folder);
+    }
+
+    private static void CopyName(TreeViewItemViewModel node)
+    {
+        Clipboard.SetText(node.Label);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Logs
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public void LogTexData()
+    {
+        var worldTex = ViewModel.World?.WorldTex;
         if (worldTex == null)
         {
-            MessageBox.Show(_window, "Error: Missing World Tex data.",
-                "Error", MessageBoxButton.OK);
+            ViewModel.Notifications.Warning("No level texture file", "This file has no companion .TEX loaded.");
             return;
         }
 
         var entries = WorldTexFile.ReadEntries(worldTex.FileData);
-        var sb      = new StringBuilder();
+        var sb = new StringBuilder();
         sb.AppendLine($"Debug Info For: {worldTex.FileName}");
         sb.AppendLine();
 
         for (var i = 0; i < entries.Length; i++)
         {
             sb.AppendLine("Entry " + i);
-            sb.AppendLine("Cell Offset: "      + entries[i].CellOffset);
+            sb.AppendLine("Cell Offset: " + entries[i].CellOffset);
             sb.AppendLine("Directory Offset: " + entries[i].DirectoryOffset);
-            sb.AppendLine("Size: "             + entries[i].Size);
+            sb.AppendLine("Size: " + entries[i].Size);
             if (i < entries.Length - 1) sb.AppendLine();
         }
 
-        _window.ViewModel.LogText = sb.ToString();
-        _window.tabControl.SelectedIndex = 4; // Log View
+        ViewModel.ShowDetails(sb.ToString(), "Level texture table");
     }
-    
-    private void LogWorldStructureClicked(object sender, RoutedEventArgs e)
-    {
-        if (_menu.DataContext is not WorldFileTreeViewModel tvm) return;
 
-        var lmpFile = tvm.LmpFileProperty;
-        if (!lmpFile.Directory.TryGetValue(tvm.Label, out var entry)) return;
+    public void LogWorldStructure(WorldFileTreeViewModel worldFile)
+    {
+        var lmpFile = worldFile.LmpFileProperty;
+        if (!lmpFile.Directory.ContainsKey(worldFile.Label)) return;
 
         // Use the pending (edited) bytes if present, else the original entry —
         // so the dump reflects whatever the editor would currently save.
-        byte[] bytes;
-        if (lmpFile.PendingEdits.TryGetValue(tvm.Label, out var pending))
-        {
-            bytes = pending;
-        }
-        else
-        {
-            bytes = new byte[entry.Length];
-            Buffer.BlockCopy(lmpFile.FileData, entry.StartOffset, bytes, 0, entry.Length);
-        }
-
-        var engineVersion = _window.ViewModel.World?.EngineVersion
+        var bytes = GetEntryBytes(lmpFile, worldFile.Label);
+        var engineVersion = ViewModel.World?.EngineVersion
                             ?? App.Settings.Get<EngineVersion>("Core.EngineVersion");
 
-        _window.ViewModel.LogText = WorldStructureAnalyzer.Analyze(bytes, engineVersion);
-        _window.tabControl.SelectedIndex = 4; // Log View
+        if (!ReferenceEquals(ViewModel.SelectedNode, worldFile))
+        {
+            worldFile.IsSelected = true;
+        }
+        ViewModel.ShowDetails(WorldStructureAnalyzer.Analyze(bytes, engineVersion), "World structure");
     }
 
-    #endregion
-
     // ─────────────────────────────────────────────────────────────────────────
-    // Click handlers — new: per-entry export shortcuts
+    // Editing
     // ─────────────────────────────────────────────────────────────────────────
 
-    #region Per-entry export shortcuts
-
-    private void ExportAsPngClicked(object sender, RoutedEventArgs e)
+    public void ReplaceEntry(LmpEntryTreeViewModel entry)
     {
-        if (_menu.DataContext is not LmpEntryTreeViewModel lmpEntry) return;
-
-        var lmpFile = lmpEntry.LmpFileProperty;
-        var entry   = lmpFile.Directory[lmpEntry.Label];
-
-        byte[] bytes;
-        if (lmpFile.PendingEdits.TryGetValue(lmpEntry.Label, out var pending))
-            bytes = pending;
-        else
+        var lmpFile = entry.LmpFileProperty;
+        if (lmpFile is ClpFile)
         {
-            bytes = new byte[entry.Length];
-            Buffer.BlockCopy(lmpFile.FileData, entry.StartOffset, bytes, 0, entry.Length);
-        }
-
-        var bitmap = TexDecoder.Decode(bytes);
-        if (bitmap == null)
-        {
-            MessageBox.Show("Could not decode texture.", "Error", MessageBoxButton.OK);
+            ViewModel.Notifications.Warning("Not supported", "CLP archives are hash-indexed and can't be edited.");
             return;
         }
 
-        var dialog = new SaveFileDialog
+        var ext = (Path.GetExtension(entry.Label) ?? "*").TrimStart('.');
+        var dialog = new OpenFileDialog
         {
-            FileName = Path.GetFileNameWithoutExtension(lmpEntry.Label) + ".png",
-            Filter   = "PNG Image|*.png"
-        };
-        if (dialog.ShowDialog() != true) return;
-
-        using var stream  = new FileStream(dialog.FileName, FileMode.Create);
-        var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(bitmap));
-        encoder.Save(stream);
-
-        MessageBox.Show($"Texture saved to:\n{dialog.FileName}", "Export Complete",
-            MessageBoxButton.OK, MessageBoxImage.Information);
-    }
-
-    private void ExportAsModelClicked(object sender, RoutedEventArgs e)
-    {
-        if (_menu.DataContext is not LmpEntryTreeViewModel lmpEntry) return;
-
-        // Delegate to the main window's model export flow so we reuse the
-        // already-decoded Model / Texture from the current selection.
-        if (_window.ViewModel.TheModelViewModel.VifModel == null)
-        {
-            MessageBox.Show(
-                "Please select the .vif entry in the tree first so the model is loaded.",
-                "No Model Loaded", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        _window.ViewModel.TheModelViewModel.ShowExportForPosedModel();
-    }
-
-    #endregion
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Click handlers — new: per-entry edit actions
-    // ─────────────────────────────────────────────────────────────────────────
-
-    #region Per-entry edit actions
-
-    private void ReplaceEntryClicked(object sender, RoutedEventArgs e)
-    {
-        if (_menu.DataContext is not LmpEntryTreeViewModel lmpEntry) return;
-
-        var lmpFile = lmpEntry.LmpFileProperty;
-        var ext     = (Path.GetExtension(lmpEntry.Label) ?? "*").TrimStart('.');
-        var dialog  = new OpenFileDialog
-        {
-            Title  = $"Select replacement file for '{lmpEntry.Label}'",
+            Title = $"Select replacement file for '{entry.Label}'",
             Filter = $"{ext.ToUpper()} Files|*.{ext}|All Files|*.*"
         };
-        if (dialog.ShowDialog() != true) return;
+        if (dialog.ShowDialog(_window) != true) return;
 
-        try
-        {
-            AssetImporter.ReplaceEntryFromFile(lmpFile, lmpEntry.Label, dialog.FileName);
-            _window.UpdateTitle();
-            MessageBox.Show(
-                $"'{lmpEntry.Label}' has been queued for replacement with:\n{dialog.FileName}\n\n" +
-                "Use 'Save Archive…' (right-click the archive node) to write the changes to disk.",
-                "Entry Queued", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Replace failed: {ex.Message}", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        AssetImporter.ReplaceEntryFromFile(lmpFile, entry.Label, dialog.FileName);
+        EditApplied();
+        ViewModel.Notifications.Success($"'{entry.Label}' replaced",
+            "The change is pending — save to write it to disk.");
+        Reselect(entry);
     }
-    
-    private void InsertRewardClicked(object sender, RoutedEventArgs e)
+
+    public void ImportTexture(LmpEntryTreeViewModel entry)
     {
-        if (_treeView.SelectedItem is not LmpEntryTreeViewModel lmpEntry) return;
-        var lmpFile = lmpEntry.LmpFileProperty;
-        var entry = lmpFile.Directory[lmpEntry.Label];
-        var scrBytes = lmpFile.FileData.AsSpan(entry.StartOffset, entry.Length).ToArray();
+        var lmpFile = entry.LmpFileProperty;
 
-        var wnd = new InsertRewardWindow(scrBytes) { Owner = Application.Current.MainWindow };
-        if (wnd.ShowDialog() == true && wnd.Modified)
-        {
-            lmpFile.ReplaceEntry(lmpEntry.Label, wnd.ResultBytes);
-            MessageBox.Show("Reward inserted. Use Save Archive to write the modified GOB.",
-                "Insert Reward", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-    }
-    
-    private void EditScriptRewardsClicked(object sender, RoutedEventArgs e)
-    {
-        if (_treeView.SelectedItem is not LmpEntryTreeViewModel lmpEntry) return;
-        var lmpFile = lmpEntry.LmpFileProperty;
-
-        // Pull the current entry bytes. Uses the same entry lookup as the existing
-        // save/replace handlers (adapt the two lines below to the local API if the
-        // member names differ — the pattern matches SaveLmpEntryData).
-        var entry = lmpFile.Directory[lmpEntry.Label];
-        var scrBytes = lmpFile.FileData
-            .AsSpan(entry.StartOffset, entry.Length).ToArray();
-
-        var wnd = new ScriptRewardsWindow(scrBytes) { Owner = Application.Current.MainWindow };
-        if (wnd.ShowDialog() == true && wnd.Modified)
-        {
-            lmpFile.ReplaceEntry(lmpEntry.Label, wnd.ResultBytes);
-            MessageBox.Show(
-                "Script updated. Use Save Archive to write the modified GOB to disk.",
-                "Script Rewards", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-    }
-    private void ImportTextureClicked(object sender, RoutedEventArgs e)
-    {
-        if (_menu.DataContext is not LmpEntryTreeViewModel lmpEntry) return;
-
-        var lmpFile = lmpEntry.LmpFileProperty;
-        var entry   = lmpFile.Directory[lmpEntry.Label];
-
-        // Original entry bytes = the encoder template (mirrors ExportAsPngClicked).
-        byte[] templateBytes;
-        if (lmpFile.PendingEdits.TryGetValue(lmpEntry.Label, out var pending))
-            templateBytes = pending;
-        else
-        {
-            templateBytes = new byte[entry.Length];
-            Buffer.BlockCopy(lmpFile.FileData, entry.StartOffset, templateBytes, 0, entry.Length);
-        }
-
+        // The current entry bytes are the encoder template (same dimensions/format).
+        var templateBytes = GetEntryBytes(lmpFile, entry.Label);
         if (!TexEncoder.CanEncodeInto(templateBytes))
         {
-            MessageBox.Show(
-                "Import currently supports 256-colour (PSMT8) textures only; " +
-                "this entry isn't one of those.",
-                "Import Texture", MessageBoxButton.OK, MessageBoxImage.Information);
+            ViewModel.Notifications.Info("Import not supported for this texture",
+                "Import currently supports 256-colour (PSMT8) textures only.");
             return;
         }
 
         var dialog = new OpenFileDialog
         {
-            Title  = $"Choose a PNG to import into '{lmpEntry.Label}'",
+            Title = $"Choose a PNG to import into '{entry.Label}'",
             Filter = "PNG Image|*.png|All Files|*.*"
         };
-        if (dialog.ShowDialog() != true) return;
+        if (dialog.ShowDialog(_window) != true) return;
 
         try
         {
-            // Load the PNG synchronously.
             var image = new BitmapImage();
             image.BeginInit();
-            image.CacheOption   = BitmapCacheOption.OnLoad;
+            image.CacheOption = BitmapCacheOption.OnLoad;
             image.CreateOptions = BitmapCreateOptions.None;
-            image.UriSource     = new Uri(dialog.FileName);
+            image.UriSource = new Uri(dialog.FileName);
             image.EndInit();
             image.Freeze();
 
-            // Encode against the original entry (same dimensions) and queue it.
             var newTex = TexEncoder.Encode(templateBytes, image);
-            lmpFile.ReplaceEntry(lmpEntry.Label, newTex);
-            _window.UpdateTitle();
+            lmpFile.ReplaceEntry(entry.Label, newTex);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException)
+        {
+            // Dimension mismatch, or not a 256-colour texture.
+            ViewModel.Notifications.Warning("Couldn't import texture", ex.Message);
+            return;
+        }
 
-            MessageBox.Show(
-                $"Imported '{Path.GetFileName(dialog.FileName)}' into '{lmpEntry.Label}'.\n\n" +
-                "Use 'Save GOB…' (right-click the GOB/LMP node) to write it to disk.",
-                "Import Texture", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (ArgumentException ex)      // dimension mismatch
-        {
-            MessageBox.Show(ex.Message, "Import Texture",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        catch (NotSupportedException ex)  // not a 256-colour texture
-        {
-            MessageBox.Show(ex.Message, "Import Texture",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Texture import failed:\n{ex.Message}", "Import Texture",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        EditApplied();
+        ViewModel.Notifications.Success($"Imported into '{entry.Label}'",
+            "The change is pending — save to write it to disk.");
+        Reselect(entry);
     }
 
-    private void DeleteEntryClicked(object sender, RoutedEventArgs e)
+    public void DeleteEntry(LmpEntryTreeViewModel entry)
     {
-        if (_menu.DataContext is not LmpEntryTreeViewModel lmpEntry) return;
-
-        var result = MessageBox.Show(
-            $"Schedule '{lmpEntry.Label}' for deletion?\n\n" +
-            "The entry will be removed the next time you save the archive.",
-            "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
+        var result = MessageBox.Show(_window,
+            $"Delete '{entry.Label}'?\n\nThe entry is removed when the archive is next saved. " +
+            "Until then you can restore it from this menu.",
+            "Delete Entry", MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (result != MessageBoxResult.Yes) return;
 
-        try
-        {
-            lmpEntry.LmpFileProperty.DeleteEntry(lmpEntry.Label);
-            _window.UpdateTitle();
-            MessageBox.Show(
-                $"'{lmpEntry.Label}' is scheduled for deletion.\n\n" +
-                "Use 'Save Archive…' to write the changes to disk.",
-                "Deletion Queued", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Delete failed: {ex.Message}", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        entry.LmpFileProperty.DeleteEntry(entry.Label);
+        EditApplied();
+        ViewModel.Notifications.Info($"'{entry.Label}' will be deleted on save");
     }
 
-    #endregion
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Click handlers — new: per-archive actions
-    // ─────────────────────────────────────────────────────────────────────────
-
-    #region Per-archive actions
-
-    private void AddNewEntryClicked(object sender, RoutedEventArgs e)
+    public void RestoreEntry(LmpEntryTreeViewModel entry)
     {
-        if (_menu.DataContext is not LmpTreeViewModel lmpTree) return;
+        entry.LmpFileProperty.PendingDeletions.Remove(entry.Label);
+        EditApplied();
+        ViewModel.Notifications.Info($"'{entry.Label}' restored");
+    }
 
-        var lmpFile = lmpTree.LmpFileProperty;
+    public void AddEntry(LmpFile lmpFile)
+    {
+        if (lmpFile is ClpFile)
+        {
+            ViewModel.Notifications.Warning("Not supported", "CLP archives are hash-indexed and can't be edited.");
+            return;
+        }
 
         var openDialog = new OpenFileDialog
         {
-            Title  = $"Select file to add to '{lmpFile.Name}'",
+            Title = $"Select file to add to '{lmpFile.Name}'",
             Filter = "All Files|*.*"
         };
-        if (openDialog.ShowDialog() != true) return;
+        if (openDialog.ShowDialog(_window) != true) return;
 
-        var suggestedName = Path.GetFileName(openDialog.FileName);
-
-        // Ask the user to confirm / rename the entry
-        var nameDialog = new EntryNameDialog(suggestedName) { Owner = _window };
+        var nameDialog = new EntryNameDialog(Path.GetFileName(openDialog.FileName), lmpFile.Directory.ContainsKey) { Owner = _window };
         if (nameDialog.ShowDialog() != true) return;
 
         var entryName = nameDialog.EntryName;
-        if (string.IsNullOrWhiteSpace(entryName))
-        {
-            MessageBox.Show("Entry name cannot be empty.", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
-        }
-
-        try
-        {
-            AssetImporter.AddEntryFromFile(lmpFile, entryName, openDialog.FileName);
-            _window.UpdateTitle();
-            MessageBox.Show(
-                $"Entry '{entryName}' added to the pending queue.\n\n" +
-                "Use 'Save Archive…' to write the changes to disk.",
-                "Entry Added", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Add failed: {ex.Message}", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        AssetImporter.AddEntryFromFile(lmpFile, entryName, openDialog.FileName);
+        EditApplied();
+        ViewModel.Notifications.Success($"'{entryName}' added",
+            "New entries appear after the archive is saved and reopened.");
     }
 
-    private void BatchExportTexturesClicked(object sender, RoutedEventArgs e)
+    public void EditScriptRewards(LmpEntryTreeViewModel entry)
     {
-        if (_menu.DataContext is not LmpTreeViewModel lmpTree) return;
-
-        var lmpFile = lmpTree.LmpFileProperty;
-
-        using var folderDialog = new FolderBrowserDialog
+        var lmpFile = entry.LmpFileProperty;
+        var wnd = new ScriptRewardsWindow(GetEntryBytes(lmpFile, entry.Label)) { Owner = _window };
+        if (wnd.ShowDialog() == true && wnd.Modified)
         {
-            Description = $"Choose output folder for textures from '{lmpFile.Name}'"
-        };
-        if (folderDialog.ShowDialog() != DialogResult.OK) return;
-
-        try
-        {
-            var count = AssetImporter.BatchExportTextures(lmpFile, folderDialog.SelectedPath);
-            MessageBox.Show(
-                $"Exported {count} texture(s) to:\n{folderDialog.SelectedPath}",
-                "Batch Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Batch export failed: {ex.Message}", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            lmpFile.ReplaceEntry(entry.Label, wnd.ResultBytes);
+            EditApplied();
+            ViewModel.Notifications.Success("Script rewards updated",
+                "The change is pending — save to write it to disk.");
+            Reselect(entry);
         }
     }
 
-    private void BatchExportAllClicked(object sender, RoutedEventArgs e)
+    public void InsertReward(LmpEntryTreeViewModel entry)
     {
-        if (_menu.DataContext is not LmpTreeViewModel lmpTree) return;
-
-        var lmpFile = lmpTree.LmpFileProperty;
-
-        using var folderDialog = new FolderBrowserDialog
+        var lmpFile = entry.LmpFileProperty;
+        var wnd = new InsertRewardWindow(GetEntryBytes(lmpFile, entry.Label)) { Owner = _window };
+        if (wnd.ShowDialog() == true && wnd.Modified)
         {
-            Description = $"Choose output folder for all entries from '{lmpFile.Name}'"
-        };
-        if (folderDialog.ShowDialog() != DialogResult.OK) return;
-
-        try
-        {
-            var count = AssetImporter.BatchExportAllEntries(lmpFile, folderDialog.SelectedPath);
-            MessageBox.Show(
-                $"Exported {count} entr{(count == 1 ? "y" : "ies")} to:\n{folderDialog.SelectedPath}",
-                "Batch Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Batch export failed: {ex.Message}", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            lmpFile.ReplaceEntry(entry.Label, wnd.ResultBytes);
+            EditApplied();
+            ViewModel.Notifications.Success("Reward inserted",
+                "The change is pending — save to write it to disk.");
+            Reselect(entry);
         }
     }
 
-    private void SaveArchiveClicked(object sender, RoutedEventArgs e)
+    /// <summary>Re-displays an entry after its bytes changed, so the preview shows the edit.</summary>
+    private void Reselect(TreeViewItemViewModel node)
     {
-        if (_menu.DataContext is not LmpTreeViewModel lmpTree) return;
-
-        var lmpFile = lmpTree.LmpFileProperty;
-
-        var dialog = new SaveFileDialog
+        if (ReferenceEquals(ViewModel.SelectedNode, node))
         {
-            FileName = lmpFile.Name,
-            Filter   = "LMP Archive|*.lmp|All Files|*.*"
-        };
-        if (dialog.ShowDialog() != true) return;
-
-        try
-        {
-            AssetImporter.SaveArchive(lmpFile, dialog.FileName);
-            _window.UpdateTitle();
-            MessageBox.Show(
-                $"Archive saved to:\n{dialog.FileName}",
-                "Save Complete", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Save failed: {ex.Message}", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            ViewModel.SelectedNode = node;
         }
     }
-    
-    private void SaveGobClicked(object sender, RoutedEventArgs e)
-    {
-        if (_menu.DataContext is not LmpTreeViewModel lmpTree) return;
-
-        var gob = _window.ViewModel.World?.WorldGob;
-        if (gob == null)
-        {
-            MessageBox.Show("No GOB file is currently loaded.", "Save GOB",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        var dialog = new SaveFileDialog
-        {
-            FileName = gob.Name,
-            Filter   = "GOB Archive|*.gob|All Files|*.*"
-        };
-        if (dialog.ShowDialog() != true) return;
-
-        try
-        {
-            AssetImporter.SaveGob(gob, dialog.FileName);
-            _window.UpdateTitle();
-            MessageBox.Show(
-                $"GOB saved to:\n{dialog.FileName}",
-                "Save Complete", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Save failed: {ex.Message}", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    #endregion
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Shared prompt helpers (original, unchanged)
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private void PromptToSaveData(string fileName, Action<string> saveFunc)
-    {
-        var dialog = new SaveFileDialog { FileName = fileName };
-        if (dialog.ShowDialog() != true) return;
-        saveFunc(dialog.FileName);
-    }
-
-    private void PromptToSaveVifData(string fileName, Func<List<VifDecoder.Chunk>> chunkFunc)
-    {
-        PromptToSaveData(fileName, saveFilePath =>
-        {
-            VifChunkExporter.WriteChunks(saveFilePath, chunkFunc());
-        });
-    }
-    /// <summary>
-    /// Imports a PNG into a 256-colour .tex entry: encodes it against the original
-    /// entry (template) via <see cref="TexEncoder"/>, then replaces the entry in
-    /// the LMP's pending-edit layer so File → Save GOB… writes it out.
-    /// </summary>
-    private void ImportTexture(LmpFile lmp, string entryName, byte[] originalEntryBytes)
-    {
-        if (!TexEncoder.CanEncodeInto(originalEntryBytes))
-        {
-            MessageBox.Show(
-                "This texture isn't a 256-colour (PSMT8) image. Import currently " +
-                "supports 256-colour textures only.",
-                "Import Texture", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        var dialog = new OpenFileDialog
-        {
-            Title  = $"Choose a PNG to import into {entryName}",
-            Filter = "PNG Image|*.png|All Files|*.*",
-        };
-        if (dialog.ShowDialog() != true) return;
-
-        try
-        {
-            // Load the PNG synchronously.
-            var image = new BitmapImage();
-            image.BeginInit();
-            image.CacheOption  = BitmapCacheOption.OnLoad;
-            image.CreateOptions = BitmapCreateOptions.None;
-            image.UriSource    = new Uri(dialog.FileName);
-            image.EndInit();
-            image.Freeze();
-
-            // Encode against the original entry as a template (same dimensions).
-            var newTex = TexEncoder.Encode(originalEntryBytes, image);
-
-            // Replace through the existing pending-edit pathway (same as Replace Entry).
-            lmp.ReplaceEntry(entryName, newTex);
-
-            // Refresh the view / mark dirty / update the title exactly as your
-            // Replace Entry handler does. For example:
-            //     RefreshTreeForLmp(lmp);
-            //     _window.UpdateTitle();
-
-            MessageBox.Show(
-                $"Imported '{System.IO.Path.GetFileName(dialog.FileName)}' into {entryName}.\n" +
-                "Use File → Save GOB… to write it to the archive.",
-                "Import Texture", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (ArgumentException ex)
-        {
-            // Dimension mismatch — TexEncoder requires the PNG to match the texture.
-            MessageBox.Show(ex.Message, "Import Texture",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        catch (NotSupportedException ex)
-        {
-            MessageBox.Show(ex.Message, "Import Texture",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Texture import failed:\n{ex.Message}", "Import Texture",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-    
 }

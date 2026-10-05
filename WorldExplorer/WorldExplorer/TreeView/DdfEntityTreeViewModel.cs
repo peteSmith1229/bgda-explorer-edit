@@ -22,6 +22,10 @@ public class DdfEntityTreeViewModel : TreeViewItemViewModel
         _entity = entity;
     }
 
+    public override NodeKind Kind => NodeKind.Entity;
+
+    public override string? Detail => $"cat {_entity.CategoryCode}";
+
     protected override void LoadChildren()
     {
         foreach (var asset in _entity.Assets)
@@ -50,4 +54,6 @@ public class DdfMissingAssetTreeViewModel : TreeViewItemViewModel
     {
         Asset = asset;
     }
+
+    public override NodeKind Kind => NodeKind.Missing;
 }

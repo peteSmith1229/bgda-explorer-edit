@@ -1,4 +1,4 @@
-﻿/*  Copyright (C) 2012 Ian Brown
+/*  Copyright (C) 2012 Ian Brown
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,10 +25,16 @@ public class YakTreeViewModel : TreeViewItemViewModel
 {
     private readonly YakFile _yakFile;
 
-    public YakTreeViewModel(TreeViewItemViewModel parent, YakFile yakFile) : base(yakFile.Name, parent, true)
+    public YakTreeViewModel(TreeViewItemViewModel? parent, YakFile yakFile) : base(yakFile.Name, parent, true)
     {
         _yakFile = yakFile;
     }
+
+    public override NodeKind Kind => NodeKind.Archive;
+
+    public override string KindDescription => "Archive (YAK)";
+
+    protected override bool SearchLoadsChildren => true;
 
     protected override void LoadChildren()
     {

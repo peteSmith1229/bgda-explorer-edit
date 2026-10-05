@@ -1,23 +1,37 @@
 <Window x:Class="WorldExplorer.ExecutableEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Edit Executable Tuning" Height="620" Width="1080"
-        WindowStartupLocation="CenterOwner">
-    <DockPanel Margin="10">
-        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,10"
-                   Text="Edits the game executable (PAL SLES-506.72). Changes apply to NEW characters and future level-ups. Save writes a modified executable — keep a backup of your original." />
+        xmlns:controls="clr-namespace:WorldExplorer.Controls"
+        Style="{StaticResource Window.Dialog}" WindowStartupLocation="CenterOwner"
+        Title="Executable Tuning" Height="680" Width="1120" MinHeight="460" MinWidth="760">
+    <Window.Resources>
+        <Style x:Key="Help" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        </Style>
+    </Window.Resources>
 
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
-                    HorizontalAlignment="Right" Margin="0,10,0,0">
-            <Button Content="Save As…" Width="100" Margin="0,0,8,0" Click="SaveAs_Click" />
-            <Button Content="Close" Width="90" IsCancel="True" />
+    <DockPanel Margin="20,14,20,16">
+        <Border DockPanel.Dock="Top" Style="{StaticResource Callout}" Margin="0,0,0,6">
+            <DockPanel>
+                <controls:GeometryIcon Data="{StaticResource Icon.Warning}" Margin="0,1,10,0" VerticalAlignment="Top"
+                                       Fill="{DynamicResource Brush.Warning}" />
+                <TextBlock TextWrapping="Wrap" FontSize="12" Text="Edits the game executable (PAL SLES-506.72). Changes apply to NEW characters and future level-ups. Save writes a modified executable — keep a backup of your original." />
+            </DockPanel>
+        </Border>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button Content="Save As…" MinWidth="110" Style="{StaticResource Button.Accent}"
+                    controls:ControlAssist.Icon="{StaticResource Icon.Save}" Click="SaveAs_Click" />
+            <Button Content="Close" MinWidth="90" Margin="8,0,0,0" IsCancel="True" />
         </StackPanel>
 
         <TabControl>
             <TabItem Header="XP per Level">
-                <DockPanel Margin="8">
-                    <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,8"
-                               Text="Total XP required to reach each level. Must start at 0 and strictly increase. Lower values = faster leveling." />
+                <DockPanel Margin="0,2,0,0">
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Help}" Text="Total XP required to reach each level. Must start at 0 and strictly increase. Lower values = faster leveling." />
                     <DataGrid x:Name="xpGrid" AutoGenerateColumns="False" CanUserAddRows="False"
                               HeadersVisibility="Column">
                         <DataGrid.Columns>
@@ -30,9 +44,8 @@
             </TabItem>
 
             <TabItem Header="Starting Stats">
-                <DockPanel Margin="8">
-                    <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,8"
-                               Text="Starting ability scores per class (1–30). Applied when a NEW character of that class is created." />
+                <DockPanel Margin="0,2,0,0">
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Help}" Text="Starting ability scores per class (1–30). Applied when a NEW character of that class is created." />
                     <DataGrid x:Name="statsGrid" AutoGenerateColumns="False" CanUserAddRows="False"
                               HeadersVisibility="Column">
                         <DataGrid.Columns>
@@ -55,11 +68,15 @@
             </TabItem>
 
             <TabItem Header="Feats &amp; Spells">
-                <DockPanel Margin="8">
-                    <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,8"
-                               Text="Energy cost, damage range, and effect colours for each feat/spell. A ★ marks spells whose Damage Min/Max change real combat damage (your character's stats add a spread on top — e.g. INT gives fireball ±5). For other spells the damage columns are secondary (multi-projectile spells, per-second channels and charge moves handle damage differently). Glow = the aura over the caster's hands (0–255). Light = the colour that effect casts on the environment (0–65535; some spells ship above 255). Channeled spells bill energy per frame; the /sec figure shown is that ×50. Coefficient is a per-level scaling value whose effect is still under investigation." />
+                <DockPanel Margin="0,2,0,0">
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Help}" Text="Energy cost, damage range, and effect colours for each feat/spell." />
+                    <Expander DockPanel.Dock="Top" Header="How the columns work" Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Help}" Text="A ★ marks spells whose Damage Min/Max change real combat damage (your character's stats add a spread on top — e.g. INT gives fireball ±5). For other spells the damage columns are secondary (multi-projectile spells, per-second channels and charge moves handle damage differently). Glow = the aura over the caster's hands (0–255). Light = the colour that effect casts on the environment (0–65535; some spells ship above 255). Channeled spells bill energy per frame; the /sec figure shown is that ×50. Coefficient is a per-level scaling value whose effect is still under investigation." />
+                        </StackPanel>
+                    </Expander>
                     <DataGrid x:Name="featGrid" AutoGenerateColumns="False" CanUserAddRows="False"
-                              HeadersVisibility="Column" ColumnHeaderHeight="26">
+                              HeadersVisibility="Column">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Feat / Spell (★ = live damage)" Binding="{Binding DisplayName}" IsReadOnly="True" Width="200" />
                             <DataGridTextColumn Header="Energy" Width="70"
@@ -87,12 +104,25 @@
                     </DataGrid>
                 </DockPanel>
             </TabItem>
+
             <TabItem Header="Monster HP">
-                <DockPanel Margin="8">
-                    <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,8"
-                               Text="Per-monster HP multiplier. The game computes enemy health as (random 12-17) × 1.299 × (Multiplier × difficulty), so this scales that enemy type everywhere, for every playthrough — no save editing.&#10;Confirmed in-game: Slime 1.5→20 gave ~300 HP; Kobold 0.5→20 became very tough; SmallSpider 2.0→0.5 died in two hits.&#10;Only rows marked Editable can be changed. 'Global' rows read a shared value used by several monsters; 'MultiBranch' rows pick between several values at runtime (GiantRat has four) — both are shown for reference only.&#10;Resistances come from a bitmask at entity +0x3C: each damage type has a pair of bits, one halving damage and one nullifying it. Confirmed in-game — a FireElemental took 121 from melee and 0 from Burning Hands; a cold-immune creature took 3 from melee and 0 from Snowblind; a Wisp took 2 from melee and 0 from Lightning Bolt. Fire, cold, lightning, blunt and bladed are identified by name; the rest are shown by number rather than guessed at. Note the game does not distinguish slashing from piercing — dagger, sword and spear all use one 'bladed' type.&#10;Values are stored as the upper half of a float, so entries are rounded to the nearest representable value (1.5, 2, 2.5, 3, 4, 5… are exact).&#10;Bosses (rows marked 'Editable (HP)') write a fixed HP that overrides the formula — for those the column holds the base HP, scaled by a separate boss table (Easy ×0.7, Normal ×1.0, Hard ×1.3, Extreme ×5.0). Verified against Eldrith: base 1500 gives 1050 / 1500 / 1950 / 7500, and 7500 was read directly from memory during an Extreme fight.&#10;These columns are SINGLE-PLAYER. Two-player co-op multiplies boss HP by a further ×1.7 (confirmed: Eldrith read exactly 12750 in 2-player Extreme).&#10;The four difficulty columns show the predicted HP range and update as you type. They reproduce measured in-game values exactly for Kobold (4-5 / 5-8 / 7-11 / 77-110); a few monsters carry a higher internal base term, so their real HP can exceed the estimate." />
+                <DockPanel Margin="0,2,0,0">
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Help}" Text="Per-monster HP multiplier. The game computes enemy health as (random 12-17) × 1.299 × (Multiplier × difficulty), so this scales that enemy type everywhere, for every playthrough — no save editing." />
+                    <Expander DockPanel.Dock="Top" Header="Details: editable rows, resistances, bosses and co-op" Margin="0,0,0,8">
+                        <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Style="{StaticResource Help}" Text="Confirmed in-game: Slime 1.5→20 gave ~300 HP; Kobold 0.5→20 became very tough; SmallSpider 2.0→0.5 died in two hits." />
+                                <TextBlock Style="{StaticResource Help}" Text="Only rows marked Editable can be changed. 'Global' rows read a shared value used by several monsters; 'MultiBranch' rows pick between several values at runtime (GiantRat has four) — both are shown for reference only." />
+                                <TextBlock Style="{StaticResource Help}" Text="Resistances come from a bitmask at entity +0x3C: each damage type has a pair of bits, one halving damage and one nullifying it. Confirmed in-game — a FireElemental took 121 from melee and 0 from Burning Hands; a cold-immune creature took 3 from melee and 0 from Snowblind; a Wisp took 2 from melee and 0 from Lightning Bolt. Fire, cold, lightning, blunt and bladed are identified by name; the rest are shown by number rather than guessed at. Note the game does not distinguish slashing from piercing — dagger, sword and spear all use one 'bladed' type." />
+                                <TextBlock Style="{StaticResource Help}" Text="Values are stored as the upper half of a float, so entries are rounded to the nearest representable value (1.5, 2, 2.5, 3, 4, 5… are exact)." />
+                                <TextBlock Style="{StaticResource Help}" Text="Bosses (rows marked 'Editable (HP)') write a fixed HP that overrides the formula — for those the column holds the base HP, scaled by a separate boss table (Easy ×0.7, Normal ×1.0, Hard ×1.3, Extreme ×5.0). Verified against Eldrith: base 1500 gives 1050 / 1500 / 1950 / 7500, and 7500 was read directly from memory during an Extreme fight." />
+                                <TextBlock Style="{StaticResource Help}" Text="These columns are SINGLE-PLAYER. Two-player co-op multiplies boss HP by a further ×1.7 (confirmed: Eldrith read exactly 12750 in 2-player Extreme)." />
+                                <TextBlock Style="{StaticResource Help}" Text="The four difficulty columns show the predicted HP range and update as you type. They reproduce measured in-game values exactly for Kobold (4-5 / 5-8 / 7-11 / 77-110); a few monsters carry a higher internal base term, so their real HP can exceed the estimate." />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Expander>
                     <DataGrid x:Name="monsterGrid" AutoGenerateColumns="False" CanUserAddRows="False"
-                              HeadersVisibility="Column" ColumnHeaderHeight="26">
+                              HeadersVisibility="Column">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Monster" Binding="{Binding Name}" IsReadOnly="True" Width="180" />
                             <DataGridTextColumn Header="Multiplier / HP" Width="110"
@@ -108,7 +138,6 @@
                     </DataGrid>
                 </DockPanel>
             </TabItem>
-
         </TabControl>
     </DockPanel>
 </Window>

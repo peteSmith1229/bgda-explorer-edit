@@ -1,4 +1,4 @@
-﻿/*  Copyright (C) 2012 Ian Brown
+/*  Copyright (C) 2012 Ian Brown
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,10 +25,23 @@ public abstract class AbstractLmpTreeViewModel : TreeViewItemViewModel
 
     public LmpFile LmpFileProperty => _lmpFile;
 
-    protected AbstractLmpTreeViewModel(World world, TreeViewItemViewModel parent, LmpFile lmpFile, string entryName)
-        : base(entryName, parent, true)
+    public World World => _world;
+
+    protected AbstractLmpTreeViewModel(World world, TreeViewItemViewModel? parent, LmpFile lmpFile, string entryName,
+        bool lazyLoadChildren = true)
+        : base(entryName, parent, lazyLoadChildren)
     {
         _lmpFile = lmpFile;
         _world = world;
+    }
+
+    /// <summary>Size of this entry's current bytes (the pending edit if there is one).</summary>
+    protected long? EntrySize
+    {
+        get
+        {
+            if (_lmpFile.PendingEdits.TryGetValue(Label, out var pending)) return pending.Length;
+            return _lmpFile.Directory.TryGetValue(Label, out var entry) ? entry.Length : null;
+        }
     }
 }

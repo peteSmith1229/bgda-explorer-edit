@@ -196,15 +196,18 @@ public static class AssetImporter
 
     /// <summary>
     /// Packs <paramref name="archive"/> (applying all pending edits) and
-    /// writes the result to <paramref name="destinationPath"/>.  On success,
-    /// clears <see cref="LmpFile.IsDirty"/> by calling
-    /// <see cref="LmpFile.ClearPendingEdits"/>.
+    /// writes the result to <paramref name="destinationPath"/>.
+    /// <para>
+    /// The pending edits are deliberately kept: the archive's in-memory bytes
+    /// are still the originals, so clearing them would make the next save
+    /// silently drop every edit made before this one. Callers record the save
+    /// with <see cref="World.MarkSaved"/> instead.
+    /// </para>
     /// </summary>
     public static void SaveArchive(LmpFile archive, string destinationPath)
     {
         var packed = LmpWriter.Pack(archive);
         File.WriteAllBytes(destinationPath, packed);
-        archive.ClearPendingEdits();
     }
 
     // -------------------------------------------------------------------------
@@ -226,12 +229,11 @@ public static class AssetImporter
     /// element) are patched in place so the output is byte-identical to the
     /// original except for the edited bytes — identical size, alignment, and
     /// trailing data.  Edits that change a length (add/delete object) trigger a
-    /// full re-pack.  On success clears every contained LMP's pending state.
+    /// full re-pack. Pending edits are kept (see <see cref="SaveArchive"/>).
     /// </summary>
     public static void SaveGob(GobFile gobFile, string destinationPath)
     {
         var packed = GobWriter.TryPatchInPlace(gobFile) ?? GobWriter.Pack(gobFile);
         File.WriteAllBytes(destinationPath, packed);
-        gobFile.ClearAllPendingEdits();
     }
 }

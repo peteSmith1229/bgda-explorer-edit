@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows;
 using JetBlackEngineLib.Data.Scripting;
 using System.Windows.Controls;
+using WorldExplorer.Themes;
 
 namespace WorldExplorer;
 
@@ -36,14 +37,17 @@ public partial class ScriptRewardsWindow : Window
     public ScriptRewardsWindow(byte[] scrBytes)
     {
         InitializeComponent();
+        ThemeManager.Attach(this);
         _scrBytes = scrBytes;
         _rows = ScriptRewardScanner.Scan(scrBytes)
             .Select(c => new ScriptRewardRow { Call = c, SelectedCall = c.ExternalName })
             .ToList();
         grid.ItemsSource = _rows;
         if (_rows.Count == 0)
-            MessageBox.Show(this, "No reward calls found in this script.",
-                "Script Rewards", MessageBoxButton.OK, MessageBoxImage.Information);
+        {
+            emptyText.Visibility = Visibility.Visible;
+            applyButton.IsEnabled = false;
+        }
     }
 
     private void Apply_Click(object sender, RoutedEventArgs e)

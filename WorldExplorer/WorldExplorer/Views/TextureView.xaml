@@ -1,0 +1,56 @@
+<UserControl x:Class="WorldExplorer.Views.TextureView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="clr-namespace:WorldExplorer.Controls"
+             mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="500">
+    <!-- Texture preview. DataContext: MainWindowViewModel. -->
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Background="{DynamicResource Brush.Chrome}"
+                BorderBrush="{DynamicResource Brush.Divider}" BorderThickness="0,0,0,1" Padding="10,5">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <ComboBox x:Name="BackdropBox" Width="130" SelectionChanged="Backdrop_Changed"
+                              ToolTip="Background behind the texture (shows transparency)">
+                        <ComboBoxItem Content="Checkerboard" IsSelected="True" />
+                        <ComboBoxItem Content="Dark" />
+                        <ComboBoxItem Content="Light" />
+                    </ComboBox>
+                    <Separator Width="1" Height="20" Margin="10,0" />
+                    <Button Style="{StaticResource Button.Subtle}" Click="Export_Click" Padding="8,6"
+                            controls:ControlAssist.Icon="{StaticResource Icon.Export}" Content="Export PNG…"
+                            ToolTip="Save this texture as a PNG image" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource Button.Subtle}" Click="ZoomOut_Click" ToolTip="Zoom out (Ctrl+wheel)"
+                            controls:ControlAssist.Icon="{StaticResource Icon.ZoomOut}" />
+                    <TextBlock x:Name="ZoomText" Width="52" TextAlignment="Center" VerticalAlignment="Center"
+                               Text="Fit" />
+                    <Button Style="{StaticResource Button.Subtle}" Click="ZoomIn_Click" ToolTip="Zoom in (Ctrl+wheel)"
+                            controls:ControlAssist.Icon="{StaticResource Icon.ZoomIn}" />
+                    <ToggleButton x:Name="FitButton" Style="{StaticResource ToggleButton.Subtle}" Margin="6,0,0,0"
+                                  Padding="10,6" Content="Fit" IsChecked="True" Click="Fit_Click"
+                                  ToolTip="Scale the texture to fit the view" />
+                    <Button Style="{StaticResource Button.Subtle}" Padding="10,6" Content="1:1" Click="Actual_Click"
+                            ToolTip="Show at actual size" />
+                    <Separator Width="1" Height="20" Margin="10,0" />
+                    <TextBlock Text="{Binding TextureInfo}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Grid>
+            <Border x:Name="Backdrop" />
+            <ScrollViewer x:Name="Scroller" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled"
+                          PreviewMouseWheel="Scroller_PreviewMouseWheel" Focusable="False">
+                <Image x:Name="Picture" Source="{Binding SelectedNodeImage}" Stretch="Uniform" Margin="16"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       RenderOptions.BitmapScalingMode="NearestNeighbor" SnapsToDevicePixels="True" />
+            </ScrollViewer>
+            <TextBlock Text="No texture to show" Style="{StaticResource Text.Secondary}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Visibility="{Binding SelectedNodeImage, Converter={StaticResource InverseNullToVisibility}}" />
+        </Grid>
+    </DockPanel>
+</UserControl>

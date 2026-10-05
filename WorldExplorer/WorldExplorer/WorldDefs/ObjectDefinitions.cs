@@ -20,6 +20,14 @@ public class ObjectDefinitions
     private readonly ObjectManager _manager;
     private readonly Dictionary<string, ParseObjectDelegate> _objectDefinitions = new();
 
+    // Decoded object models, shared (frozen) between every object that uses
+    // them. Previously each barrel / NPC re-read its LMP from disk and
+    // re-decoded it — again on every undo, redo and paste. A null value
+    // records a model that couldn't be found. Cleared when a new file opens.
+    private readonly Dictionary<string, Model3D?> _externalModelCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<(LmpFile Lmp, string File, string Texture), Model3D?> _archiveModelCache = new();
+    private World? _cacheWorld;
+
     public ObjectDefinitions(ObjectManager manager)
     {
         _manager = manager;
@@ -122,17 +130,50 @@ public class ObjectDefinitions
         return Color.FromRgb((byte)floats[0], (byte)floats[1], (byte)floats[2]);
     }
 
+    /// <summary>Drops cached models when a different file has been opened.</summary>
+    private void EnsureCacheMatchesWorld(World world)
+    {
+        if (ReferenceEquals(world, _cacheWorld)) return;
+        _externalModelCache.Clear();
+        _archiveModelCache.Clear();
+        _cacheWorld = world;
+    }
+
+    private static Visual3D InstantiateObjectModel(Model3D? model)
+    {
+        if (model == null) return CreateBox(5, Color.FromRgb(255, 0, 0));
+        return new ModelVisual3D
+        {
+            Content = model,
+            Transform = new ScaleTransform3D(1.0 / 4, 1.0 / 4, 1.0 / 4)
+        };
+    }
+
     private Visual3D LoadModelFromExternalLmp(string lmpName, string file, string textureFile)
     {
         var world = _manager.LevelViewModel.MainViewModel.World;
         if (world == null)
             throw new InvalidOperationException("Missing world instance");
+        EnsureCacheMatchesWorld(world);
+
         var dataPath = world.DataPath;
         var lmpPath = Path.Combine(dataPath, lmpName.ToUpperInvariant());
+        var cacheKey = lmpPath + "|" + file + "|" + textureFile;
 
+        if (!_externalModelCache.TryGetValue(cacheKey, out var model))
+        {
+            model = DecodeExternalModel(world, lmpPath, lmpName, file, textureFile);
+            _externalModelCache[cacheKey] = model;
+        }
+
+        return InstantiateObjectModel(model);
+    }
+
+    private static Model3D? DecodeExternalModel(World world, string lmpPath, string lmpName, string file,
+        string textureFile)
+    {
         if (File.Exists(lmpPath))
         {
-            // TODO: We can cache this to reduce memory usage
             var data = File.ReadAllBytes(lmpPath);
             LmpFile externalLmp = new(world.EngineVersion, lmpName,
                 data,
@@ -144,11 +185,12 @@ public class ObjectDefinitions
 
             if (entry == null || texEntry == null)
             {
-                return CreateBox(5, Color.FromRgb(255, 0, 0));
+                return null;
             }
 
             var tex =
                 TexDecoder.Decode(externalLmp.FileData.AsSpan().Slice(texEntry.StartOffset, texEntry.Length));
+            tex?.Freeze();
 
             StringLogger logger = new();
             var vifModel = VifDecoder.Decode(
@@ -157,16 +199,12 @@ public class ObjectDefinitions
                 tex?.PixelWidth ?? 0,
                 tex?.PixelHeight ?? 0);
 
-            ModelVisual3D model = new()
-            {
-                Content = Conversions.CreateModel3D(vifModel, tex),
-                Transform = new ScaleTransform3D(1.0 / 4, 1.0 / 4, 1.0 / 4)
-            };
+            var model = Conversions.CreateModel3D(vifModel, tex);
+            if (model.CanFreeze) model.Freeze();
             return model;
         }
 
-
-        return CreateBox(5, Color.FromRgb(255, 0, 0));
+        return null;
     }
 
     private Visual3D LoadModelFromOtherLmp(string lmpName, string file, string textureFile)
@@ -182,14 +220,24 @@ public class ObjectDefinitions
                     continue;
                 }
 
-                return LoadModelFromLmpChild(file, textureFile, child);
+                var world = _manager.LevelViewModel.MainViewModel.World;
+                if (world != null) EnsureCacheMatchesWorld(world);
+
+                var key = (child.LmpFileProperty, file, textureFile);
+                if (!_archiveModelCache.TryGetValue(key, out var model))
+                {
+                    model = DecodeModelFromLmpChild(file, textureFile, child);
+                    _archiveModelCache[key] = model;
+                }
+
+                return InstantiateObjectModel(model);
             }
         }
 
         return CreateBox(5, Color.FromRgb(255, 0, 0));
     }
 
-    private static Visual3D LoadModelFromLmpChild(string file, string textureFile, LmpTreeViewModel child)
+    private static Model3D? DecodeModelFromLmpChild(string file, string textureFile, LmpTreeViewModel child)
     {
         child.ForceLoadChildren();
         var entry = child.LmpFileProperty.FindFile(file);
@@ -197,11 +245,12 @@ public class ObjectDefinitions
 
         if (entry == null || texEntry == null)
         {
-            return CreateBox(5, Color.FromRgb(255, 0, 0));
+            return null;
         }
 
         var tex = TexDecoder.Decode(child.LmpFileProperty.FileData.AsSpan()
             .Slice(texEntry.StartOffset, texEntry.Length));
+        tex?.Freeze();
 
         StringLogger logger = new();
         var vifModel = VifDecoder.Decode(
@@ -210,11 +259,8 @@ public class ObjectDefinitions
             tex?.PixelWidth ?? 0,
             tex?.PixelHeight ?? 0);
 
-        ModelVisual3D model = new()
-        {
-            Content = Conversions.CreateModel3D(vifModel, tex),
-            Transform = new ScaleTransform3D(1.0 / 4, 1.0 / 4, 1.0 / 4)
-        };
+        var model = Conversions.CreateModel3D(vifModel, tex);
+        if (model.CanFreeze) model.Freeze();
         return model;
     }
 
@@ -442,8 +488,9 @@ public class ObjectDefinitions
                     obj.Model = new ModelVisual3D();
                     obj.Model.Children.Add(LoadModelFromExternalLmp(lump + ".lmp", lump + ".vif", lump + ".tex"));
                 }
-                else if (obj.Model != null)
+                else
                 {
+                    obj.Model ??= new ModelVisual3D();
                     obj.Model.Children.Add(CreateBox(5, Color.FromRgb(255, 0, 0)));
                 }
             }

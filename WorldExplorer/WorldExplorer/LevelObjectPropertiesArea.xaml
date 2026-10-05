@@ -1,229 +1,129 @@
-﻿<UserControl
+<UserControl
     x:Class="WorldExplorer.LevelObjectPropertiesArea"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    d:DesignWidth="280"
-    d:DesignHeight="500"
+    d:DesignWidth="300"
+    d:DesignHeight="600"
     mc:Ignorable="d">
     <UserControl.Resources>
-        <Style x:Key="FormStack" TargetType="StackPanel">
-            <Setter Property="Orientation" Value="Vertical" />
-            <Setter Property="Grid.IsSharedSizeScope" Value="True" />
-        </Style>
-        <Style x:Key="FormRow" TargetType="Grid">
-            <Setter Property="Margin" Value="0,4" />
-        </Style>
         <Style x:Key="FieldLabel" TargetType="TextBlock">
-            <Setter Property="Margin" Value="0,0,8,0" />
-            <Setter Property="Grid.Column" Value="0" />
-            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style x:Key="SectionLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Section}">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Margin" Value="0,16,0,8" />
         </Style>
     </UserControl.Resources>
-    <StackPanel Margin="8,8,8,8" CanVerticallyScroll="True" ScrollViewer.CanContentScroll="True"
-                ScrollViewer.VerticalScrollBarVisibility="Auto">
-        <TextBlock
-            x:Name="editor_NameText"
-            FontWeight="Bold"
-            Text="No Element Selected"
-            TextWrapping="Wrap" />
-        <StackPanel x:Name="editor_ElementGrid" Style="{DynamicResource FormStack}" d:IsHidden="True">
-            <Grid Style="{DynamicResource FormRow}">
+
+    <StackPanel Margin="14,2,14,16">
+        <TextBlock x:Name="editor_NameText" Text="Nothing selected" FontSize="14" FontWeight="SemiBold"
+                   TextWrapping="Wrap" />
+        <TextBlock x:Name="editor_KindText" Style="{StaticResource Text.Caption}" Margin="0,2,0,0" />
+        <TextBlock x:Name="editor_EmptyText" Style="{StaticResource Text.Secondary}" Margin="0,10,0,0"
+                   Text="Ctrl+click an object or element in the view — or pick an element in the explorer — to edit it here." />
+
+        <!-- ── World element ── -->
+        <StackPanel x:Name="editor_ElementGrid">
+            <TextBlock Text="POSITION" Style="{StaticResource SectionLabel}" />
+            <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <TextBlock
-                    Style="{DynamicResource FieldLabel}"
-                    Text="UsesRotFlags" />
-                <CheckBox
-                    x:Name="editor_UseRotFlagsBox"
-                    Grid.Column="1"
-                    VerticalAlignment="Top"
-                    Content="Value" />
+                <StackPanel>
+                    <TextBlock Text="X" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="editor_PosXBox" />
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="Y" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="editor_PosYBox" />
+                </StackPanel>
+                <StackPanel Grid.Column="4">
+                    <TextBlock Text="Z" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="editor_PosZBox" />
+                </StackPanel>
             </Grid>
-            <Grid Style="{DynamicResource FormRow}">
+
+            <TextBlock Text="ROTATION" Style="{StaticResource SectionLabel}" />
+            <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <TextBlock
-                    Style="{DynamicResource FieldLabel}"
-                    Text="XYZRotFlags" />
-                <TextBox
-                    x:Name="editor_XYZRotFlagsBox"
-                    Grid.Column="1"
-                    VerticalAlignment="Top"
-                    TextWrapping="Wrap" />
+                <StackPanel>
+                    <TextBlock Text="Cos α" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="editor_CosBox" />
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="Sin α" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="editor_SinBox" />
+                </StackPanel>
             </Grid>
-            <Grid Style="{DynamicResource FormRow}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock
-                    Style="{DynamicResource FieldLabel}"
-                    Text="Cos" />
-                <TextBox
-                    x:Name="editor_CosBox"
-                    Grid.Column="1"
-                    VerticalAlignment="Top"
-                    TextWrapping="Wrap" />
-            </Grid>
-            <Grid Style="{DynamicResource FormRow}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock
-                    Style="{DynamicResource FieldLabel}"
-                    Text="Sin" />
-                <TextBox
-                    x:Name="editor_SinBox"
-                    Grid.Column="1"
-                    VerticalAlignment="Top"
-                    TextWrapping="Wrap" />
-            </Grid>
-            <Grid Style="{DynamicResource FormRow}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock
-                    Style="{DynamicResource FieldLabel}"
-                    Text="X" />
-                <TextBox
-                    x:Name="editor_PosXBox"
-                    Grid.Column="1"
-                    TextWrapping="Wrap" />
-            </Grid>
-            <Grid Style="{DynamicResource FormRow}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock
-                    Style="{DynamicResource FieldLabel}"
-                    Text="Y" />
-                <TextBox
-                    x:Name="editor_PosYBox"
-                    Grid.Column="1"
-                    VerticalAlignment="Top"
-                    TextWrapping="Wrap" />
-            </Grid>
-            <Grid Style="{DynamicResource FormRow}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock
-                    Style="{DynamicResource FieldLabel}"
-                    Text="Z" />
-                <TextBox
-                    x:Name="editor_PosZBox"
-                    Grid.Column="1"
-                    TextWrapping="Wrap" />
-            </Grid>
+            <CheckBox x:Name="editor_UseRotFlagsBox" Content="Use rotation flags instead" Margin="0,12,0,0" />
+            <TextBlock Text="Rotation flags (hex)" Style="{StaticResource FieldLabel}" Margin="0,10,0,4" />
+            <TextBox x:Name="editor_XYZRotFlagsBox" />
 
             <!-- Persistent reminder: element editing is visual-only. Collision was
                  proven (by elimination across transform, bounds, footprint, mesh
                  vertices and the 0x38 grid) to be baked per-level and not editable
                  from the .world, so a moved/duplicated element's collision stays put. -->
-            <TextBlock
-                Margin="0,12,0,2"
-                FontSize="11"
-                FontStyle="Italic"
-                Opacity="0.7"
-                TextWrapping="Wrap"
-                Text="Note: element edits are visual only. Collision always remains (for now)." />
+            <Border Style="{StaticResource Callout}" Margin="0,16,0,0">
+                <TextBlock FontSize="12" TextWrapping="Wrap"
+                           Text="Element edits are visual only: collision stays where it was (for now)." />
+            </Border>
         </StackPanel>
-        <StackPanel x:Name="editor_ObjectGrid" Style="{DynamicResource FormStack}">
-            <Grid Style="{DynamicResource FormRow}">
+
+        <!-- ── Level object ── -->
+        <StackPanel x:Name="editor_ObjectGrid">
+            <TextBlock Text="OBJECT" Style="{StaticResource SectionLabel}" />
+            <TextBlock Text="Name" Style="{StaticResource FieldLabel}" />
+            <TextBox x:Name="editor_Obj_NameBox" />
+            <TextBlock Text="I6 (hex — the top 4 bits are the rotation in 22.5° steps)" Style="{StaticResource FieldLabel}"
+                       Margin="0,10,0,4" TextWrapping="Wrap" />
+            <TextBox x:Name="editor_Obj_I6Box" />
+
+            <TextBlock Text="POSITION (RAW — 4 UNITS PER WORLD UNIT)" Style="{StaticResource SectionLabel}"
+                       TextWrapping="Wrap" />
+            <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <TextBlock
-                    Style="{DynamicResource FieldLabel}"
-                    Text="Name" />
-                <TextBox
-                    x:Name="editor_Obj_NameBox"
-                    Grid.Column="1"
-                    TextWrapping="Wrap" />
+                <StackPanel>
+                    <TextBlock Text="X" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="editor_Obj_Float1Box" />
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="Y" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="editor_Obj_Float2Box" />
+                </StackPanel>
+                <StackPanel Grid.Column="4">
+                    <TextBlock Text="Z" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="editor_Obj_Float3Box" />
+                </StackPanel>
             </Grid>
-            <Grid Style="{DynamicResource FormRow}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock
-                    Style="{DynamicResource FieldLabel}"
-                    Text="I6" />
-                <TextBox
-                    x:Name="editor_Obj_I6Box"
-                    Grid.Column="1"
-                    TextWrapping="Wrap" />
-            </Grid>
-            <Grid Style="{DynamicResource FormRow}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock
-                    Style="{DynamicResource FieldLabel}"
-                    Text="Float 1" />
-                <TextBox
-                    x:Name="editor_Obj_Float1Box"
-                    Grid.Column="1"
-                    TextWrapping="Wrap" />
-            </Grid>
-            <Grid Style="{DynamicResource FormRow}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock
-                    Style="{DynamicResource FieldLabel}"
-                    Text="Float 2" />
-                <TextBox
-                    x:Name="editor_Obj_Float2Box"
-                    Grid.Column="1"
-                    TextWrapping="Wrap" />
-            </Grid>
-            <Grid Style="{DynamicResource FormRow}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock
-                    Style="{DynamicResource FieldLabel}"
-                    Text="Float 3" />
-                <TextBox
-                    x:Name="editor_Obj_Float3Box"
-                    Grid.Column="1"
-                    TextWrapping="Wrap" />
-            </Grid>
-            <Grid Style="{DynamicResource FormRow}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock
-                    Style="{DynamicResource FieldLabel}"
-                    Text="Properties" />
-                <TextBox
-                    x:Name="editor_Obj_PropertiesBox"
-                    Grid.Column="1"
-                    MaxHeight="64"
-                    AcceptsReturn="True"
-                    VerticalScrollBarVisibility="Auto"
-                    TextWrapping="Wrap" />
-            </Grid>
+
+            <TextBlock Text="PROPERTIES" Style="{StaticResource SectionLabel}" />
+            <TextBox x:Name="editor_Obj_PropertiesBox" MinHeight="90" MaxHeight="220"
+                     AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                     VerticalContentAlignment="Top" FontFamily="{StaticResource Font.Mono}" FontSize="12"
+                     ToolTip="One property per line, e.g. name=Bartender" />
         </StackPanel>
-        <Button
-            x:Name="editor_ApplyChangesButton"
-            Click="ApplyChangesClicked"
-            Content="Apply Changes" VerticalAlignment="Bottom" HorizontalAlignment="Right" Padding="10,1,10,1" />
+
+        <Button x:Name="editor_ApplyChangesButton" Style="{StaticResource Button.Accent}" Click="ApplyChangesClicked"
+                Content="Apply Changes" HorizontalAlignment="Stretch" Margin="0,18,0,0" />
+        <TextBlock x:Name="editor_ApplyHint" Text="Tip: press Enter in a field to apply" Style="{StaticResource Text.Caption}"
+                   HorizontalAlignment="Center" Margin="0,6,0,0" />
     </StackPanel>
 </UserControl>

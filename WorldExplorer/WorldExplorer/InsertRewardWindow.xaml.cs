@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows;
 using JetBlackEngineLib.Data.Scripting;
 using System.Windows.Controls;
+using WorldExplorer.Themes;
 
 namespace WorldExplorer;
 
@@ -25,16 +26,33 @@ public partial class InsertRewardWindow : Window
     public InsertRewardWindow(byte[] scrBytes)
     {
         InitializeComponent();
+        ThemeManager.Attach(this);
         _scrBytes = scrBytes;
 
         var sites = ScriptCallSiteScanner.Scan(scrBytes).Where(s => s.Insertable).ToList();
         anchorCombo.ItemsSource = sites;
-        if (sites.Count > 0) anchorCombo.SelectedIndex = 0;
-        else MessageBox.Show(this, "No insertable call sites found in this script.",
-            "Insert Reward", MessageBoxButton.OK, MessageBoxImage.Information);
+        if (sites.Count > 0)
+        {
+            anchorCombo.SelectedIndex = 0;
+        }
+        else
+        {
+            anchorCombo.IsEnabled = false;
+            insertButton.IsEnabled = false;
+            noAnchorsText.Visibility = Visibility.Visible;
+        }
 
         _rows.Add(new RewardRow());
         rewardGrid.ItemsSource = _rows;
+    }
+
+    private void AddReward_Click(object sender, RoutedEventArgs e)
+    {
+        rewardGrid.CommitEdit(DataGridEditingUnit.Row, true);
+        var row = new RewardRow();
+        _rows.Add(row);
+        rewardGrid.SelectedItem = row;
+        rewardGrid.ScrollIntoView(row);
     }
 
     private void Insert_Click(object sender, RoutedEventArgs e)
@@ -43,7 +61,7 @@ public partial class InsertRewardWindow : Window
         rewardGrid.CommitEdit(DataGridEditingUnit.Row, true);
 
         if (anchorCombo.SelectedItem is not ScriptCallSite anchor)
-        { MessageBox.Show(this, "Select an anchor call site."); return; }
+        { MessageBox.Show(this, "Choose the call to anchor the reward to.", Title, MessageBoxButton.OK, MessageBoxImage.Information); return; }
 
         var newCalls = new List<NewRewardCall>();
         foreach (var row in _rows)
@@ -53,10 +71,10 @@ public partial class InsertRewardWindow : Window
             var nc = new NewRewardCall { ExternalName = row.ExternalName };
             if (row.ExternalName == "givePlayerItem") nc.ItemName = v;
             else if (int.TryParse(v, out var n)) nc.IntValue = n;
-            else { MessageBox.Show(this, $"'{v}' is not a number for {row.ExternalName}."); return; }
+            else { MessageBox.Show(this, $"'{v}' is not a number for {row.ExternalName}.", Title, MessageBoxButton.OK, MessageBoxImage.Warning); return; }
             newCalls.Add(nc);
         }
-        if (newCalls.Count == 0) { MessageBox.Show(this, "Add at least one reward."); return; }
+        if (newCalls.Count == 0) { MessageBox.Show(this, "Enter an amount or item name for at least one reward.", Title, MessageBoxButton.OK, MessageBoxImage.Information); return; }
 
         try
         {

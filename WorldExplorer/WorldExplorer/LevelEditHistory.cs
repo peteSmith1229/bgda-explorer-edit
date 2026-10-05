@@ -28,6 +28,13 @@ namespace WorldExplorer.WorldDefs;
 public readonly struct ElementTransform
 {
     public Vector3D Position { get; init; }
+
+    /// <summary>
+    /// World-space bounds. Dragging moves these with the element (they drive
+    /// in-game culling), so undo must restore them too.
+    /// </summary>
+    public Rect3D BoundingBox { get; init; }
+
     public bool NegYaxis { get; init; }
     public double SinAlpha { get; init; }
     public double CosAlpha { get; init; }

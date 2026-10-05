@@ -16,9 +16,12 @@
 
 using JetBlackEngineLib.Data.Animation;
 using JetBlackEngineLib.Data.Models;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -146,18 +149,7 @@ public static class Conversions
         mesh3D.TextureCoordinates = uvCoords;
         mesh3D.Normals = normals;
         model.Geometry = mesh3D;
-        DiffuseMaterial dm = new();
-        if (texture == null || texture.Width <= 0 || texture.Height <= 0)
-        {
-            dm.Brush = NewMissingTextureBrush();
-        }
-        else
-        {
-            ImageBrush ib = new(texture) {ViewportUnits = BrushMappingMode.Absolute};
-            // May be needed at a later point
-            ib.TileMode = TileMode.Tile;
-            dm.Brush = ib;
-        }
+        var dm = GetMaterial(texture);
 
         model.Material = dm;
         // Render the underside of each triangle too. PS2 character meshes use
@@ -169,6 +161,49 @@ public static class Conversions
         // aren't visually affected by also rendering their back faces.
         model.BackMaterial = dm;
         return model;
+    }
+
+    // One material per texture. Animation playback rebuilds the mesh every
+    // frame; reusing the same frozen material lets WPF keep the texture on the
+    // GPU instead of re-uploading it for every frame.
+    private static readonly ConditionalWeakTable<BitmapSource, Material> MaterialCache = new();
+    // Frozen, so one instance can be shared by every model on every thread.
+    private static readonly Lazy<Material> MissingTextureMaterial = new(() =>
+    {
+        var material = new DiffuseMaterial(NewMissingTextureBrush());
+        material.Freeze();
+        return material;
+    }, LazyThreadSafetyMode.ExecutionAndPublication);
+
+    /// <summary>
+    /// Returns a (frozen, when possible) material for <paramref name="texture"/>.
+    /// Textures that are frozen get a shared cached material; an unfrozen
+    /// texture gets a fresh one, exactly as before.
+    /// </summary>
+    public static Material GetMaterial(BitmapSource? texture)
+    {
+        if (texture == null || texture.Width <= 0 || texture.Height <= 0)
+        {
+            return MissingTextureMaterial.Value!;
+        }
+
+        if (texture.IsFrozen && MaterialCache.TryGetValue(texture, out var cached))
+        {
+            return cached;
+        }
+
+        ImageBrush ib = new(texture) {ViewportUnits = BrushMappingMode.Absolute};
+        // May be needed at a later point
+        ib.TileMode = TileMode.Tile;
+        var dm = new DiffuseMaterial(ib);
+
+        if (texture.IsFrozen)
+        {
+            dm.Freeze();
+            MaterialCache.AddOrUpdate(texture, dm);
+        }
+
+        return dm;
     }
 
     private static Brush NewMissingTextureBrush()

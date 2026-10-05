@@ -1,4 +1,4 @@
-﻿/*  Copyright (C) 2012 Ian Brown
+/*  Copyright (C) 2012 Ian Brown
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 using System.Windows;
 using System.Windows.Input;
+using WorldExplorer.Infrastructure;
 
 namespace WorldExplorer;
 
@@ -24,7 +25,7 @@ namespace WorldExplorer;
 /// </summary>
 public partial class ModelView
 {
-    private ModelViewModel ViewModel => (ModelViewModel)DataContext;
+    private ModelViewModel? ViewModel => DataContext as ModelViewModel;
 
     public ModelView()
     {
@@ -40,9 +41,14 @@ public partial class ModelView
             case Key.G:
                 if (e.KeyboardDevice.Modifiers == ModifierKeys.Control)
                 {
-                    ViewModel.ShowExportForPosedModel();
+                    ViewModel?.ShowExportForPosedModel();
+                    e.Handled = true;
                 }
 
+                break;
+            case Key.Space:
+                ViewModel?.TogglePlay();
+                e.Handled = true;
                 break;
         }
     }
@@ -60,5 +66,15 @@ public partial class ModelView
     private void playButton_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is ModelViewModel vm) vm.TogglePlay();
+    }
+
+    private void Frame_Click(object sender, RoutedEventArgs e)
+    {
+        (Window.GetWindow(this) as MainWindow)?.ResetCamera(ContentView.Model, animate: true);
+    }
+
+    private void Export_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel?.ShowExportForPosedModel();
     }
 }

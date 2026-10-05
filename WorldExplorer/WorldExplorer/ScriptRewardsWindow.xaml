@@ -1,45 +1,70 @@
 <Window x:Class="WorldExplorer.ScriptRewardsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Edit Script Rewards" Height="420" Width="640"
-        WindowStartupLocation="CenterOwner">
-    <DockPanel Margin="8">
-        <TextBlock DockPanel.Dock="Top" Margin="0,0,0,8" TextWrapping="Wrap"
-                   Text="Gold and XP take any value. Item names must be the same length or shorter than the current name (in-place edit). Leave a cell unchanged to skip it."/>
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-            <Button Content="Apply" Width="90" Margin="0,0,8,0" Click="Apply_Click"/>
-            <Button Content="Cancel" Width="90" IsCancel="True"/>
+        Style="{StaticResource Window.Dialog}" WindowStartupLocation="CenterOwner"
+        Title="Script Rewards" Height="480" Width="720" MinHeight="320" MinWidth="560">
+    <Window.Resources>
+        <Style x:Key="CellTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="4,2" />
+        </Style>
+        <Style x:Key="CellComboBox" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="MinHeight" Value="0" />
+        </Style>
+    </Window.Resources>
+
+    <DockPanel Margin="20,16,20,16">
+        <Border DockPanel.Dock="Top" Style="{StaticResource Callout}" Margin="0,0,0,12">
+            <TextBlock TextWrapping="Wrap" FontSize="12"
+                       Text="Gold and XP take any value. Item names must be the same length as the current name or shorter (they are edited in place). Changing a call between gold/XP and an item, or removing it, rewrites the script around the call. Leave a row unchanged to skip it." />
+        </Border>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button x:Name="applyButton" Content="Apply" MinWidth="90" IsDefault="True"
+                    Style="{StaticResource Button.Accent}" Click="Apply_Click" />
+            <Button Content="Cancel" MinWidth="90" Margin="8,0,0,0" IsCancel="True" />
         </StackPanel>
-        <DataGrid x:Name="grid" AutoGenerateColumns="False" CanUserAddRows="False"
-                  HeadersVisibility="Column">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Function" Binding="{Binding FunctionName}" IsReadOnly="True" Width="160"/>
-                <DataGridComboBoxColumn Header="Call" Width="130"
-                                        SelectedItemBinding="{Binding SelectedCall, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
-                    <DataGridComboBoxColumn.ElementStyle>
-                        <Style TargetType="ComboBox">
-                            <Setter Property="ItemsSource" Value="{Binding CallOptions}"/>
-                            <Setter Property="IsEnabled" Value="{Binding StructuralSafe}"/>
-                        </Style>
-                    </DataGridComboBoxColumn.ElementStyle>
-                    <DataGridComboBoxColumn.EditingElementStyle>
-                        <Style TargetType="ComboBox">
-                            <Setter Property="ItemsSource" Value="{Binding CallOptions}"/>
-                        </Style>
-                    </DataGridComboBoxColumn.EditingElementStyle>
-                </DataGridComboBoxColumn>
-                <DataGridTextColumn Header="Current" Binding="{Binding Current}" IsReadOnly="True" Width="120"/>
-                <DataGridTemplateColumn Header="New value" Width="*">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBox Text="{Binding NewValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridCheckBoxColumn Header="Remove" Width="60"
-                                        Binding="{Binding Remove, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-            </DataGrid.Columns>
-        </DataGrid>
+
+        <Grid>
+            <DataGrid x:Name="grid" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                      HeadersVisibility="Column" SelectionUnit="FullRow">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Function" Binding="{Binding FunctionName}" IsReadOnly="True" Width="170" />
+                    <DataGridTemplateColumn Header="Call" Width="150">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <ComboBox Style="{StaticResource CellComboBox}" ItemsSource="{Binding CallOptions}"
+                                          SelectedItem="{Binding SelectedCall, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEnabled="{Binding StructuralSafe}"
+                                          ToolTip="Only call sites whose layout was verified can change type." />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Current" Binding="{Binding Current}" IsReadOnly="True" Width="130" />
+                    <DataGridTemplateColumn Header="New value" Width="*">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBox Style="{StaticResource CellTextBox}"
+                                         Text="{Binding NewValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Remove" Width="70">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          IsChecked="{Binding Remove, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEnabled="{Binding StructuralSafe}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+            <TextBlock x:Name="emptyText" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Style="{StaticResource Text.Secondary}" Text="No reward calls were found in this script." />
+        </Grid>
     </DockPanel>
 </Window>

@@ -3,6 +3,7 @@ using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media.Media3D;
 using WorldExplorer.TreeView;
 using WorldExplorer.WorldDefs;
@@ -40,6 +41,27 @@ public partial class LevelObjectPropertiesArea : UserControl
     {
         InitializeComponent();
         ElementSelected(null);
+        PreviewKeyDown += OnPreviewKeyDown;
+    }
+
+    /// <summary>Enter in a single-line field applies the changes.</summary>
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || e.OriginalSource is not TextBox { AcceptsReturn: false } box) return;
+        box.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+        ApplyChangesClicked(this, new RoutedEventArgs());
+        e.Handled = true;
+    }
+
+    /// <summary>Shows the hint when nothing is selected, the Apply button otherwise.</summary>
+    private void UpdateEmptyState()
+    {
+        var hasSelection = editor_ElementGrid.Visibility == Visibility.Visible ||
+                           editor_ObjectGrid.Visibility == Visibility.Visible;
+        editor_EmptyText.Visibility = hasSelection ? Visibility.Collapsed : Visibility.Visible;
+        editor_ApplyChangesButton.Visibility = hasSelection ? Visibility.Visible : Visibility.Collapsed;
+        editor_ApplyHint.Visibility = editor_ApplyChangesButton.Visibility;
+        if (!hasSelection) editor_KindText.Text = "";
     }
 
     public event EventHandler? ChangesApplied;
@@ -69,7 +91,7 @@ public partial class LevelObjectPropertiesArea : UserControl
         SelectedElement = null;
         SelectedObject = null;
 
-        editor_NameText.Text = "No Element Selected";
+        editor_NameText.Text = "Nothing selected";
         editor_UseRotFlagsBox.IsChecked = false;
         editor_XYZRotFlagsBox.Text =
             editor_CosBox.Text =
@@ -89,6 +111,11 @@ public partial class LevelObjectPropertiesArea : UserControl
     private void ApplyChangesClicked(object sender, RoutedEventArgs e)
     {
         if (SelectedElement == null && SelectedObject == null)
+        {
+            return;
+        }
+
+        if (DataContext is not LevelViewModel { IsEditable: true })
         {
             return;
         }
@@ -221,11 +248,13 @@ public partial class LevelObjectPropertiesArea : UserControl
 
             editor_ElementGrid.Visibility = Visibility.Collapsed;
             editor_ObjectGrid.Visibility = Visibility.Collapsed;
+            UpdateEmptyState();
 
             return;
         }
 
         editor_NameText.Text = ele.Label;
+        editor_KindText.Text = "Level element";
         editor_UseRotFlagsBox.IsChecked = ele.WorldElement.UsesRotFlags;
         editor_XYZRotFlagsBox.Text = "0x" + ele.WorldElement.XyzRotFlags.ToString("X4");
         editor_CosBox.Text = ele.WorldElement.CosAlpha.ToString(CultureInfo.InvariantCulture);
@@ -236,6 +265,7 @@ public partial class LevelObjectPropertiesArea : UserControl
 
         editor_ElementGrid.Visibility = Visibility.Visible;
         editor_ObjectGrid.Visibility = Visibility.Collapsed;
+        UpdateEmptyState();
     }
 
     private void ObjectSelected(VisualObjectData? obj)
@@ -246,6 +276,7 @@ public partial class LevelObjectPropertiesArea : UserControl
 
             editor_ElementGrid.Visibility = Visibility.Collapsed;
             editor_ObjectGrid.Visibility = Visibility.Collapsed;
+            UpdateEmptyState();
 
             return;
         }
@@ -253,7 +284,8 @@ public partial class LevelObjectPropertiesArea : UserControl
         // Ensure there's a value set before reading from it
         obj.ObjectData ??= ObjectData.Empty;
 
-        editor_NameText.Text = "Object";
+        editor_NameText.Text = string.IsNullOrEmpty(obj.ObjectData.Name) ? "Object" : obj.ObjectData.Name;
+        editor_KindText.Text = "Level object";
         editor_Obj_NameBox.Text = obj.ObjectData.Name;
         editor_Obj_I6Box.Text = "0x" + obj.ObjectData.I6.ToString("X4");
         editor_Obj_Float1Box.Text = obj.ObjectData.Floats[0].ToString(CultureInfo.InvariantCulture);
@@ -265,6 +297,7 @@ public partial class LevelObjectPropertiesArea : UserControl
 
         editor_ElementGrid.Visibility = Visibility.Collapsed;
         editor_ObjectGrid.Visibility = Visibility.Visible;
+        UpdateEmptyState();
     }
 
     private bool GetDouble(string text, out double value)

@@ -1,4 +1,4 @@
-﻿/*  Copyright (C) 2012 Ian Brown
+/*  Copyright (C) 2012 Ian Brown
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,6 +15,9 @@
 */
 
 using JetBlackEngineLib.Data.DataContainers;
+using System;
+using System.IO;
+using WorldExplorer.Infrastructure;
 
 namespace WorldExplorer.TreeView;
 
@@ -23,12 +26,38 @@ namespace WorldExplorer.TreeView;
 /// </summary>
 public class LmpEntryTreeViewModel : AbstractLmpTreeViewModel
 {
+    private readonly NodeKind _kind;
+
     public LmpEntryTreeViewModel(World world, TreeViewItemViewModel parent, LmpFile lmpFile, string entryName)
-        : base(world, parent, lmpFile, entryName)
+        : base(world, parent, lmpFile, entryName, lazyLoadChildren: false)
     {
+        _kind = NodeKinds.FromFileName(entryName);
     }
 
-    protected override void LoadChildren()
+    public override NodeKind Kind => _kind;
+
+    public override string KindDescription
     {
+        get
+        {
+            string ext;
+            try
+            {
+                ext = (Path.GetExtension(Label) ?? "").TrimStart('.').ToUpperInvariant();
+            }
+            catch (ArgumentException)
+            {
+                ext = "";
+            }
+
+            var description = NodeKinds.Describe(Kind);
+            return ext.Length > 0 ? $"{description} ({ext})" : description;
+        }
     }
+
+    public override string? Detail => EntrySize is { } size ? FileSizeConverter.Format(size) : null;
+
+    public override bool IsModified => _world.IsEntryUnsaved(_lmpFile, Label);
+
+    public override bool IsDeleted => _lmpFile.PendingDeletions.Contains(Label);
 }
