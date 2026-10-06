@@ -1,13 +1,4 @@
-# bgda-explorer
-Code written to try and figure out the data files used in Baldur's Gate Dark Alliance for the PS2
-
-This is a collection of tools used to figure out the format of the data files used in the PS2 version of Baldur's Gate Dark Alliance.
-
-The bgtools directory contains java code to mainly dump decodes files as text.
-
-The WorldExplorer directory contains a C# application to visualise the model and levels.
-
-## WorldExplorer
+# WorldExplorer
 
 WorldExplorer browses and edits the game data of Snowblind-engine PS2 games: Baldur's Gate: Dark Alliance,
 Champions: Return to Arms, Justice League Heroes and Fallout: Brotherhood of Steel. Pick the game from the
@@ -29,12 +20,12 @@ save editing, script rewards) only appear for Dark Alliance.
 
 Press F1 in the app for every keyboard shortcut. Dark and light themes are available (Ctrl+Shift+T).
 
-### Building
+## Building
 
 Requires Windows and the .NET 10 SDK. Open `WorldExplorer/WorldExplorer.sln` in Visual Studio or Rider, or run
 `dotnet build WorldExplorer/WorldExplorer.sln`.
 
-Credits:
+## Credits:
 
 -bigianb (Ian Brown) - Author and progenitor of the bgda-explorer tool.
 
@@ -43,3 +34,5 @@ Credits:
 -kran27 (Kran) - Contributor to the bgda-explorer tool.
 
 -Claude (Anthropic AI) - Contributor to the reverse-engineering of the bgda-explorer tool converting the original viewer into a World editor.
+
+-peteSmith1229 - Instigator.
