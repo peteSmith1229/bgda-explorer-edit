@@ -58,9 +58,18 @@ public class DdfCategoryTreeViewModel : TreeViewItemViewModel
 {
     public int CategoryCode { get; }
 
+    public int Count { get; }
+
     public DdfCategoryTreeViewModel(TreeViewItemViewModel parent, string label, int categoryCode, int count)
-        : base($"{label}  ({count})", parent, false)
+        : base(label, parent, false)
     {
         CategoryCode = categoryCode;
+        Count = count;
     }
+
+    public override NodeKind Kind => NodeKind.Folder;
+
+    public override string KindDescription => "Entity category";
+
+    public override string? Detail => Count.ToString();
 }

@@ -1,4 +1,4 @@
-﻿/*  Copyright (C) 2012 Ian Brown
+/*  Copyright (C) 2012 Ian Brown
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,16 +24,78 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
 using WorldExplorer.Logging;
 using WorldExplorer.TreeView;
 using WorldExplorer.Win3D;
 using WorldExplorer.WorldDefs;
+using WorldExplorer.Infrastructure;
 
 namespace WorldExplorer;
 
+/// <summary>
+/// Frozen element geometry keyed by (model, texture) identity. Duplicated
+/// elements share their source's model and texture, so they share geometry.
+/// </summary>
+public sealed class ElementGeometryCache
+{
+    private readonly Dictionary<(Model Model, BitmapSource? Texture), Model3D> _items = new();
+
+    /// <summary>
+    /// Returns the frozen geometry for <paramref name="model"/> textured with
+    /// <paramref name="texture"/>, building it on first use. Safe to call from
+    /// a worker thread provided the texture is frozen (frozen WPF objects can
+    /// be shared across threads).
+    /// </summary>
+    public Model3D Get(Model model, BitmapSource? texture)
+    {
+        var key = (model, texture);
+        if (_items.TryGetValue(key, out var geometry)) return geometry;
+
+        geometry = Conversions.CreateModel3D(model.MeshList, texture, null, 0);
+        if (geometry.CanFreeze) geometry.Freeze();
+        _items[key] = geometry;
+        return geometry;
+    }
+
+    /// <summary>Builds geometry for every element of <paramref name="worldData"/>.</summary>
+    public static ElementGeometryCache BuildFor(WorldData worldData)
+    {
+        var cache = new ElementGeometryCache();
+        foreach (var element in worldData.WorldElements)
+        {
+            var model = worldData.GetElementModel(element);
+            if (model != null) cache.Get(model, element.Texture);
+        }
+        return cache;
+    }
+}
+
 public class LevelViewModel : BaseViewModel
 {
+    /// <summary>
+    /// Editor state that belongs to one level and survives switching to
+    /// another level and back: undo history, the structural-edit flag and the
+    /// scene caches.
+    /// </summary>
+    private sealed class LevelSession
+    {
+        public LevelEditHistory History { get; } = new();
+
+        /// <summary>
+        /// True once an element has been added or removed. While set, commits go
+        /// through <see cref="WorldElementPatcher.Rebuild"/> (which can change the
+        /// element count) instead of the surgical in-place patch.
+        /// </summary>
+        public bool ElementsDirty { get; set; }
+
+        public ElementGeometryCache Geometry { get; set; } = new();
+
+        /// <summary>Sky-dome geometry, decoded once per level.</summary>
+        public List<Model3D>? Dome { get; set; }
+    }
+
     private LmpFile? _domeLmp;
     private bool _enableLights = true;
     private string? _infoText;
@@ -43,18 +105,8 @@ public class LevelViewModel : BaseViewModel
     private Rect3D _worldBounds = Rect3D.Empty;
     private WorldData? _worldData;
     private WorldFileTreeViewModel? _worldNode;
-    private readonly WorldExplorer.WorldDefs.LevelEditHistory _history = new();
-    private readonly System.Collections.Generic.Dictionary<
-        JetBlackEngineLib.Data.World.WorldElement,
-        System.Windows.Media.Media3D.ModelVisual3D> _elementVisuals = new();
-    
-    /// <summary>
-    /// True once an element has been added or removed this session. While set,
-    /// commits go through <see cref="WorldElementPatcher.Rebuild"/> (which can
-    /// change the element count) instead of the surgical in-place patch. Reset
-    /// when a new world is loaded.
-    /// </summary>
-    private bool _elementsDirty;
+    private LevelSession _session = new();
+    private readonly Dictionary<WorldElement, ModelVisual3D> _elementVisuals = new();
 
     public Rect3D WorldBounds
     {
@@ -73,6 +125,7 @@ public class LevelViewModel : BaseViewModel
         {
             _worldNode = value;
             OnPropertyChanged(nameof(WorldNode));
+            OnPropertyChanged(nameof(IsEditable));
         }
     }
 
@@ -82,11 +135,18 @@ public class LevelViewModel : BaseViewModel
         set
         {
             _worldData = value;
-            NewWorldLoaded();
+            NewWorldLoaded(null);
             OnPropertyChanged(nameof(WorldData));
         }
     }
 
+    /// <summary>
+    /// False for read-only previews (BoS levels shown from a DDF entity or a
+    /// CLP archive): those can be inspected but edits can't be saved back.
+    /// </summary>
+    public bool IsEditable => WorldNode != null && WorldNode.LmpFileProperty is not ClpFile;
+
+    /// <summary>Summary shown in the level view's status overlay.</summary>
     public string? InfoText
     {
         get => _infoText;
@@ -125,6 +185,7 @@ public class LevelViewModel : BaseViewModel
         {
             _selectedObject = value;
             OnPropertyChanged(nameof(SelectedObject));
+            OnPropertyChanged(nameof(HasSelection));
         }
     }
 
@@ -137,9 +198,12 @@ public class LevelViewModel : BaseViewModel
         set
         {
             _selectedElement = value;
-            OnPropertyChanged("SelectedElement");
+            OnPropertyChanged(nameof(SelectedElement));
+            OnPropertyChanged(nameof(HasSelection));
         }
     }
+
+    public bool HasSelection => _selectedObject != null || _selectedElement != null;
 
     public ObjectManager ObjectManager { get; }
 
@@ -150,32 +214,51 @@ public class LevelViewModel : BaseViewModel
 
     public event EventHandler? SceneUpdated;
 
+    /// <summary>
+    /// Shows a decoded level. <paramref name="node"/> is the editable .world
+    /// tree node, or null for a read-only preview. <paramref name="geometry"/>
+    /// is optional element geometry already built on a worker thread.
+    /// </summary>
+    public void SetWorld(WorldFileTreeViewModel? node, WorldData? worldData, ElementGeometryCache? geometry = null)
+    {
+        _worldNode = node;
+        _worldData = worldData;
+        OnPropertyChanged(nameof(WorldNode));
+        OnPropertyChanged(nameof(IsEditable));
+        NewWorldLoaded(geometry);
+        OnPropertyChanged(nameof(WorldData));
+    }
+
     public void RebuildScene()
     {
-        _elementVisuals.Clear();  
+        _elementVisuals.Clear();
         List<ModelVisual3D> scene = new();
         AddLights(EnableLevelSpecifiedLights, scene);
 
         var worldBounds = Rect3D.Empty;
+        var elementCount = 0;
 
         if (_worldData != null)
         {
             foreach (var element in _worldData.WorldElements)
             {
-                if (element.IsDeleted) continue;  
+                if (element.IsDeleted) continue;
                 var elementModel = _worldData.GetElementModel(element);
                 if (elementModel == null) continue;
-                ModelVisual3D mv3d = new();
-                var model3D = Conversions.CreateModel3D(elementModel.MeshList, element.Texture, null, 0);
-                mv3d.Content = model3D;
 
-                var modelBounds = model3D.Bounds;
+                // Geometry is built once per level and shared (frozen) across
+                // rebuilds; only the cheap per-element visual + transform is new.
+                var model3D = _session.Geometry.Get(elementModel, element.Texture);
+                ModelVisual3D mv3d = new()
+                {
+                    Content = model3D,
+                    Transform = SceneTransforms.BuildElementTransform(element)
+                };
 
-                worldBounds.Union(modelBounds);
-                mv3d.Transform = SceneTransforms.BuildElementTransform(element); 
-                _elementVisuals[element] = mv3d;  
-
+                worldBounds.Union(model3D.Bounds);
+                _elementVisuals[element] = mv3d;
                 scene.Add(mv3d);
+                elementCount++;
             }
         }
 
@@ -185,6 +268,11 @@ public class LevelViewModel : BaseViewModel
 
         WorldBounds = worldBounds;
         Scene = scene;
+
+        InfoText = _worldData == null
+            ? null
+            : $"{Plural.Of(elementCount, "element")} · {Plural.Of(ObjectManager.Objects.Count, "object")}" +
+              (IsEditable ? "" : " · read-only preview");
     }
 
     private void ResetState()
@@ -192,14 +280,30 @@ public class LevelViewModel : BaseViewModel
         _domeLmp = null;
     }
 
-    private void NewWorldLoaded()
+    private void NewWorldLoaded(ElementGeometryCache? geometry)
     {
         ResetState();
-        _elementsDirty = false;        // structural edits don't carry across levels
-        _history.Clear();
+
+        // Restore this level's editor session (undo history, structural-edit
+        // flag, caches) or start a fresh one. Previews get a throwaway session.
+        if (_worldNode?.EditorState is LevelSession existing)
+        {
+            _session = existing;
+        }
+        else
+        {
+            _session = new LevelSession();
+            if (_worldNode != null) _worldNode.EditorState = _session;
+        }
+
+        if (geometry != null) _session.Geometry = geometry;
+
+        SelectedObject = null;
+        SelectedElement = null;
         LoadObjects();
         LoadSkyDome();
         RebuildScene();
+        RaiseHistoryChanged();
 
         SceneUpdated?.Invoke(this, EventArgs.Empty);
     }
@@ -207,13 +311,19 @@ public class LevelViewModel : BaseViewModel
     private void LoadObjects()
     {
         if (WorldNode == null)
+        {
+            ObjectManager.ReplaceAllObjects(Array.Empty<ObjectData>());
             return;
- 
+        }
+
         var lmpFile = WorldNode.LmpFileProperty;
- 
+
         if (!lmpFile.Directory.TryGetValue("objects.ob", out var obNode))
+        {
+            ObjectManager.ReplaceAllObjects(Array.Empty<ObjectData>());
             return;
- 
+        }
+
         // If an edited objects.ob has been queued (paste, duplicate, delete,
         // apply-changes), reload from THOSE bytes — otherwise a scene reload
         // would silently revert the object list to the original file content.
@@ -253,33 +363,48 @@ public class LevelViewModel : BaseViewModel
             return;
         }
 
-        var vifChildren = _domeLmp.Directory.Keys
+        // Decoding the dome on every rebuild (each drag, undo, apply…) was a
+        // large share of edit latency; decode once per level instead.
+        _session.Dome ??= DecodeSkyDome(_domeLmp);
+
+        foreach (var model in _session.Dome)
+        {
+            scene.Add(new ModelVisual3D { Content = model });
+        }
+    }
+
+    private static List<Model3D> DecodeSkyDome(LmpFile domeLmp)
+    {
+        var models = new List<Model3D>();
+        var vifChildren = domeLmp.Directory.Keys
             .Where(e => e.EndsWith(".vif", StringComparison.OrdinalIgnoreCase));
 
         foreach (var vifFileName in vifChildren)
         {
-            if (!_domeLmp.Directory.TryGetValue(vifFileName, out var vifEntry))
+            if (!domeLmp.Directory.TryGetValue(vifFileName, out var vifEntry))
                 continue;
             var texFilename = Path.GetFileNameWithoutExtension(vifFileName) + ".tex";
-                
-            if (!_domeLmp.Directory.TryGetValue(texFilename.ToLowerInvariant(), out var texEntry))
+
+            if (!domeLmp.Directory.TryGetValue(texFilename.ToLowerInvariant(), out var texEntry))
                 // Couldn't find the tex file, ignore this vif entry
                 continue;
 
             var selectedNodeImage =
-                TexDecoder.Decode(_domeLmp.FileData.AsSpan().Slice(texEntry.StartOffset, texEntry.Length));
+                TexDecoder.Decode(domeLmp.FileData.AsSpan().Slice(texEntry.StartOffset, texEntry.Length));
             StringLogger log = new();
 
             Model model = new(VifDecoder.Decode(
                 log,
-                _domeLmp.FileData.AsSpan().Slice(vifEntry.StartOffset, vifEntry.Length),
+                domeLmp.FileData.AsSpan().Slice(vifEntry.StartOffset, vifEntry.Length),
                 selectedNodeImage?.PixelWidth ?? 0,
                 selectedNodeImage?.PixelHeight ?? 0));
 
-            var newModel =
-                (GeometryModel3D)Conversions.CreateModel3D(model.MeshList, selectedNodeImage);
-            scene.Add(new ModelVisual3D {Content = newModel});
+            var newModel = Conversions.CreateModel3D(model.MeshList, selectedNodeImage);
+            if (newModel.CanFreeze) newModel.Freeze();
+            models.Add(newModel);
         }
+
+        return models;
     }
 
     private void AddLights(bool enableLevelSpecifiedLights, List<ModelVisual3D> scene)
@@ -315,7 +440,7 @@ public class LevelViewModel : BaseViewModel
         scene.Add(ambientLight);
         scene.Add(directionalLight);
     }
-    
+
     /// <summary>
     /// Adds <paramref name="newObject"/> to the level, rebuilds the scene,
     /// queues the updated objects.ob into the archive's pending-edit layer, and
@@ -324,22 +449,28 @@ public class LevelViewModel : BaseViewModel
     /// </summary>
     public VisualObjectData? AddObjectToLevel(ObjectData newObject)
     {
-        PushUndoSnapshot();        // ← ADD
+        PushUndoSnapshot();
         var vod = ObjectManager.AddObject(newObject);
         RebuildScene();
- 
+
         if (CommitChangesToArchive())
         {
             MainViewModel.MainWindow.UpdateTitle();
         }
- 
+
         return vod;
     }
-    
+
     /// <summary>True when there is a level edit that can be undone / redone.</summary>
-    public bool CanUndo => _history.CanUndo;
-    public bool CanRedo => _history.CanRedo;
-     
+    public bool CanUndo => _session.History.CanUndo;
+    public bool CanRedo => _session.History.CanRedo;
+
+    private void RaiseHistoryChanged()
+    {
+        OnPropertyChanged(nameof(CanUndo));
+        OnPropertyChanged(nameof(CanRedo));
+    }
+
     /// <summary>
     /// Records the current level state so the next edit can be undone.  MUST be
     /// called at the START of every edit operation, before anything is mutated.
@@ -347,41 +478,45 @@ public class LevelViewModel : BaseViewModel
     /// </summary>
     public void PushUndoSnapshot()
     {
-        if (WorldNode == null) return;
-        _history.PushUndo(CaptureMemento());
+        if (!IsEditable) return;
+        _session.History.PushUndo(CaptureMemento());
+        RaiseHistoryChanged();
     }
-     
+
     /// <summary>Reverts the most recent edit.</summary>
     public void Undo()
     {
-        if (WorldNode == null) return;
-        var restored = _history.Undo(CaptureMemento());
+        if (!IsEditable) return;
+        var restored = _session.History.Undo(CaptureMemento());
         if (restored != null) RestoreMemento(restored);
+        RaiseHistoryChanged();
     }
-     
+
     /// <summary>Re-applies the most recently undone edit.</summary>
     public void Redo()
     {
-        if (WorldNode == null) return;
-        var restored = _history.Redo(CaptureMemento());
+        if (!IsEditable) return;
+        var restored = _session.History.Redo(CaptureMemento());
         if (restored != null) RestoreMemento(restored);
+        RaiseHistoryChanged();
     }
-     
-    private WorldExplorer.WorldDefs.LevelEditMemento CaptureMemento()
+
+    private LevelEditMemento CaptureMemento()
     {
         // Clone objects so the snapshot is never aliased to the live list.
         var objects = ObjectManager.Objects
-            .Select(WorldExplorer.WorldDefs.ObjectClipboard.Clone)
+            .Select(ObjectClipboard.Clone)
             .ToList();
-     
-        var transforms = new System.Collections.Generic.Dictionary<int, WorldExplorer.WorldDefs.ElementTransform>();
+
+        var transforms = new Dictionary<int, ElementTransform>();
         if (_worldData != null)
         {
             foreach (var el in _worldData.WorldElements)
             {
-                transforms[el.ElementIndex] = new WorldExplorer.WorldDefs.ElementTransform
+                transforms[el.ElementIndex] = new ElementTransform
                 {
                     Position     = el.Position,
+                    BoundingBox  = el.BoundingBox,
                     NegYaxis     = el.NegYaxis,
                     SinAlpha     = el.SinAlpha,
                     CosAlpha     = el.CosAlpha,
@@ -390,17 +525,17 @@ public class LevelViewModel : BaseViewModel
                 };
             }
         }
-     
-        return new WorldExplorer.WorldDefs.LevelEditMemento(objects, transforms);
+
+        return new LevelEditMemento(objects, transforms);
     }
-     
-    private void RestoreMemento(WorldExplorer.WorldDefs.LevelEditMemento m)
+
+    private void RestoreMemento(LevelEditMemento m)
     {
         // Hand ObjectManager fresh clones so later in-place edits can't corrupt
         // the stored snapshot.
         ObjectManager.ReplaceAllObjects(
-            m.Objects.Select(WorldExplorer.WorldDefs.ObjectClipboard.Clone));
-     
+            m.Objects.Select(ObjectClipboard.Clone));
+
         // Write element transforms back into the live elements.
         if (_worldData != null)
         {
@@ -408,6 +543,7 @@ public class LevelViewModel : BaseViewModel
             {
                 if (!m.ElementTransforms.TryGetValue(el.ElementIndex, out var t)) continue;
                 el.Position     = t.Position;
+                el.BoundingBox  = t.BoundingBox;
                 el.NegYaxis     = t.NegYaxis;
                 el.SinAlpha     = t.SinAlpha;
                 el.CosAlpha     = t.CosAlpha;
@@ -415,42 +551,40 @@ public class LevelViewModel : BaseViewModel
                 el.XyzRotFlags  = t.XyzRotFlags;
             }
         }
-     
+
         // The previous selection points at now-replaced instances — clear it so
         // the properties panel doesn't act on stale references.
         SelectedObject = null;
         SelectedElement = null;
-     
+
         RebuildScene();
-     
+
         if (CommitChangesToArchive())
             MainViewModel.MainWindow.UpdateTitle();
     }
-    
-    
-    
+
     /// <summary>
     /// Deletes <paramref name="vod"/> from the level, rebuilds the scene, and
     /// queues the updated objects.ob into the archive's pending-edit layer.
     /// </summary>
     public void DeleteObjectFromLevel(VisualObjectData vod)
     {
-        PushUndoSnapshot();        // ← ADD
+        PushUndoSnapshot();
         ObjectManager.DeleteObject(vod);
- 
+
         if (SelectedObject == vod)
         {
             SelectedObject = null;
         }
- 
+
         RebuildScene();
- 
+
         if (CommitChangesToArchive())
         {
             MainViewModel.MainWindow.UpdateTitle();
         }
     }
-    
+
     /// <summary>
     /// Duplicates the selected world element in place (small offset), sharing the
     /// source's geometry, then selects the copy. Changes the element count, so the
@@ -459,7 +593,7 @@ public class LevelViewModel : BaseViewModel
     public void DuplicateSelectedElement()
     {
         var src = SelectedElement?.WorldElement;
-        if (_worldData == null || WorldNode == null || src == null) return;
+        if (_worldData == null || WorldNode == null || src == null || !IsEditable) return;
 
         PushUndoSnapshot();
 
@@ -487,7 +621,7 @@ public class LevelViewModel : BaseViewModel
             _worldData.WorldElements.Add(clone);
         }
 
-        _elementsDirty = true;
+        _session.ElementsDirty = true;
         FinalizeEdit();             // RebuildScene + Rebuild() + renumber + title
 
         // Rebuild the tree nodes (now renumbered) and select the new element so
@@ -507,19 +641,19 @@ public class LevelViewModel : BaseViewModel
     public void DeleteSelectedElement()
     {
         var target = SelectedElement?.WorldElement;
-        if (_worldData == null || WorldNode == null || target == null) return;
+        if (_worldData == null || WorldNode == null || target == null || !IsEditable) return;
 
         PushUndoSnapshot();
 
         target.IsDeleted = true;   // keep as a dead slot — no renumber/reorder
         SelectedElement = null;     // detaches the gizmo via the LevelView observer
 
-        _elementsDirty = true;
+        _session.ElementsDirty = true;
         FinalizeEdit();             // RebuildScene + Rebuild() + renumber + title
 
         WorldNode.ReloadChildren(); // refresh the tree with renumbered labels
     }
-    
+
     /// <summary>
     /// Queues all level edits (moved world elements and edited objects) into the
     /// world LMP's pending-edit layer so they are included the next time the
@@ -536,12 +670,12 @@ public class LevelViewModel : BaseViewModel
     /// </summary>
     public bool CommitChangesToArchive()
     {
-        if (WorldNode == null)
-            return false;   // No editable world loaded (e.g. BoS cat-8 preview).
-     
+        if (WorldNode == null || !IsEditable)
+            return false;   // No editable world loaded (e.g. BoS preview).
+
         var lmpFile = WorldNode.LmpFileProperty;
         var queued  = false;
-     
+
         // ── 1. Patch element transforms back into the .world entry ────────────
         if (_worldData != null && lmpFile.Directory.TryGetValue(WorldNode.Label, out var worldEntry))
         {
@@ -549,7 +683,7 @@ public class LevelViewModel : BaseViewModel
                                 ?? App.Settings.Get<EngineVersion>("Core.EngineVersion");
 
             byte[] newWorldBytes;
-            if (_elementsDirty)
+            if (_session.ElementsDirty)
             {
                 // An element was added/removed → rebuild the array (relocated to
                 // the end of the file) from the PRISTINE bytes + the current list.
@@ -593,7 +727,7 @@ public class LevelViewModel : BaseViewModel
 
                 newWorldBytes = WorldElementPatcher.Patch(baseBytes,
                     _worldData.WorldElements, engineVersion);
-                
+
                 // Slide the 0x20 footprint first (needs the OLD record bounds)...
                 WorldElementPatcher.PatchTopoBounds(newWorldBytes,
                     _worldData.WorldElements, engineVersion);
@@ -608,7 +742,7 @@ public class LevelViewModel : BaseViewModel
             lmpFile.ReplaceEntry(WorldNode.Label, newWorldBytes);
             queued = true;
         }
-     
+
         // ── 2. Re-encode objects.ob from the in-memory object list ────────────
         if (lmpFile.Directory.TryGetValue("objects.ob", out var obEntry)
             && ObjectManager.Objects.Count > 0)
@@ -616,14 +750,15 @@ public class LevelViewModel : BaseViewModel
             // Preserve the opaque flags i16 at +0x02 of the ORIGINAL entry —
             // ObDecoder skips it on read and the editor never changes it.
             var flags = BitConverter.ToInt16(lmpFile.FileData, obEntry.StartOffset + 2);
-     
+
             var encoded = ObEncoder.Encode(ObjectManager.Objects, flags);
             lmpFile.ReplaceEntry("objects.ob", encoded);
             queued = true;
         }
-     
+
         return queued;
-}
+    }
+
     /// <summary>
     /// Rebuilds the scene and commits pending edits to the archive, refreshing the
     /// title.  Called after a viewport drag completes.
@@ -634,30 +769,27 @@ public class LevelViewModel : BaseViewModel
         if (CommitChangesToArchive())
             MainViewModel.MainWindow.UpdateTitle();
     }
-    
+
     /// <summary>
-    /// Returns the <see cref="System.Windows.Media.Media3D.ModelVisual3D"/> built
-    /// for <paramref name="element"/> in the most recent RebuildScene, or null if
-    /// the element has no visual (e.g. no model). The map is rebuilt every
-    /// RebuildScene, so this always reflects the current scene.
+    /// Returns the <see cref="ModelVisual3D"/> built for <paramref name="element"/>
+    /// in the most recent RebuildScene, or null if the element has no visual
+    /// (e.g. no model). The map is rebuilt every RebuildScene, so this always
+    /// reflects the current scene.
     /// </summary>
-    public System.Windows.Media.Media3D.ModelVisual3D? GetElementVisual(
-        JetBlackEngineLib.Data.World.WorldElement element)
+    public ModelVisual3D? GetElementVisual(WorldElement element)
         => _elementVisuals.TryGetValue(element, out var v) ? v : null;
-    
+
     /// <summary>
     /// Reverse of <see cref="GetElementVisual"/>: returns the element whose scene
     /// visual is <paramref name="visual"/>, or null. Lets the viewport hit-test
     /// resolve a clicked model to its element without assuming the scene and tree
     /// are index-aligned (they diverge whenever an element is hidden, e.g. deleted).
     /// </summary>
-    public JetBlackEngineLib.Data.World.WorldElement? GetElementForVisual(
-        System.Windows.Media.Media3D.ModelVisual3D visual)
+    public WorldElement? GetElementForVisual(ModelVisual3D visual)
     {
         foreach (var kv in _elementVisuals)
             if (ReferenceEquals(kv.Value, visual))
                 return kv.Key;
         return null;
     }
-    
 }

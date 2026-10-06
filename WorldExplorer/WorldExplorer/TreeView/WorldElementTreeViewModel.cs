@@ -1,4 +1,4 @@
-﻿/*  Copyright (C) 2012 Ian Brown
+/*  Copyright (C) 2012 Ian Brown
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,13 +25,11 @@ public class WorldElementTreeViewModel : TreeViewItemViewModel
 
     public WorldElementTreeViewModel(WorldElement worldElement, string label, TreeViewItemViewModel? parent,
         WorldData worldData)
-        : base(label, parent, true)
+        : base(label, parent, false)
     {
         WorldData = worldData;
         WorldElement = worldElement;
     }
-        
-    protected override void LoadChildren()
-    {
-    }
+
+    public override NodeKind Kind => NodeKind.Element;
 }

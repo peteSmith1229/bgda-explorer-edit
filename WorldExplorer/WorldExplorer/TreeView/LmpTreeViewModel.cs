@@ -1,4 +1,4 @@
-﻿/*  Copyright (C) 2012 Ian Brown
+/*  Copyright (C) 2012 Ian Brown
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 using JetBlackEngineLib.Data.DataContainers;
 using System;
 using System.IO;
+using WorldExplorer.Infrastructure;
 
 namespace WorldExplorer.TreeView;
 
@@ -25,10 +26,21 @@ namespace WorldExplorer.TreeView;
 /// </summary>
 public class LmpTreeViewModel : AbstractLmpTreeViewModel
 {
-    public LmpTreeViewModel(World world, TreeViewItemViewModel parent, LmpFile lmpFile)
+    public LmpTreeViewModel(World world, TreeViewItemViewModel? parent, LmpFile lmpFile)
         : base(world, parent, lmpFile, lmpFile.Name)
     {
     }
+
+    public override NodeKind Kind => NodeKind.Archive;
+
+    public override string KindDescription => _lmpFile is ClpFile ? "Archive (CLP)" : "Archive (LMP)";
+
+    public override string? Detail => _lmpFile.Directory.Count > 0 ? Plural.Of(_lmpFile.Directory.Count, "item") : null;
+
+    public override bool IsModified => _lmpFile is not ClpFile && _world.HasUnsavedChanges(_lmpFile);
+
+    // Reading an archive directory is cheap, so the explorer filter may do it.
+    protected override bool SearchLoadsChildren => true;
 
     protected override void LoadChildren()
     {
@@ -59,5 +71,7 @@ public class LmpTreeViewModel : AbstractLmpTreeViewModel
 
             Children.Add(child);
         }
+
+        RaiseDetailChanged();
     }
 }

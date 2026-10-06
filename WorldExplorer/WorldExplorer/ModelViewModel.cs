@@ -77,8 +77,14 @@ public class ModelViewModel : BaseViewModel
             UpdateModel(false);
             OnPropertyChanged(nameof(AnimData));
             OnPropertyChanged(nameof(MaximumFrame));
+            OnPropertyChanged(nameof(FrameText));
         }
     }
+
+    /// <summary>"Frame 12 / 48", or "Bind pose" for frame -1.</summary>
+    public string FrameText => _animData == null
+        ? ""
+        : _currentFrame < 0 ? "Bind pose" : $"Frame {_currentFrame + 1} / {MaximumFrame + 1}";
 
     /// <summary>Animation playback state. Setting it starts/stops the tick timer.</summary>
     public bool IsPlaying
@@ -141,6 +147,7 @@ public class ModelViewModel : BaseViewModel
             _currentFrame = value;
             UpdateModel(false);
             OnPropertyChanged(nameof(CurrentFrame));
+            OnPropertyChanged(nameof(FrameText));
         }
     }
 
@@ -180,7 +187,7 @@ public class ModelViewModel : BaseViewModel
                     }
                     bounds = rect;
                 }
-                InfoText = $"Model Bounds: {bounds}";
+                InfoText = DescribeBounds(bounds.Value);
                 _modelView.modelObject = _model;
                 _modelView.viewport.Children.Add(_modelView.modelObject);
             }
@@ -261,6 +268,7 @@ public class ModelViewModel : BaseViewModel
         OnPropertyChanged(nameof(VifModel));
         OnPropertyChanged(nameof(AnimData));
         OnPropertyChanged(nameof(MaximumFrame));
+        OnPropertyChanged(nameof(FrameText));
     }
 
     private void UpdateModel(bool updateCamera)
@@ -374,5 +382,14 @@ public class ModelViewModel : BaseViewModel
         }
 
         exporter.SaveToFile(dialog.FileName, VifModel, Texture, AnimData, CurrentFrame);
+    }
+
+    /// <summary>"Size 10.1 × 14.4 × 6.3 · min (-5.4, -7.2, -3.0)" — the raw Rect3D text is unreadable.</summary>
+    private static string? DescribeBounds(Rect3D bounds)
+    {
+        if (bounds.IsEmpty) return null;
+        var c = System.Globalization.CultureInfo.CurrentCulture;
+        return string.Format(c, "Size {0:0.##} × {1:0.##} × {2:0.##}  ·  min ({3:0.##}, {4:0.##}, {5:0.##})",
+            bounds.SizeX, bounds.SizeY, bounds.SizeZ, bounds.X, bounds.Y, bounds.Z);
     }
 }

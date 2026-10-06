@@ -20,6 +20,7 @@ using System.Windows;
 using System.Windows.Controls;
 using JetBlackEngineLib.Data.Save;
 using Microsoft.Win32;
+using WorldExplorer.Themes;
 
 namespace WorldExplorer;
 
@@ -76,6 +77,7 @@ public partial class SaveEditorWindow : Window
     public SaveEditorWindow(BgdaSave save)
     {
         InitializeComponent();
+        ThemeManager.Attach(this);
         _save = save;
 
         difficultyColumn.ItemsSource = DifficultyNames;

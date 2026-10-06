@@ -21,11 +21,22 @@ using JetBlackEngineLib.Data.World;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace WorldExplorer;
 
 public class World
 {
+    private bool _loaded;
+
+    /// <summary>
+    /// What each archive's pending-edit layer looked like when it was last
+    /// written to disk. Pending edits are cumulative since the file was opened
+    /// (the in-memory archive bytes are never rewritten), so every save must
+    /// include all of them; "unsaved" means "changed since the last save".
+    /// </summary>
+    private readonly Dictionary<LmpFile, SavedState> _savedStates = new();
+
     public readonly string DataPath;
     public readonly EngineVersion EngineVersion;
     public readonly string Name;
@@ -55,7 +66,123 @@ public class World
         Name = name;
     }
 
+    /// <summary>Full path of the opened file.</summary>
+    public string FilePath => Path.Combine(DataPath, Name);
+
+    /// <summary>
+    /// Reads and parses the file. Pure data work — no WPF objects are created —
+    /// so it is safe to run on a background thread. Calling it again is a no-op.
+    /// </summary>
     public void Load()
+    {
+        if (_loaded) return;
+        LoadCore();
+        _loaded = true;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Unsaved-change tracking
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>Archives whose edits are written by Save (CLPs are read-only).</summary>
+    public IEnumerable<LmpFile> EditableArchives
+    {
+        get
+        {
+            if (WorldGob != null) return WorldGob.Directory.Values;
+            if (WorldLmp != null && WorldLmp is not ClpFile) return new[] { WorldLmp };
+            return Array.Empty<LmpFile>();
+        }
+    }
+
+    /// <summary>Records the current pending state of <paramref name="archives"/> as saved.</summary>
+    public void MarkSaved(IEnumerable<LmpFile> archives)
+    {
+        foreach (var lmp in archives)
+        {
+            _savedStates[lmp] = SavedState.Capture(lmp);
+        }
+    }
+
+    public bool HasUnsavedChanges() => EditableArchives.Any(HasUnsavedChanges);
+
+    public bool HasUnsavedChanges(LmpFile lmp)
+        => _savedStates.TryGetValue(lmp, out var saved) ? !saved.Matches(lmp) : lmp.IsDirty;
+
+    /// <summary>Number of entries (across all archives) changed since the last save.</summary>
+    public int CountUnsavedEntries()
+    {
+        var count = 0;
+        foreach (var lmp in EditableArchives)
+        {
+            if (!HasUnsavedChanges(lmp)) continue;
+            var names = new HashSet<string>(lmp.PendingEdits.Keys, StringComparer.OrdinalIgnoreCase);
+            names.UnionWith(lmp.PendingDeletions);
+            count += names.Count(name => IsEntryUnsaved(lmp, name));
+            _savedStates.TryGetValue(lmp, out var saved);
+            count += Math.Max(0, lmp.PendingAdditions.Count - (saved?.Additions.Length ?? 0));
+        }
+        return count;
+    }
+
+    /// <summary>True when <paramref name="entryName"/> was edited or deleted since the last save.</summary>
+    public bool IsEntryUnsaved(LmpFile lmp, string entryName)
+    {
+        _savedStates.TryGetValue(lmp, out var saved);
+
+        if (lmp.PendingEdits.TryGetValue(entryName, out var data))
+        {
+            if (saved == null || !saved.Edits.TryGetValue(entryName, out var savedData) ||
+                !ReferenceEquals(data, savedData))
+            {
+                return true;
+            }
+        }
+
+        var deleted = lmp.PendingDeletions.Contains(entryName);
+        var savedDeleted = saved?.Deletions.Contains(entryName) ?? false;
+        return deleted != savedDeleted;
+    }
+
+    private sealed class SavedState
+    {
+        public Dictionary<string, byte[]> Edits { get; private init; } = null!;
+        public HashSet<string> Deletions { get; private init; } = null!;
+        public (string Name, byte[] Data)[] Additions { get; private init; } = null!;
+
+        public static SavedState Capture(LmpFile lmp) => new()
+        {
+            Edits = new Dictionary<string, byte[]>(lmp.PendingEdits, StringComparer.OrdinalIgnoreCase),
+            Deletions = new HashSet<string>(lmp.PendingDeletions, StringComparer.OrdinalIgnoreCase),
+            Additions = lmp.PendingAdditions.ToArray()
+        };
+
+        /// <summary>Same pending state as when captured (edits compared by array identity).</summary>
+        public bool Matches(LmpFile lmp)
+        {
+            if (lmp.PendingEdits.Count != Edits.Count) return false;
+            foreach (var (name, data) in lmp.PendingEdits)
+            {
+                if (!Edits.TryGetValue(name, out var savedData) || !ReferenceEquals(data, savedData)) return false;
+            }
+
+            if (!Deletions.SetEquals(lmp.PendingDeletions)) return false;
+
+            if (lmp.PendingAdditions.Count != Additions.Length) return false;
+            for (var i = 0; i < Additions.Length; i++)
+            {
+                if (!string.Equals(lmp.PendingAdditions[i].Name, Additions[i].Name, StringComparison.OrdinalIgnoreCase) ||
+                    !ReferenceEquals(lmp.PendingAdditions[i].Data, Additions[i].Data))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
+
+    private void LoadCore()
     {
         var ext = (Path.GetExtension(Name) ?? "").ToLower();
 

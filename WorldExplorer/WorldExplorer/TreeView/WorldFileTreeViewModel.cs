@@ -1,4 +1,4 @@
-﻿/*  Copyright (C) 2012 Ian Brown
+/*  Copyright (C) 2012 Ian Brown
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,6 +15,9 @@
 */
 
 using JetBlackEngineLib.Data.DataContainers;
+using JetBlackEngineLib.Data.World;
+using System.Linq;
+using WorldExplorer.Infrastructure;
 
 namespace WorldExplorer.TreeView;
 
@@ -25,30 +28,57 @@ public class WorldFileTreeViewModel : AbstractLmpTreeViewModel
     {
     }
 
+    /// <summary>
+    /// The decoded level, kept for the whole session. Re-selecting the node
+    /// reuses it instead of re-decoding the original bytes — which would throw
+    /// away in-memory element edits and the undo history.
+    /// </summary>
+    public WorldData? WorldData { get; set; }
+
+    /// <summary>Level-editor state (undo history etc.) that must survive switching away.</summary>
+    public object? EditorState { get; set; }
+
+    public override NodeKind Kind => NodeKind.World;
+
+    public override string? Detail
+    {
+        get
+        {
+            if (WorldData != null)
+            {
+                return Plural.Of(WorldData.WorldElements.Count(e => !e.IsDeleted), "element");
+            }
+            return EntrySize is { } size ? FileSizeConverter.Format(size) : null;
+        }
+    }
+
+    // The level's objects live in the same archive's objects.ob.
+    public override bool IsModified =>
+        _world.IsEntryUnsaved(_lmpFile, Label) || _world.IsEntryUnsaved(_lmpFile, "objects.ob");
+
     public void ReloadChildren()
     {
         Children.Clear();
         LoadChildren();
+        RaiseDetailChanged();
     }
 
     protected override void LoadChildren()
     {
-        if (_world.WorldData == null)
+        if (WorldData == null)
         {
-            // Force loading the tree item
+            // Elements only exist once the level is decoded, which happens on
+            // selection; selecting re-enters ReloadChildren afterwards.
             IsSelected = true;
-            return; // Return to prevent adding elements twice
+            return;
         }
 
-        if (_world.WorldData != null)
+        foreach (var element in WorldData.WorldElements)
         {
-            foreach (var element in _world.WorldData.WorldElements)
-            {
-                if (element.IsDeleted) continue;            // ← hide deleted elements
-                Children.Add(new WorldElementTreeViewModel(element,
-                    "Element " + element.ElementIndex + " 0x" + element.RawFlags.ToString("X4"),
-                    Parent, _world.WorldData));
-            }
+            if (element.IsDeleted) continue;            // ← hide deleted elements
+            Children.Add(new WorldElementTreeViewModel(element,
+                "Element " + element.ElementIndex + " 0x" + element.RawFlags.ToString("X4"),
+                this, WorldData));
         }
     }
 }

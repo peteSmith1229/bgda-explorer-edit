@@ -13,6 +13,7 @@ using System.Windows;
 using System.Windows.Controls;
 using JetBlackEngineLib.Data.Executable;
 using Microsoft.Win32;
+using WorldExplorer.Themes;
 
 namespace WorldExplorer;
 
@@ -152,6 +153,7 @@ public partial class ExecutableEditorWindow : Window
     public ExecutableEditorWindow(BgdaExecutable exe)
     {
         InitializeComponent();
+        ThemeManager.Attach(this);
         _exe = exe;
 
         var xp = _exe.GetXpTable();

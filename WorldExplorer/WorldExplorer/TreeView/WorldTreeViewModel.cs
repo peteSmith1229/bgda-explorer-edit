@@ -1,4 +1,4 @@
-﻿/*  Copyright (C) 2012 Ian Brown
+/*  Copyright (C) 2012 Ian Brown
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,9 +15,15 @@
 */
 
 using System;
+using WorldExplorer.Infrastructure;
 
 namespace WorldExplorer.TreeView;
 
+/// <summary>
+/// Root node for an opened .DDF: hosts the entity category folders directly.
+/// Other file types use their container node as the root (see
+/// <see cref="CreateRoot"/>), so the tree doesn't repeat the file name twice.
+/// </summary>
 public class WorldTreeViewModel : TreeViewItemViewModel
 {
     private readonly World _world;
@@ -26,47 +32,48 @@ public class WorldTreeViewModel : TreeViewItemViewModel
         : base(world.Name, null, true)
     {
         _world = world;
-        // Auto-expand the root: triggers LoadChildren immediately so the user
-        // sees the file's contents without having to click the disclosure.
-        IsExpanded = true;
     }
 
     public World World => _world;
+
+    public override NodeKind Kind => NodeKind.Database;
+
+    public override string? Detail => _world.WorldDdf is { } ddf ? Plural.Of(ddf.Entities.Count, "entity", "entities") : null;
+
+    /// <summary>
+    /// Builds the tree root for a loaded <paramref name="world"/>: the GOB,
+    /// archive, YAK, HDR/DAT or SDB node itself, or a DDF entity root.
+    /// </summary>
+    public static TreeViewItemViewModel CreateRoot(World world)
+    {
+        world.Load();
+
+        if (world.WorldDdf != null && world.WorldLmp == null)
+            return new WorldTreeViewModel(world);
+        if (world.WorldLmp != null)
+            return new LmpTreeViewModel(world, null, world.WorldLmp);
+        if (world.WorldGob != null)
+            return new GobTreeViewModel(world, null);
+        if (world.WorldYak != null)
+            return new YakTreeViewModel(null, world.WorldYak);
+        if (world.HdrDatFile != null)
+            return new HdrDatTreeViewModel(null, world.HdrDatFile);
+        if (world.WorldSdb != null)
+            return new SdbTreeViewModel(null, world.WorldSdb);
+
+        throw new NotSupportedException("Unknown or corrupted file");
+    }
 
     protected override void LoadChildren()
     {
         _world.Load();
 
-        if (_world.WorldDdf != null && _world.WorldLmp == null)
+        if (_world.WorldDdf != null)
         {
             // .DDF was opened directly — show the entity-centric view inline,
             // with category folders directly under the root. Avoids the
             // ALL.DDF → ALL.DDF → categories double-nesting.
             DdfTreeBuilder.AddCategoryFolders(this, _world, _world.WorldDdf);
-        }
-        else if (_world.WorldLmp != null)
-        {
-            Children.Add(new LmpTreeViewModel(_world, this, _world.WorldLmp));
-        }
-        else if (_world.WorldGob != null)
-        {
-            Children.Add(new GobTreeViewModel(_world, this));
-        }
-        else if (_world.WorldYak != null)
-        {
-            Children.Add(new YakTreeViewModel(this, _world.WorldYak));
-        }
-        else if (_world.HdrDatFile != null)
-        {
-            Children.Add(new HdrDatTreeViewModel(this, _world.HdrDatFile));
-        }
-        else if (_world.WorldSdb != null)
-        {
-            Children.Add(new SdbTreeViewModel(this, _world.WorldSdb));
-        }
-        else
-        {
-            throw new NotSupportedException("Unknown or corrupted file");
         }
     }
 }

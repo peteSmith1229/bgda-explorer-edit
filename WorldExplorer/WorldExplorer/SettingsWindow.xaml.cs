@@ -1,51 +1,32 @@
-﻿using JetBlackEngineLib;
+using JetBlackEngineLib;
 using JetBlackEngineLib.Data.Textures;
 using System.IO;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Forms;
+using WorldExplorer.Infrastructure;
+using WorldExplorer.Themes;
 
 namespace WorldExplorer;
 
 /// <summary>
-/// Interaction logic for SettingsWindow.xaml
+/// Application settings. Saving stores everything in <see cref="App.Settings"/>;
+/// the caller decides whether the open file needs reloading.
 /// </summary>
 public partial class SettingsWindow : Window
 {
     public SettingsWindow()
     {
         InitializeComponent();
+        ThemeManager.Attach(this);
 
-        // Add engine versions to combo box
-        engineVersionBox.Items.Add(new ComboBoxItem
-        {
-            Content = "Dark Alliance 1", DataContext = EngineVersion.DarkAlliance
-        });
-        engineVersionBox.Items.Add(new ComboBoxItem
-        {
-            Content = "Champions: Return To Arms", DataContext = EngineVersion.ReturnToArms
-        });
-        engineVersionBox.Items.Add(new ComboBoxItem
-        {
-            Content = "Justice League Heroes", DataContext = EngineVersion.JusticeLeagueHeroes
-        });
-        engineVersionBox.Items.Add(new ComboBoxItem
-        {
-            Content = "Fallout: Brotherhood of Steel", DataContext = EngineVersion.BrotherhoodOfSteel
-        });
+        engineVersionBox.ItemsSource = GameOption.All;
+        engineVersionBox.SelectedItem = GameOption.For(App.Settings.Get("Core.EngineVersion", EngineVersion.DarkAlliance));
 
-        // Select the correct item
-        var engineVersion = App.Settings.Get<EngineVersion>("Core.EngineVersion");
-        foreach (ComboBoxItem item in engineVersionBox.Items)
-        {
-            if (item.DataContext is EngineVersion version && version == engineVersion)
-            {
-                engineVersionBox.SelectedItem = item;
-                break;
-            }
-        }
+        darkThemeRadio.IsChecked = ThemeManager.Current == AppTheme.Dark;
+        lightThemeRadio.IsChecked = ThemeManager.Current == AppTheme.Light;
 
         dataPathTextblock.Text = App.Settings.Get("Files.DataPath", "");
+        reopenLastFileCheckBox.IsChecked = App.Settings.Get("Files.ReopenLastFile", true);
         forceOpaqueCheckBox.IsChecked = App.Settings.Get("Textures.ForceOpaque", false);
         gizmoSizeSlider.Value = App.Settings.Get("Editor.GizmoScale", 1.0);
     }
@@ -53,45 +34,35 @@ public partial class SettingsWindow : Window
     private void CancelButton_Click(object sender, RoutedEventArgs e)
     {
         DialogResult = false;
-        Close();
     }
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
-        App.Settings["Files.DataPath"] = dataPathTextblock.Text;
-        App.Settings["Core.EngineVersion"] = GetVersionFromBox();
+        var game = engineVersionBox.SelectedItem as GameOption ?? GameOption.All[0];
+        var theme = lightThemeRadio.IsChecked == true ? AppTheme.Light : AppTheme.Dark;
+
+        App.Settings["Core.EngineVersion"] = game.Version;
+        App.Settings["Appearance.Theme"] = theme.ToString();
+        App.Settings["Files.DataPath"] = dataPathTextblock.Text.Trim();
+        App.Settings["Files.ReopenLastFile"] = reopenLastFileCheckBox.IsChecked == true;
         App.Settings["Textures.ForceOpaque"] = forceOpaqueCheckBox.IsChecked == true;
-        PalEntry.ForceOpaque = forceOpaqueCheckBox.IsChecked == true;
         App.Settings["Editor.GizmoScale"] = gizmoSizeSlider.Value;
+        PalEntry.ForceOpaque = forceOpaqueCheckBox.IsChecked == true;
+
+        if (theme != ThemeManager.Current)
+        {
+            ThemeManager.Apply(theme);
+        }
 
         App.SaveSettings();
         DialogResult = true;
-        Close();
-    }
-
-    private EngineVersion GetVersionFromBox()
-    {
-        foreach (ComboBoxItem item in engineVersionBox.Items)
-        {
-            if (item.IsSelected)
-            {
-                if (item.DataContext is EngineVersion)
-                {
-                    return (EngineVersion)item.DataContext;
-                }
-            }
-        }
-
-        // Return default version
-        return EngineVersion.DarkAlliance;
     }
 
     private void BrowseButton_Click(object sender, RoutedEventArgs e)
     {
-        FolderBrowserDialog dialog = new();
+        using FolderBrowserDialog dialog = new() { Description = "Choose the game's data folder", UseDescriptionForTitle = true };
 
-        // Select the folder path that is in the text box if there is text 
-        // and if it's a valid folder
+        // Start in the current folder when it's valid.
         if (!string.IsNullOrEmpty(dataPathTextblock.Text) && Directory.Exists(dataPathTextblock.Text))
         {
             dialog.SelectedPath = dataPathTextblock.Text;

@@ -52,8 +52,14 @@ public class SkeletonViewModel : BaseViewModel
             UpdateModel();
             OnPropertyChanged("AnimData");
             OnPropertyChanged("MaximumFrame");
+            OnPropertyChanged(nameof(FrameText));
         }
     }
+
+    /// <summary>"Frame 12 / 48", or "Bind pose" for frame -1.</summary>
+    public string FrameText => _animData == null
+        ? ""
+        : _currentFrame < 0 ? "Bind pose" : $"Frame {_currentFrame + 1} / {MaximumFrame + 1}";
 
     public int MaximumFrame
     {
@@ -69,6 +75,7 @@ public class SkeletonViewModel : BaseViewModel
             _currentFrame = value;
             UpdateModel();
             OnPropertyChanged("CurrentFrame");
+            OnPropertyChanged(nameof(FrameText));
         }
     }
 

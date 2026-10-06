@@ -1,4 +1,4 @@
-﻿/*  Copyright (C) 2021 Ian Brown
+/*  Copyright (C) 2021 Ian Brown
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,13 +25,16 @@ public class HdrDatTreeViewModel : TreeViewItemViewModel
 {
     private readonly CacheFile _cacheFile;
 
-    private TreeViewItemViewModel _parent;
-
-    public HdrDatTreeViewModel(TreeViewItemViewModel parent, CacheFile cacheFile) : base(cacheFile.Name, parent, true)
+    public HdrDatTreeViewModel(TreeViewItemViewModel? parent, CacheFile cacheFile) : base(cacheFile.Name, parent, true)
     {
-        _parent = parent;
         _cacheFile = cacheFile;
     }
+
+    public override NodeKind Kind => NodeKind.Archive;
+
+    public override string KindDescription => "Cache archive (HDR/DAT)";
+
+    protected override bool SearchLoadsChildren => true;
 
     protected override void LoadChildren()
     {

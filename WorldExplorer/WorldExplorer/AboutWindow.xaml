@@ -1,0 +1,37 @@
+<Window x:Class="WorldExplorer.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:WorldExplorer.Controls"
+        Style="{StaticResource Window.Dialog}" WindowStartupLocation="CenterOwner"
+        Title="About WorldExplorer" Width="480" SizeToContent="Height" ResizeMode="NoResize"
+        FocusManager.FocusedElement="{Binding ElementName=CloseButton}">
+    <StackPanel Margin="24,22,24,18">
+        <StackPanel Orientation="Horizontal">
+            <Border Width="48" Height="48" CornerRadius="12" Background="{DynamicResource Brush.Accent}">
+                <controls:GeometryIcon Data="{StaticResource Icon.Kind.Gob}" Width="28" Height="28"
+                                       Fill="{DynamicResource Brush.OnAccent}" />
+            </Border>
+            <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="WorldExplorer" FontSize="20" FontWeight="SemiBold" />
+                <TextBlock x:Name="VersionText" Style="{StaticResource Text.Caption}" />
+            </StackPanel>
+        </StackPanel>
+
+        <TextBlock Style="{StaticResource Text.Secondary}" Margin="0,16,0,0"
+                   Text="Explore and edit game data from Snowblind-engine PlayStation 2 games: Baldur's Gate: Dark Alliance, Champions: Return to Arms, Justice League Heroes and Fallout: Brotherhood of Steel." />
+
+        <TextBlock Text="CREDITS" Style="{StaticResource Text.Section}" FontSize="11" Margin="0,18,0,6" />
+        <TextBlock TextWrapping="Wrap" LineHeight="20">
+            <Run FontWeight="SemiBold" Text="Ian Brown (bigianb)" /><Run Foreground="{DynamicResource Brush.TextSecondary}" Text=" — author and progenitor of bgda-explorer" /><LineBreak />
+            <Run FontWeight="SemiBold" Text="Bryce Barbara (BryceBarbara)" /><Run Foreground="{DynamicResource Brush.TextSecondary}" Text=" — contributor" /><LineBreak />
+            <Run FontWeight="SemiBold" Text="Kran (kran27)" /><Run Foreground="{DynamicResource Brush.TextSecondary}" Text=" — contributor" /><LineBreak />
+            <Run FontWeight="SemiBold" Text="Claude (Anthropic AI)" /><Run Foreground="{DynamicResource Brush.TextSecondary}" Text=" — reverse engineering; turned the viewer into a world editor" />
+        </TextBlock>
+
+        <TextBlock Style="{StaticResource Text.Caption}" Margin="0,18,0,0" TextWrapping="Wrap"
+                   Text="Licensed under the GNU General Public License, version 3 or later. Icons: Material Design Icons. 3D rendering: Helix Toolkit." />
+
+        <Button x:Name="CloseButton" Content="Close" IsCancel="True" IsDefault="True" HorizontalAlignment="Right" Margin="0,18,0,0"
+                MinWidth="90" Click="Close_Click" />
+    </StackPanel>
+</Window>

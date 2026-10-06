@@ -2,177 +2,480 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:WorldExplorer"
+        xmlns:controls="clr-namespace:WorldExplorer.Controls"
+        xmlns:infra="clr-namespace:WorldExplorer.Infrastructure"
         xmlns:treeView="clr-namespace:WorldExplorer.TreeView"
-        TextOptions.TextFormattingMode="Display"
-        TextOptions.TextRenderingMode="ClearType"
-        TextOptions.TextHintingMode="Fixed"
-        UseLayoutRounding="True"
-        SnapsToDevicePixels="True"
-        Title="World Explorer" Height="582" Width="848" DataContext="{Binding}">
+        xmlns:views="clr-namespace:WorldExplorer.Views"
+        Style="{StaticResource Window.Default}"
+        Title="{Binding WindowTitle}"
+        Width="1360" Height="840" MinWidth="900" MinHeight="560"
+        WindowStartupLocation="CenterScreen"
+        AllowDrop="True">
+
+    <Window.CommandBindings>
+        <CommandBinding Command="{x:Static infra:AppCommands.Open}" Executed="Open_Executed" />
+        <CommandBinding Command="{x:Static infra:AppCommands.Save}" Executed="Save_Executed" CanExecute="Save_CanExecute" />
+        <CommandBinding Command="{x:Static infra:AppCommands.SaveArchive}" Executed="SaveArchive_Executed" CanExecute="SaveArchive_CanExecute" />
+        <CommandBinding Command="{x:Static infra:AppCommands.CloseFile}" Executed="CloseFile_Executed" CanExecute="FileOpen_CanExecute" />
+        <CommandBinding Command="{x:Static infra:AppCommands.Reload}" Executed="Reload_Executed" CanExecute="FileOpen_CanExecute" />
+        <CommandBinding Command="{x:Static infra:AppCommands.Exit}" Executed="Exit_Executed" />
+        <CommandBinding Command="{x:Static infra:AppCommands.Undo}" Executed="Undo_Executed" CanExecute="Undo_CanExecute" />
+        <CommandBinding Command="{x:Static infra:AppCommands.Redo}" Executed="Redo_Executed" CanExecute="Redo_CanExecute" />
+        <CommandBinding Command="{x:Static infra:AppCommands.Find}" Executed="Find_Executed" CanExecute="FileOpen_CanExecute" />
+        <CommandBinding Command="{x:Static infra:AppCommands.ShowView}" Executed="ShowView_Executed" CanExecute="ShowView_CanExecute" />
+        <CommandBinding Command="{x:Static infra:AppCommands.ResetCamera}" Executed="ResetCamera_Executed" CanExecute="ResetCamera_CanExecute" />
+        <CommandBinding Command="{x:Static infra:AppCommands.ToggleTheme}" Executed="ToggleTheme_Executed" />
+        <CommandBinding Command="{x:Static infra:AppCommands.ToggleExplorer}" Executed="ToggleExplorer_Executed" />
+        <CommandBinding Command="{x:Static infra:AppCommands.Settings}" Executed="Settings_Executed" />
+        <CommandBinding Command="{x:Static infra:AppCommands.Shortcuts}" Executed="Shortcuts_Executed" />
+        <CommandBinding Command="{x:Static infra:AppCommands.About}" Executed="About_Executed" />
+    </Window.CommandBindings>
+
+    <Window.InputBindings>
+        <!-- Ctrl+1…6: the 1st…6th view offered for the selection. -->
+        <KeyBinding Key="D1" Modifiers="Control" Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="1" />
+        <KeyBinding Key="D2" Modifiers="Control" Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="2" />
+        <KeyBinding Key="D3" Modifiers="Control" Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="3" />
+        <KeyBinding Key="D4" Modifiers="Control" Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="4" />
+        <KeyBinding Key="D5" Modifiers="Control" Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="5" />
+        <KeyBinding Key="D6" Modifiers="Control" Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="6" />
+    </Window.InputBindings>
+
+    <Window.Resources>
+        <!-- Toast card -->
+        <DataTemplate x:Key="ToastTemplate" DataType="{x:Type infra:Toast}">
+            <Grid Margin="0,8,0,0">
+                <Border Background="{DynamicResource Brush.Elevated}" CornerRadius="8" Margin="0,0,0,0">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.3" Color="Black" />
+                    </Border.Effect>
+                </Border>
+                <Border Background="{DynamicResource Brush.Elevated}" BorderBrush="{DynamicResource Brush.Border}"
+                        BorderThickness="1" CornerRadius="8" Padding="12,10,6,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <controls:GeometryIcon Width="20" Height="20" VerticalAlignment="Top" Margin="0,0,12,0"
+                                               controls:IconAssist.DataKey="{Binding IconKey}"
+                                               controls:IconAssist.FillKey="{Binding BrushKey}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding Message}" Style="{StaticResource Text.Secondary}" Margin="0,2,0,0"
+                                       MaxHeight="80" TextTrimming="CharacterEllipsis"
+                                       Visibility="{Binding Message, Converter={StaticResource NullToVisibility}}" />
+                            <Button Style="{StaticResource Button.Link}" HorizontalAlignment="Left" Margin="0,6,0,0"
+                                    Content="{Binding ActionText}" Command="{Binding Action}"
+                                    Visibility="{Binding ActionText, Converter={StaticResource NullToVisibility}}" />
+                        </StackPanel>
+                        <Button Grid.Column="2" Style="{StaticResource Button.Subtle}" VerticalAlignment="Top" Padding="4"
+                                controls:ControlAssist.Icon="{StaticResource Icon.Close}" controls:ControlAssist.IconSize="12"
+                                Foreground="{DynamicResource Brush.TextSecondary}" ToolTip="Dismiss"
+                                Command="{Binding DataContext.Notifications.DismissCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                CommandParameter="{Binding}" />
+                    </Grid>
+                </Border>
+            </Grid>
+        </DataTemplate>
+    </Window.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- ═══════════════════════════════════ Menu bar ═══════════════════════════════════ -->
-        <Menu IsMainMenu="True">
+        <!-- ══════════════════════════ Command bar ══════════════════════════ -->
+        <Border Grid.Row="0" Background="{DynamicResource Brush.Chrome}"
+                BorderBrush="{DynamicResource Brush.Divider}" BorderThickness="0,0,0,1">
+            <DockPanel Height="42" Margin="8,0,8,0">
 
-            <!-- File menu -->
-            <MenuItem Header="_File">
-                <MenuItem Header="_Open File" Click="MenuOpenFileClick" />
-                <Separator />
-                <MenuItem x:Name="MenuRecentFiles" Header="Recent _Files"
-                          SubmenuOpened="MenuRecentFilesSubmenuOpened">
-                    <MenuItem />
-                </MenuItem>
-                <Separator />
-                <!-- NEW: saves the currently loaded (and dirty) LMP archive -->
-                <MenuItem x:Name="Menu_SaveArchive"
-                          Header="_Save Archive…"
-                          Click="Menu_SaveArchive_Click" />
-                <MenuItem x:Name="Menu_SaveGob"
-                          Header="Save _GOB…"
-                          Click="Menu_SaveGob_Click" />
-                <Separator />
-                <MenuItem Header="E_xit" Click="MenuExitClick" />
-            </MenuItem>
+                <!-- Right: game, theme, settings -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <controls:GeometryIcon Data="{StaticResource Icon.Game}" Width="16" Height="16"
+                                           Fill="{DynamicResource Brush.TextSecondary}" Margin="0,0,8,0" />
+                    <ComboBox Width="230" ItemsSource="{Binding Games}" DisplayMemberPath="Name"
+                              SelectedItem="{Binding SelectedGame, Mode=TwoWay}" MinHeight="28"
+                              ToolTip="The game the open file belongs to. Files are decoded with this game's formats." />
+                    <Separator Width="1" Height="20" Margin="10,0" />
+                    <Button Style="{StaticResource Button.Subtle}" Command="{x:Static infra:AppCommands.ToggleTheme}"
+                            controls:ControlAssist.Icon="{StaticResource Icon.Theme}" ToolTip="Switch dark / light theme (Ctrl+Shift+T)" />
+                    <Button Style="{StaticResource Button.Subtle}" Command="{x:Static infra:AppCommands.Settings}"
+                            controls:ControlAssist.Icon="{StaticResource Icon.Settings}" ToolTip="Settings (Ctrl+,)" />
+                </StackPanel>
 
-            <!-- Edit menu -->
-            <MenuItem Header="_Edit">
-                <MenuItem Header="_Undo" InputGestureText="Ctrl+Z" Click="Menu_Undo_Click" />
-                <MenuItem Header="_Redo" InputGestureText="Ctrl+Y" Click="Menu_Redo_Click" />
-                <Separator />
-                
-                <!-- ── Export sub-menu (existing) ─────────────────────────────── -->
-                <MenuItem x:Name="Menu_Export" Header="_Export">
-                    <MenuItem x:Name="Menu_Export_Texture"
-                              Header="Texture"
-                              Click="Menu_Export_Texture_Click" />
-                    <MenuItem x:Name="Menu_Export_TextureWeaved"
-                              Header="Texture (Weave Interlaced Fields)"
-                              Click="Menu_Export_TextureWeaved_Click" />
-                    <MenuItem x:Name="Menu_Export_Model"
-                              Header="Model"
-                              Click="Menu_Export_Model_Click" />
-                    <MenuItem x:Name="Menu_Export_PosedModel"
-                              Header="Posed Model"
-                              Click="Menu_Export_PosedModel_Click" />
-                </MenuItem>
+                <!-- Left: app mark, menu, quick actions -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="26" Height="26" CornerRadius="7" Background="{DynamicResource Brush.Accent}"
+                            Margin="2,0,8,0" ToolTip="WorldExplorer">
+                        <controls:GeometryIcon Data="{StaticResource Icon.Kind.Gob}" Width="16" Height="16"
+                                               Fill="{DynamicResource Brush.OnAccent}" />
+                    </Border>
 
-                <!-- ── Import sub-menu (NEW) ──────────────────────────────────── -->
-                <MenuItem Header="_Import">
-                    <MenuItem Header="Replace Current Entry with File…"
-                              Click="Menu_Import_ReplaceEntry_Click"
-                              ToolTip="Replace the bytes of the selected archive entry with an external file and queue the change for saving." />
-                    <MenuItem Header="Add New Entry to Archive…"
-                              Click="Menu_Import_AddEntry_Click"
-                              ToolTip="Browse for a file and append it as a new entry in the currently loaded archive." />
-                </MenuItem>
+                    <Menu x:Name="MainMenu" VerticalAlignment="Center">
+                        <MenuItem Header="_File">
+                            <MenuItem Command="{x:Static infra:AppCommands.Open}" Header="_Open…">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Open}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem x:Name="MenuRecentFiles" Header="Open _Recent" SubmenuOpened="MenuRecentFiles_SubmenuOpened">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.History}" /></MenuItem.Icon>
+                                <MenuItem Header="No recent files" IsEnabled="False" />
+                            </MenuItem>
+                            <Separator />
+                            <MenuItem Command="{x:Static infra:AppCommands.Save}" Header="_Save">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Save}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Command="{x:Static infra:AppCommands.SaveArchive}" Header="Save Selected _Archive As…" />
+                            <Separator />
+                            <MenuItem Header="_Import">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Import}" /></MenuItem.Icon>
+                                <MenuItem Header="Replace Selected Entry with File…" Click="Menu_Import_ReplaceEntry_Click" />
+                                <MenuItem Header="Import PNG into Selected Texture…" Click="Menu_Import_Texture_Click" />
+                                <MenuItem Header="Add New Entry to Archive…" Click="Menu_Import_AddEntry_Click" />
+                            </MenuItem>
+                            <MenuItem Header="_Export">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Export}" /></MenuItem.Icon>
+                                <MenuItem Header="Texture as PNG…" Click="Menu_Export_Texture_Click" />
+                                <MenuItem Header="Texture as PNG (Weave Interlaced Fields)…" Click="Menu_Export_TextureWeaved_Click" />
+                                <Separator />
+                                <MenuItem Header="Model (glTF / OBJ)…" Click="Menu_Export_Model_Click" />
+                                <MenuItem Header="Posed Model (glTF / OBJ)…" InputGestureText="Ctrl+G" Click="Menu_Export_PosedModel_Click" />
+                                <Separator />
+                                <MenuItem Header="All Textures in Archive as PNG…" Click="Menu_BatchExport_Textures_Click" />
+                                <MenuItem Header="All Entries in Archive (Raw)…" Click="Menu_BatchExport_AllEntries_Click" />
+                            </MenuItem>
+                            <Separator />
+                            <MenuItem Command="{x:Static infra:AppCommands.Reload}" Header="Re_load">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Refresh}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Command="{x:Static infra:AppCommands.CloseFile}" Header="_Close File" />
+                            <Separator />
+                            <MenuItem Command="{x:Static infra:AppCommands.Exit}" Header="E_xit" />
+                        </MenuItem>
 
-                <!-- ── Batch Export sub-menu (NEW) ───────────────────────────── -->
-                <MenuItem Header="_Batch Export">
-                    <MenuItem Header="All Textures as PNG…"
-                              Click="Menu_BatchExport_Textures_Click"
-                              ToolTip="Decode every .tex entry in the loaded archive and write it as a PNG to a chosen folder." />
-                    <MenuItem Header="All Entries (Raw)…"
-                              Click="Menu_BatchExport_AllEntries_Click"
-                              ToolTip="Write every entry in the loaded archive as a separate file to a chosen folder." />
-                </MenuItem>
+                        <MenuItem Header="_Edit">
+                            <MenuItem Command="{x:Static infra:AppCommands.Undo}" Header="_Undo">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Undo}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Command="{x:Static infra:AppCommands.Redo}" Header="_Redo">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Redo}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <Separator />
+                            <MenuItem x:Name="MenuCopyObject" Header="_Copy Object" InputGestureText="Ctrl+C" Click="Menu_CopyObject_Click">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Copy}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem x:Name="MenuPasteObject" Header="_Paste Object" InputGestureText="Ctrl+V" Click="Menu_PasteObject_Click">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Paste}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem x:Name="MenuDuplicate" Header="_Duplicate Selection" InputGestureText="Ctrl+D" Click="Menu_Duplicate_Click">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Duplicate}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem x:Name="MenuDelete" Header="De_lete Selection" InputGestureText="Del" Click="Menu_Delete_Click">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Delete}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <Separator />
+                            <MenuItem Command="{x:Static infra:AppCommands.Find}" Header="_Filter Explorer">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Search}" /></MenuItem.Icon>
+                            </MenuItem>
+                        </MenuItem>
 
-            </MenuItem>
+                        <MenuItem Header="_View">
+                            <MenuItem Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="Overview" Header="_Overview">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.View.Overview}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="Level" Header="_Level">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.View.Level}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="Model" Header="_Model">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.View.Model}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="Skeleton" Header="_Skeleton">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.View.Skeleton}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="Texture" Header="_Texture">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.View.Texture}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="Details" Header="_Details">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.View.Details}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <Separator />
+                            <MenuItem Command="{x:Static infra:AppCommands.ResetCamera}" Header="_Reset Camera">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Frame}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Level L_ighting" InputGestureText="L" IsCheckable="True"
+                                      IsChecked="{Binding TheLevelViewModel.EnableLevelSpecifiedLights, Mode=TwoWay}" />
+                            <Separator />
+                            <MenuItem Command="{x:Static infra:AppCommands.ToggleExplorer}" Header="_Explorer Panel"
+                                      IsChecked="{Binding IsExplorerVisible, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" />
+                            <MenuItem Header="T_heme">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Theme}" /></MenuItem.Icon>
+                                <MenuItem x:Name="MenuThemeDark" Header="_Dark" Click="MenuThemeDark_Click" />
+                                <MenuItem x:Name="MenuThemeLight" Header="_Light" Click="MenuThemeLight_Click" />
+                            </MenuItem>
+                        </MenuItem>
 
-            <!-- Tools menu (unchanged) -->
-            <MenuItem Header="_Tools">
-                <MenuItem Header="_Settings" Command="Properties" />
-                <MenuItem Header="Edit Executable Tuning (XP &amp; Stats)…" Click="MenuEditExecutableClick" />
-                <MenuItem Header="Edit Save Difficulty (.psu)…" Click="MenuEditSaveClick" />
-            </MenuItem>
+                        <MenuItem Header="_Tools">
+                            <!-- Filled when opened so the current game carries a check mark. -->
+                            <MenuItem x:Name="MenuGames" Header="_Game" SubmenuOpened="MenuGames_SubmenuOpened">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Game}" /></MenuItem.Icon>
+                                <MenuItem Header="Dark Alliance" />
+                            </MenuItem>
+                            <Separator Visibility="{Binding IsDarkAlliance, Converter={StaticResource BoolToVisibility}}" />
+                            <!-- Reverse-engineered against Baldur's Gate: Dark Alliance (PAL SLES-506.72) only. -->
+                            <MenuItem Header="_Executable Tuning (XP, Stats, Spells, Monster HP)…" Click="MenuEditExecutableClick"
+                                      Visibility="{Binding IsDarkAlliance, Converter={StaticResource BoolToVisibility}}">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Tools}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Save _Game Editor (.psu)…" Click="MenuEditSaveClick"
+                                      Visibility="{Binding IsDarkAlliance, Converter={StaticResource BoolToVisibility}}">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Save}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <Separator />
+                            <MenuItem Command="{x:Static infra:AppCommands.Settings}" Header="_Settings…">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Settings}" /></MenuItem.Icon>
+                            </MenuItem>
+                        </MenuItem>
 
-        </Menu>
+                        <MenuItem Header="_Help">
+                            <MenuItem Command="{x:Static infra:AppCommands.Shortcuts}" Header="_Keyboard Shortcuts">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Help}" /></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Command="{x:Static infra:AppCommands.About}" Header="_About WorldExplorer">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Info}" /></MenuItem.Icon>
+                            </MenuItem>
+                        </MenuItem>
+                    </Menu>
 
-        <!-- ═════════════════════════════════ Main content ═════════════════════════════════ -->
+                    <Separator Width="1" Height="20" Margin="8,0" />
+                    <Button Style="{StaticResource Button.Subtle}" Command="{x:Static infra:AppCommands.Open}"
+                            controls:ControlAssist.Icon="{StaticResource Icon.Open}" ToolTip="Open (Ctrl+O)" />
+                    <Button Style="{StaticResource Button.Subtle}" Command="{x:Static infra:AppCommands.Save}"
+                            controls:ControlAssist.Icon="{StaticResource Icon.Save}" ToolTip="Save (Ctrl+S)" />
+                    <Separator Width="1" Height="20" Margin="6,0" />
+                    <Button Style="{StaticResource Button.Subtle}" Command="{x:Static infra:AppCommands.Undo}"
+                            controls:ControlAssist.Icon="{StaticResource Icon.Undo}" ToolTip="Undo level edit (Ctrl+Z)" />
+                    <Button Style="{StaticResource Button.Subtle}" Command="{x:Static infra:AppCommands.Redo}"
+                            controls:ControlAssist.Icon="{StaticResource Icon.Redo}" ToolTip="Redo level edit (Ctrl+Y)" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ══════════════════════════ Workspace ══════════════════════════ -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="ExplorerColumn" Width="300" MinWidth="200" />
+                <ColumnDefinition x:Name="SplitterColumn" Width="Auto" />
+                <ColumnDefinition Width="*" MinWidth="360" />
             </Grid.ColumnDefinitions>
 
-            <!-- Left: tree view -->
-            <TreeView HorizontalAlignment="Stretch"
-                      Name="treeView"
-                      VerticalAlignment="Stretch"
-                      Grid.Column="0"
-                      DataContext="{Binding}"
-                      ItemsSource="{Binding Children}"
-                      SelectedItemChanged="TreeView_OnSelectedItemChanged">
-                <TreeView.ItemContainerStyle>
-                    <!--
-                        This Style binds a TreeViewItem to a TreeViewItemViewModel.
-                        IsExpanded and IsSelected are two-way bound so the view-model
-                        drives expansion (the root auto-expands on load) and user
-                        interaction feeds back into the view-model.
-                    -->
-                    <Style TargetType="{x:Type TreeViewItem}">
-                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
-                        <Setter Property="FontWeight" Value="Normal" />
-                        <Style.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="FontWeight" Value="Bold" />
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </TreeView.ItemContainerStyle>
-                <TreeView.ItemTemplate>
-                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                        <TextBlock Text="{Binding Label}" />
-                    </HierarchicalDataTemplate>
-                </TreeView.ItemTemplate>
-            </TreeView>
+            <!-- Explorer -->
+            <Border x:Name="ExplorerPanel" Grid.Column="0" Background="{DynamicResource Brush.Surface}">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top" Height="38" Margin="14,0,6,0">
+                        <TextBlock Text="EXPLORER" Style="{StaticResource Text.PanelHeader}" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Style="{StaticResource Button.Subtle}" Click="CollapseAll_Click" Padding="5"
+                                    controls:ControlAssist.Icon="{StaticResource Icon.CollapseAll}" ToolTip="Collapse all" />
+                            <Button Style="{StaticResource Button.Subtle}" Command="{x:Static infra:AppCommands.ToggleExplorer}" Padding="5"
+                                    controls:ControlAssist.Icon="{StaticResource Icon.Close}" controls:ControlAssist.IconSize="14"
+                                    ToolTip="Hide the explorer (Ctrl+B)" />
+                        </StackPanel>
+                    </Grid>
 
-            <!-- Splitter -->
-            <GridSplitter Grid.Column="1"
-                          Width="4"
-                          HorizontalAlignment="Center"
-                          VerticalAlignment="Stretch"
-                          ResizeBehavior="PreviousAndNext" />
+                    <Grid DockPanel.Dock="Top" Margin="10,0,10,8"
+                          Visibility="{Binding IsFileOpen, Converter={StaticResource BoolToVisibility}}">
+                        <TextBox x:Name="FilterBox" Padding="28,3,28,3" MinHeight="30"
+                                 Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
+                                 controls:ControlAssist.Placeholder="Filter  (e.g. .tex, tavern)"
+                                 KeyDown="FilterBox_KeyDown" />
+                        <controls:GeometryIcon Data="{StaticResource Icon.Search}" Width="14" Height="14"
+                                               HorizontalAlignment="Left" Margin="9,0,0,0"
+                                               Fill="{DynamicResource Brush.TextMuted}" />
+                        <Button Style="{StaticResource Button.Subtle}" HorizontalAlignment="Right" Margin="0,0,3,0" Padding="5"
+                                controls:ControlAssist.Icon="{StaticResource Icon.Close}" controls:ControlAssist.IconSize="12"
+                                Foreground="{DynamicResource Brush.TextSecondary}" ToolTip="Clear filter (Esc)"
+                                Click="ClearFilter_Click"
+                                Visibility="{Binding IsFiltering, Converter={StaticResource BoolToVisibility}}" />
+                    </Grid>
 
-            <!-- Right: tab panels (unchanged) -->
-            <TabControl x:Name="tabControl" Grid.Column="2">
+                    <Grid>
+                        <TreeView x:Name="treeView" ItemsSource="{Binding RootNodes}" Padding="0,0,0,10"
+                                  SelectedItemChanged="TreeView_OnSelectedItemChanged"
+                                  PreviewMouseRightButtonDown="TreeView_PreviewMouseRightButtonDown"
+                                  ToolTipService.InitialShowDelay="900">
+                            <TreeView.ItemContainerStyle>
+                                <!--
+                                    IsExpanded and IsSelected are two-way bound so the view-model
+                                    drives expansion (the root auto-expands on load) and user
+                                    interaction feeds back into the view-model.
+                                -->
+                                <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
+                                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                                    <Setter Property="Visibility" Value="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}" />
+                                </Style>
+                            </TreeView.ItemContainerStyle>
+                            <TreeView.ItemTemplate>
+                                <HierarchicalDataTemplate DataType="{x:Type treeView:TreeViewItemViewModel}"
+                                                          ItemsSource="{Binding Children}">
+                                    <Grid ToolTip="{Binding ToolTip}" Background="Transparent">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <controls:GeometryIcon Width="16" Height="16" Margin="0,0,7,0"
+                                                               controls:IconAssist.DataKey="{Binding IconKey}"
+                                                               controls:IconAssist.FillKey="{Binding IconBrushKey}" />
+                                        <TextBlock x:Name="LabelText" Grid.Column="1" Text="{Binding Label}"
+                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Detail}" Style="{StaticResource Text.Caption}"
+                                                   FontSize="11" Margin="8,0,2,0" VerticalAlignment="Center" />
+                                        <Ellipse Grid.Column="3" Width="7" Height="7" Margin="6,0,8,0" VerticalAlignment="Center"
+                                                 Fill="{DynamicResource Brush.Modified}"
+                                                 Visibility="{Binding IsModified, Converter={StaticResource BoolToVisibility}}" />
+                                    </Grid>
+                                    <HierarchicalDataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsDeleted}" Value="True">
+                                            <Setter TargetName="LabelText" Property="TextDecorations" Value="Strikethrough" />
+                                            <Setter TargetName="LabelText" Property="Opacity" Value="0.55" />
+                                        </DataTrigger>
+                                    </HierarchicalDataTemplate.Triggers>
+                                </HierarchicalDataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
 
-                <TabItem Header="Texture">
-                    <Image Source="{Binding SelectedNodeImage}"
-                           Stretch="Uniform"
-                           RenderOptions.BitmapScalingMode="NearestNeighbor" />
-                </TabItem>
+                        <!-- Empty state -->
+                        <StackPanel VerticalAlignment="Center" Margin="24,0,24,60"
+                                    Visibility="{Binding IsFileOpen, Converter={StaticResource InverseBoolToVisibility}}">
+                            <TextBlock Text="No file open" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                            <TextBlock Text="Open a GOB, LMP or other game archive to browse its contents."
+                                       Style="{StaticResource Text.Secondary}" TextAlignment="Center" Margin="0,6,0,14" />
+                            <Button Style="{StaticResource Button.Accent}" Command="{x:Static infra:AppCommands.Open}"
+                                    HorizontalAlignment="Center" Content="Open File…"
+                                    controls:ControlAssist.Icon="{StaticResource Icon.Open}" />
+                        </StackPanel>
+                    </Grid>
+                </DockPanel>
+            </Border>
 
-                <TabItem Header="Model">
-                    <local:ModelView x:Name="ModelView" DataContext="{Binding TheModelViewModel}" />
+            <GridSplitter x:Name="ExplorerSplitter" Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext" />
 
-                </TabItem>
+            <!-- Content -->
+            <Grid Grid.Column="2">
+                <DockPanel Visibility="{Binding IsFileOpen, Converter={StaticResource BoolToVisibility}}">
+                    <!-- Selection header + view switcher -->
+                    <Border DockPanel.Dock="Top" Background="{DynamicResource Brush.Window}"
+                            BorderBrush="{DynamicResource Brush.Divider}" BorderThickness="0,0,0,1" Padding="16,9,12,9"
+                            Visibility="{Binding SelectedTreeNode, Converter={StaticResource NullToVisibility}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="38" Height="38" CornerRadius="9" Background="{DynamicResource Brush.SurfaceAlt}"
+                                    VerticalAlignment="Center">
+                                <controls:GeometryIcon Width="20" Height="20"
+                                                       controls:IconAssist.DataKey="{Binding SelectedTreeNode.IconKey}"
+                                                       controls:IconAssist.FillKey="{Binding SelectedTreeNode.IconBrushKey}" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,16,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding SelectedTreeNode.Label}" FontSize="15" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding SelectedTreeNode.Subtitle}" Style="{StaticResource Text.Caption}"
+                                           TextTrimming="CharacterEllipsis" Margin="0,1,0,0"
+                                           ToolTip="{Binding SelectedTreeNode.Subtitle}" />
+                            </StackPanel>
+                            <ListBox Grid.Column="2" Style="{StaticResource ListBox.Segmented}" VerticalAlignment="Center"
+                                     ItemsSource="{Binding AvailableViews}" SelectedItem="{Binding SelectedView, Mode=TwoWay}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type infra:ViewOption}">
+                                        <StackPanel Orientation="Horizontal" ToolTip="{Binding ToolTip}">
+                                            <controls:GeometryIcon Width="15" Height="15" Margin="0,0,7,0"
+                                                                   controls:IconAssist.DataKey="{Binding IconKey}" />
+                                            <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
 
-                <TabItem Header="Level">
-                    <local:LevelView x:Name="LevelView" DataContext="{Binding TheLevelViewModel}" />
+                    <!-- Views: only the active one is in the visual tree (hidden 3D
+                         viewports stop rendering) but each keeps its state. -->
+                    <TabControl x:Name="tabControl" Style="{StaticResource TabControl.Switcher}">
+                        <TabItem Tag="{x:Static infra:ContentView.Overview}">
+                            <views:OverviewView DataContext="{Binding Overview}" />
+                        </TabItem>
+                        <TabItem Tag="{x:Static infra:ContentView.Level}">
+                            <local:LevelView x:Name="LevelView" DataContext="{Binding TheLevelViewModel}" />
+                        </TabItem>
+                        <TabItem Tag="{x:Static infra:ContentView.Model}">
+                            <local:ModelView x:Name="ModelView" DataContext="{Binding TheModelViewModel}" />
+                        </TabItem>
+                        <TabItem Tag="{x:Static infra:ContentView.Skeleton}">
+                            <local:SkeletonView x:Name="SkeletonView" DataContext="{Binding TheSkeletonViewModel}" />
+                        </TabItem>
+                        <TabItem Tag="{x:Static infra:ContentView.Texture}">
+                            <views:TextureView />
+                        </TabItem>
+                        <TabItem Tag="{x:Static infra:ContentView.Details}">
+                            <views:DetailsView />
+                        </TabItem>
+                    </TabControl>
+                </DockPanel>
 
-                </TabItem>
+                <!-- Start page -->
+                <views:WelcomeView Visibility="{Binding IsFileOpen, Converter={StaticResource InverseBoolToVisibility}}" />
 
-                <TabItem Header="Skeleton">
-                    <local:SkeletonView x:Name="SkeletonView" DataContext="{Binding TheSkeletonViewModel}" />
+                <!-- Busy overlay -->
+                <Grid Background="{DynamicResource Brush.Scrim}"
+                      Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+                    <Border Style="{StaticResource Card}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Padding="26,20" MinWidth="300">
+                        <StackPanel>
+                            <TextBlock Text="{Binding BusyText}" FontWeight="SemiBold" TextAlignment="Center"
+                                       TextWrapping="Wrap" />
+                            <ProgressBar IsIndeterminate="{Binding IsBusy}" Margin="0,14,0,0" Width="260" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
 
-                </TabItem>
-
-                <TabItem Header="Log">
-                    <TextBox IsReadOnly="True"
-                             Text="{Binding LogText, Mode=OneWay}"
-                             FontFamily="Courier New"
-                             FontSize="11"
-                             VerticalScrollBarVisibility="Auto"
-                             HorizontalScrollBarVisibility="Auto" />
-                </TabItem>
-
-            </TabControl>
+                <!-- Notifications -->
+                <ItemsControl ItemsSource="{Binding Notifications.Items}" ItemTemplate="{StaticResource ToastTemplate}"
+                              HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="380" Margin="0,0,18,18"
+                              Focusable="False" />
+            </Grid>
         </Grid>
+
+        <!-- ══════════════════════════ Status bar ══════════════════════════ -->
+        <Border Grid.Row="2" Background="{DynamicResource Brush.Chrome}"
+                BorderBrush="{DynamicResource Brush.Divider}" BorderThickness="0,1,0,0">
+            <DockPanel Height="26" Margin="12,0,12,0">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,18,0"
+                                Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BoolToVisibility}}">
+                        <Ellipse Width="7" Height="7" Fill="{DynamicResource Brush.Modified}" VerticalAlignment="Center"
+                                 Margin="0,0,7,0" />
+                        <TextBlock Text="{Binding UnsavedSummary}" FontSize="12" />
+                    </StackPanel>
+                    <controls:GeometryIcon Data="{StaticResource Icon.Game}" Width="14" Height="14"
+                                           Fill="{DynamicResource Brush.TextSecondary}" Margin="0,0,6,0" />
+                    <TextBlock Text="{Binding SelectedGame.ShortName}" FontSize="12"
+                               Foreground="{DynamicResource Brush.TextSecondary}" />
+                </StackPanel>
+                <ProgressBar DockPanel.Dock="Right" Width="120" Margin="0,0,18,0" VerticalAlignment="Center"
+                             IsIndeterminate="{Binding IsBusy}"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+                <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="{DynamicResource Brush.TextSecondary}"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </DockPanel>
+        </Border>
     </Grid>
 </Window>
