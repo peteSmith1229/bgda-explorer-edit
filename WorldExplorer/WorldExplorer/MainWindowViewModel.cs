@@ -62,6 +62,11 @@ public class MainWindowViewModel : ObservableObject
     // Views the user picked by hand, remembered per kind of selection, so
     // e.g. browsing models while looking at their textures stays on Texture.
     private readonly Dictionary<NodeKind, ContentView> _preferredViews = new();
+
+    /// <summary>Script editors by entry, so each keeps its undo history while the file is open.</summary>
+    private readonly Dictionary<(LmpFile Archive, string Entry), ScriptEditorViewModel> _scriptEditors = new();
+
+    private ScriptEditorViewModel? _scriptEditor;
     private bool _updatingViews;
 
     // Level decoding runs on a worker thread; the gate keeps two decodes from
@@ -81,7 +86,7 @@ public class MainWindowViewModel : ObservableObject
         _skeletonViewModel = new SkeletonViewModel(this);
         _levelViewModel = new LevelViewModel(this);
 
-        _selectedGame = GameOption.For(App.Settings.Get("Core.EngineVersion", EngineVersion.DarkAlliance));
+        _selectedGame = GameOption.FromSettings();
         _filterTimer.Tick += (_, _) =>
         {
             _filterTimer.Stop();
@@ -179,6 +184,13 @@ public class MainWindowViewModel : ObservableObject
         private set => SetProperty(ref _overview, value);
     }
 
+    /// <summary>The selected script's editor (null unless a script is selected), for the Script view.</summary>
+    public ScriptEditorViewModel? ScriptEditor
+    {
+        get => _scriptEditor;
+        private set => SetProperty(ref _scriptEditor, value);
+    }
+
     public object? SelectedNode
     {
         get => _selectedNode;
@@ -191,6 +203,7 @@ public class MainWindowViewModel : ObservableObject
 
             LogText = null;
             DetailsTitle = null;
+            ScriptEditor = null;
 
             try
             {
@@ -400,24 +413,27 @@ public class MainWindowViewModel : ObservableObject
     public void ApplyGame(GameOption game)
     {
         _selectedGame = game;
-        App.Settings["Core.EngineVersion"] = game.Version;
+        GameOption.SaveToSettings(game);
         App.SaveSettings();
         OnPropertyChanged(nameof(SelectedGame));
-        OnPropertyChanged(nameof(IsDarkAlliance));
-        OnPropertyChanged(nameof(IsNotDarkAlliance));
+        OnPropertyChanged(nameof(AvailableTools));
+        OnPropertyChanged(nameof(HasTools));
+        OnPropertyChanged(nameof(NoToolsText));
         OnPropertyChanged(nameof(WindowTitle));
     }
 
+    /// <summary>The decoders used for the selected game's files.</summary>
     public EngineVersion EngineVersion => _selectedGame.Version;
 
     /// <summary>
-    /// The executable / save / script-reward tools are reverse-engineered
-    /// against Baldur's Gate: Dark Alliance only, so they're hidden for the
-    /// other games.
+    /// The tools for the selected game. They are reverse-engineered per game,
+    /// so a game without any (yet) gets none.
     /// </summary>
-    public bool IsDarkAlliance => EngineVersion == EngineVersion.DarkAlliance;
+    public IReadOnlyList<GameTool> AvailableTools => GameTools.For(_selectedGame);
 
-    public bool IsNotDarkAlliance => !IsDarkAlliance;
+    public bool HasTools => AvailableTools.Count > 0;
+
+    public string NoToolsText => $"No tools are available for {_selectedGame.Name} yet.";
 
     // ─────────────────────────────────────────────────────────────────────────
     // Unsaved changes / title
@@ -464,6 +480,7 @@ public class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(WindowTitle));
 
         foreach (var root in RootNodes) root.RefreshState();
+        _scriptEditor?.RefreshSaved();
 
         if (ActiveView == ContentView.Overview && SelectedTreeNode != null)
         {
@@ -479,6 +496,11 @@ public class MainWindowViewModel : ObservableObject
 
     public bool HasRecentFiles => RecentFiles.Count > 0;
 
+    /// <summary>The start page lists the most recent few; File ▸ Open Recent has them all.</summary>
+    public IReadOnlyList<RecentFile> StartPageRecentFiles => RecentFiles.Take(StartPageRecentCount).ToList();
+
+    private const int StartPageRecentCount = 5;
+
     private void LoadRecentFiles()
     {
         RecentFiles.Clear();
@@ -487,6 +509,7 @@ public class MainWindowViewModel : ObservableObject
             RecentFiles.Add(new RecentFile(path));
         }
         OnPropertyChanged(nameof(HasRecentFiles));
+        OnPropertyChanged(nameof(StartPageRecentFiles));
     }
 
     private static List<string> ReadRecentFilePaths()
@@ -646,6 +669,8 @@ public class MainWindowViewModel : ObservableObject
         RootNodes.Clear();
         World = null;
         _gobFile = null;
+        _scriptEditors.Clear();
+        ScriptEditor = null;
 
         OnPropertyChanged(nameof(World));
         OnPropertyChanged(nameof(IsFileOpen));
@@ -1343,6 +1368,43 @@ public class MainWindowViewModel : ObservableObject
         return sb.ToString();
     }
 
+    /// <summary>
+    /// The editor for a script entry: the one already open for it while the
+    /// entry still holds the bytes it last wrote (so its undo history
+    /// survives switching away), otherwise a new one.
+    /// </summary>
+    private ScriptEditorViewModel GetScriptEditor(LmpFile lmpFile, string entryName)
+    {
+        if (_scriptEditors.TryGetValue((lmpFile, entryName), out var editor) && editor.IsCurrent)
+        {
+            editor.RefreshSaved();
+            return editor;
+        }
+
+        ScriptEditorViewModel? created = null;
+        created = new ScriptEditorViewModel(World!, lmpFile, entryName,
+            GameTools.IsAvailable(GameTools.ScriptRewards, _selectedGame), () => OnScriptEdited(created!));
+        _scriptEditors[(lmpFile, entryName)] = created;
+        return created;
+    }
+
+    /// <summary>A script editor changed its entry: update the title, tree markers and disassembly.</summary>
+    private void OnScriptEdited(ScriptEditorViewModel editor)
+    {
+        NotifyIsArchiveDirty();
+        if (!ReferenceEquals(editor, _scriptEditor) || SelectedNode is not LmpEntryTreeViewModel) return;
+
+        try
+        {
+            var bytes = editor.CurrentBytes();
+            LogText = ScrDecoder.Decode(bytes, 0, bytes.Length).Disassemble();
+        }
+        catch (Exception ex)
+        {
+            LogText = $"Couldn't disassemble the edited script: {ex.Message}";
+        }
+    }
+
     private void DispatchLmpEntry(LmpFile lmpFile, EntryData data, LmpEntryTreeViewModel lmpEntry, string ext)
     {
         switch (ext)
@@ -1451,7 +1513,17 @@ public class MainWindowViewModel : ObservableObject
                 var script = ScrDecoder.Decode(data.Data, data.Offset, data.Length);
                 LogText = script.Disassemble();
                 DetailsTitle = "Script disassembly";
-                ShowViews(ContentView.Details, ContentView.Details);
+                // The script format (and so the editor) is Dark Alliance's.
+                if (EngineVersion == EngineVersion.DarkAlliance && World != null)
+                {
+                    ScriptEditor = GetScriptEditor(lmpFile, lmpEntry.Label);
+                    ShowViews(ContentView.Script, ContentView.Script, ContentView.Details);
+                }
+                else
+                {
+                    ShowViews(ContentView.Details, ContentView.Details);
+                }
+
                 break;
             }
             case ".cut":

@@ -4,7 +4,8 @@ namespace JetBlackEngineLib.Data.Scripting;
 
 public static class ScrDecoder
 {
-    private enum ARGS_TYPE
+    // Shared with EditableScript, which walks the same instruction stream.
+    internal enum ARGS_TYPE
     {
         NO_ARGS,
         ONE_ARG,
@@ -16,7 +17,7 @@ public static class ScrDecoder
     
     private const int HEADER_SIZE = 0x60;
 
-    private static readonly ARGS_TYPE[] bgdaOpCodeArgs =
+    internal static readonly ARGS_TYPE[] bgdaOpCodeArgs =
     {
         ARGS_TYPE.NO_ARGS, // 0x00
         ARGS_TYPE.ONE_ARG, ARGS_TYPE.ONE_ARG, ARGS_TYPE.ONE_ARG, ARGS_TYPE.ONE_ARG, ARGS_TYPE.ONE_ARG,

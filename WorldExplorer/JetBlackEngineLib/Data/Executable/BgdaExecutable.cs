@@ -11,6 +11,9 @@
 // range. The in-game combat DAMAGE is computed per character at cast time and is
 // NOT a static edit (see FEAT_SPELL_FINDINGS.md).
 //
+// The class is partial: BgdaExecutable.ThreePlayer.cs adds the three-player patch
+// (which grows the file) and BgdaExecutable.Difficulty.cs the difficulty scaling.
+//
 // Standalone (no GOB/LMP dependency). A build check validates the tables before
 // any offset is trusted.
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -75,7 +78,7 @@ public sealed class FeatSpell
     public float EnergyPerSecond => EnergyCost * 50f;
 }
 
-public class BgdaExecutable
+public partial class BgdaExecutable
 {
     // ---- supported-build layout (SLES_506.72) ----
     public const int XpTableOffset    = 0x00134DA0;   // 16 × int32
@@ -117,7 +120,8 @@ public class BgdaExecutable
     public static readonly string[] ClassNames =
         { "Human Arcane Archer", "Elven Sorceress", "Dwarven Fighter", "Drow Ranger" };
 
-    private readonly byte[] _data;
+    // not readonly: enabling/disabling three players changes the file length
+    private byte[] _data;
     public string FilePath { get; }
 
     private BgdaExecutable(byte[] data, string path)

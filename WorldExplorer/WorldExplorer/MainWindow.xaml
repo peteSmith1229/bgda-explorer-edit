@@ -26,6 +26,7 @@
         <CommandBinding Command="{x:Static infra:AppCommands.ResetCamera}" Executed="ResetCamera_Executed" CanExecute="ResetCamera_CanExecute" />
         <CommandBinding Command="{x:Static infra:AppCommands.ToggleTheme}" Executed="ToggleTheme_Executed" />
         <CommandBinding Command="{x:Static infra:AppCommands.ToggleExplorer}" Executed="ToggleExplorer_Executed" />
+        <CommandBinding Command="{x:Static infra:AppCommands.RunTool}" Executed="RunTool_Executed" CanExecute="RunTool_CanExecute" />
         <CommandBinding Command="{x:Static infra:AppCommands.Settings}" Executed="Settings_Executed" />
         <CommandBinding Command="{x:Static infra:AppCommands.Shortcuts}" Executed="Shortcuts_Executed" />
         <CommandBinding Command="{x:Static infra:AppCommands.About}" Executed="About_Executed" />
@@ -198,6 +199,9 @@
                             <MenuItem Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="Texture" Header="_Texture">
                                 <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.View.Texture}" /></MenuItem.Icon>
                             </MenuItem>
+                            <MenuItem Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="Script" Header="Sc_ript">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.View.Script}" /></MenuItem.Icon>
+                            </MenuItem>
                             <MenuItem Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="Details" Header="_Details">
                                 <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.View.Details}" /></MenuItem.Icon>
                             </MenuItem>
@@ -217,22 +221,14 @@
                             </MenuItem>
                         </MenuItem>
 
-                        <MenuItem Header="_Tools">
+                        <MenuItem x:Name="MenuTools" Header="_Tools" SubmenuOpened="MenuTools_SubmenuOpened">
                             <!-- Filled when opened so the current game carries a check mark. -->
                             <MenuItem x:Name="MenuGames" Header="_Game" SubmenuOpened="MenuGames_SubmenuOpened">
                                 <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Game}" /></MenuItem.Icon>
                                 <MenuItem Header="Dark Alliance" />
                             </MenuItem>
-                            <Separator Visibility="{Binding IsDarkAlliance, Converter={StaticResource BoolToVisibility}}" />
-                            <!-- Reverse-engineered against Baldur's Gate: Dark Alliance (PAL SLES-506.72) only. -->
-                            <MenuItem Header="_Executable Tuning (XP, Stats, Spells, Monster HP)…" Click="MenuEditExecutableClick"
-                                      Visibility="{Binding IsDarkAlliance, Converter={StaticResource BoolToVisibility}}">
-                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Tools}" /></MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Header="Save _Game Editor (.psu)…" Click="MenuEditSaveClick"
-                                      Visibility="{Binding IsDarkAlliance, Converter={StaticResource BoolToVisibility}}">
-                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Save}" /></MenuItem.Icon>
-                            </MenuItem>
+                            <Separator x:Name="MenuToolsStart" />
+                            <!-- The selected game's tools are inserted here when the menu opens. -->
                             <Separator />
                             <MenuItem Command="{x:Static infra:AppCommands.Settings}" Header="_Settings…">
                                 <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Settings}" /></MenuItem.Icon>
@@ -256,9 +252,20 @@
                             controls:ControlAssist.Icon="{StaticResource Icon.Save}" ToolTip="Save (Ctrl+S)" />
                     <Separator Width="1" Height="20" Margin="6,0" />
                     <Button Style="{StaticResource Button.Subtle}" Command="{x:Static infra:AppCommands.Undo}"
-                            controls:ControlAssist.Icon="{StaticResource Icon.Undo}" ToolTip="Undo level edit (Ctrl+Z)" />
+                            controls:ControlAssist.Icon="{StaticResource Icon.Undo}" ToolTip="Undo (Ctrl+Z)" />
                     <Button Style="{StaticResource Button.Subtle}" Command="{x:Static infra:AppCommands.Redo}"
-                            controls:ControlAssist.Icon="{StaticResource Icon.Redo}" ToolTip="Redo level edit (Ctrl+Y)" />
+                            controls:ControlAssist.Icon="{StaticResource Icon.Redo}" ToolTip="Redo (Ctrl+Y)" />
+                    <Separator Width="1" Height="20" Margin="6,0" />
+                    <!-- The selected game's tools; the list is built when it opens. -->
+                    <Button x:Name="ToolsDropDown" Style="{StaticResource Button.Subtle}" Click="ToolsDropDown_Click"
+                            controls:ControlAssist.Icon="{StaticResource Icon.Tools}" Padding="8,5,6,5"
+                            ToolTip="Tools for the selected game">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Tools" VerticalAlignment="Center" />
+                            <controls:GeometryIcon Data="{StaticResource Icon.ChevronDown}" Width="12" Height="12"
+                                                   Margin="4,1,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -424,6 +431,9 @@
                         </TabItem>
                         <TabItem Tag="{x:Static infra:ContentView.Texture}">
                             <views:TextureView />
+                        </TabItem>
+                        <TabItem Tag="{x:Static infra:ContentView.Script}">
+                            <views:ScriptView DataContext="{Binding ScriptEditor}" />
                         </TabItem>
                         <TabItem Tag="{x:Static infra:ContentView.Details}">
                             <views:DetailsView />

@@ -11,6 +11,32 @@
             <Setter Property="Margin" Value="0,0,0,6" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
         </Style>
+        <Style x:Key="Heading" TargetType="TextBlock" BasedOn="{StaticResource Text.Section}">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Margin" Value="0,16,0,6" />
+        </Style>
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,10,0" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        </Style>
+        <Style x:Key="Field" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Width" Value="72" />
+            <Setter Property="Margin" Value="0,3,28,3" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+        <Style x:Key="Channel" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Width" Value="52" />
+            <Setter Property="Margin" Value="0,3,8,3" />
+        </Style>
+        <Style x:Key="Swatch" TargetType="Border">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+            <Setter Property="Margin" Value="6,3,0,3" />
+        </Style>
     </Window.Resources>
 
     <DockPanel Margin="20,14,20,16">
@@ -115,9 +141,9 @@
                                 <TextBlock Style="{StaticResource Help}" Text="Only rows marked Editable can be changed. 'Global' rows read a shared value used by several monsters; 'MultiBranch' rows pick between several values at runtime (GiantRat has four) — both are shown for reference only." />
                                 <TextBlock Style="{StaticResource Help}" Text="Resistances come from a bitmask at entity +0x3C: each damage type has a pair of bits, one halving damage and one nullifying it. Confirmed in-game — a FireElemental took 121 from melee and 0 from Burning Hands; a cold-immune creature took 3 from melee and 0 from Snowblind; a Wisp took 2 from melee and 0 from Lightning Bolt. Fire, cold, lightning, blunt and bladed are identified by name; the rest are shown by number rather than guessed at. Note the game does not distinguish slashing from piercing — dagger, sword and spear all use one 'bladed' type." />
                                 <TextBlock Style="{StaticResource Help}" Text="Values are stored as the upper half of a float, so entries are rounded to the nearest representable value (1.5, 2, 2.5, 3, 4, 5… are exact)." />
-                                <TextBlock Style="{StaticResource Help}" Text="Bosses (rows marked 'Editable (HP)') write a fixed HP that overrides the formula — for those the column holds the base HP, scaled by a separate boss table (Easy ×0.7, Normal ×1.0, Hard ×1.3, Extreme ×5.0). Verified against Eldrith: base 1500 gives 1050 / 1500 / 1950 / 7500, and 7500 was read directly from memory during an Extreme fight." />
+                                <TextBlock Style="{StaticResource Help}" Text="Bosses (rows marked 'Editable (HP)') write a fixed HP that overrides the formula — for those the column holds the base HP, scaled by a separate boss table (stock: Easy ×0.7, Normal ×1.0, Hard ×1.3, Extreme ×5.0). Verified against Eldrith: base 1500 gives 1050 / 1500 / 1950 / 7500, and 7500 was read directly from memory during an Extreme fight." />
                                 <TextBlock Style="{StaticResource Help}" Text="These columns are SINGLE-PLAYER. Two-player co-op multiplies boss HP by a further ×1.7 (confirmed: Eldrith read exactly 12750 in 2-player Extreme)." />
-                                <TextBlock Style="{StaticResource Help}" Text="The four difficulty columns show the predicted HP range and update as you type. They reproduce measured in-game values exactly for Kobold (4-5 / 5-8 / 7-11 / 77-110); a few monsters carry a higher internal base term, so their real HP can exceed the estimate." />
+                                <TextBlock Style="{StaticResource Help}" Text="The four difficulty columns show the predicted HP range and update as you type — here and in the difficulty scaling on the Three Players tab. With the stock scaling they reproduce measured in-game values exactly for Kobold (4-5 / 5-8 / 7-11 / 77-110); a few monsters carry a higher internal base term, so their real HP can exceed the estimate." />
                             </StackPanel>
                         </ScrollViewer>
                     </Expander>
@@ -137,6 +163,144 @@
                         </DataGrid.Columns>
                     </DataGrid>
                 </DockPanel>
+            </TabItem>
+
+            <TabItem Header="Three Players">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,2,14,8">
+                        <TextBlock Style="{StaticResource Help}" Text="Three-player co-op: Adrianna the Elven Sorceress joins as player 3 through a new 'Three Player' entry in the main menu. One- and two-player games keep the original code. Nothing is written until you save." />
+
+                        <Border Style="{StaticResource Card}" Margin="0,4,0,4" Padding="14,12">
+                            <StackPanel>
+                                <CheckBox x:Name="threePlayerCheck" Content="Enable three players" FontWeight="SemiBold"
+                                          Checked="ThreePlayerCheck_Changed" Unchecked="ThreePlayerCheck_Changed" />
+                                <TextBlock x:Name="threePlayerStatus" Style="{StaticResource Help}" Margin="24,6,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel x:Name="threePlayerSettingsPanel">
+                            <TextBlock Text="THREE-PLAYER BALANCE" Style="{StaticResource Heading}" />
+                            <TextBlock Style="{StaticResource Help}" Text="Used only in three-player games. For comparison, two players get monster HP ×1.7, damage ×1.4, XP ×2, boss HP ×1.7, gold ×2, item chance ×2, gold chance ×1.5 and Orb of Undeath damage ÷2." />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Monster HP ×" />
+                                <TextBox Grid.Row="0" Grid.Column="1" x:Name="tpHpBox" Style="{StaticResource Field}" />
+                                <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Monster damage ×" />
+                                <TextBox Grid.Row="1" Grid.Column="1" x:Name="tpDamageBox" Style="{StaticResource Field}" />
+                                <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Boss HP ×" />
+                                <TextBox Grid.Row="2" Grid.Column="1" x:Name="tpBossBox" Style="{StaticResource Field}" />
+                                <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Monster XP value ×" />
+                                <TextBox Grid.Row="3" Grid.Column="1" x:Name="tpXpBox" Style="{StaticResource Field}" />
+                                <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Gold per drop ×" />
+                                <TextBox Grid.Row="0" Grid.Column="3" x:Name="tpGoldBox" Style="{StaticResource Field}" />
+                                <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Gold drop chance ×" />
+                                <TextBox Grid.Row="1" Grid.Column="3" x:Name="tpGoldChanceBox" Style="{StaticResource Field}" />
+                                <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Item drop chance ×" />
+                                <TextBox Grid.Row="2" Grid.Column="3" x:Name="tpItemBox" Style="{StaticResource Field}" />
+                                <TextBlock Grid.Row="3" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Orb of Undeath damage ÷" />
+                                <TextBox Grid.Row="3" Grid.Column="3" x:Name="tpOrbBox" Style="{StaticResource Field}" />
+                            </Grid>
+                            <TextBlock Style="{StaticResource Help}" Margin="0,6,0,0" Text="XP value sets how much a kill is worth before it is shared out (the killer gets the larger share, as with two players). The Orb of Undeath divisor is a whole number from 1 to 10." />
+
+                            <TextBlock Text="AUTOMAP MARKERS" Style="{StaticResource Heading}" />
+                            <TextBlock Style="{StaticResource Help}" Text="Colour of each player's arrow on the automap (L1), as red, green and blue from 0 to 255." />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource FieldLabel}" Text="Red" />
+                                <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Green" />
+                                <TextBlock Grid.Row="0" Grid.Column="3" Style="{StaticResource FieldLabel}" Text="Blue" />
+                                <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Player 1" />
+                                <TextBox Grid.Row="1" Grid.Column="1" x:Name="m1RBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
+                                <TextBox Grid.Row="1" Grid.Column="2" x:Name="m1GBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
+                                <TextBox Grid.Row="1" Grid.Column="3" x:Name="m1BBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
+                                <Border Grid.Row="1" Grid.Column="4" x:Name="m1Swatch" Style="{StaticResource Swatch}" />
+                                <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Player 2" />
+                                <TextBox Grid.Row="2" Grid.Column="1" x:Name="m2RBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
+                                <TextBox Grid.Row="2" Grid.Column="2" x:Name="m2GBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
+                                <TextBox Grid.Row="2" Grid.Column="3" x:Name="m2BBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
+                                <Border Grid.Row="2" Grid.Column="4" x:Name="m2Swatch" Style="{StaticResource Swatch}" />
+                                <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Player 3" />
+                                <TextBox Grid.Row="3" Grid.Column="1" x:Name="m3RBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
+                                <TextBox Grid.Row="3" Grid.Column="2" x:Name="m3GBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
+                                <TextBox Grid.Row="3" Grid.Column="3" x:Name="m3BBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
+                                <Border Grid.Row="3" Grid.Column="4" x:Name="m3Swatch" Style="{StaticResource Swatch}" />
+                            </Grid>
+
+                            <TextBlock Text="SMALL MAP (THREE PLAYERS)" Style="{StaticResource Heading}" />
+                            <TextBlock Style="{StaticResource Help}" Text="Where the small automap sits in three-player games, as an offset from the screen centre (positive Y is down), and its size. The default is the bottom middle, inside player 3's skill bar. Two players use the top middle (0, −120); the size is 120 × 100 for every player count." />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="X" />
+                                <TextBox Grid.Row="0" Grid.Column="1" x:Name="smXBox" Style="{StaticResource Field}" />
+                                <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Y" />
+                                <TextBox Grid.Row="0" Grid.Column="3" x:Name="smYBox" Style="{StaticResource Field}" />
+                                <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Width" />
+                                <TextBox Grid.Row="1" Grid.Column="1" x:Name="smWBox" Style="{StaticResource Field}" />
+                                <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Height" />
+                                <TextBox Grid.Row="1" Grid.Column="3" x:Name="smHBox" Style="{StaticResource Field}" />
+                            </Grid>
+                            <Button Content="Restore three-player defaults" HorizontalAlignment="Left" Margin="0,10,0,0"
+                                    Click="ThreePlayerDefaults_Click" />
+                        </StackPanel>
+
+                        <TextBlock Text="DIFFICULTY SCALING (EVERY PLAYER COUNT)" Style="{StaticResource Heading}" />
+                        <TextBlock Style="{StaticResource Help}" Text="How each difficulty scales monsters, in one-, two- and three-player games alike; co-op factors apply on top. The level bonus is added to the monster level, which raises HP, damage and XP together. Boss HP applies to bosses with a fixed HP (the 'Editable (HP)' rows on the Monster HP tab)." />
+                        <TextBlock x:Name="difficultyStatus" Style="{StaticResource Help}" />
+                        <DataGrid x:Name="difficultyGrid" AutoGenerateColumns="False" CanUserAddRows="False"
+                                  HeadersVisibility="Column" HorizontalAlignment="Left" MinWidth="560"
+                                  PreviewMouseWheel="DifficultyGrid_PreviewMouseWheel">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Difficulty" Binding="{Binding Name}" IsReadOnly="True" Width="110" />
+                                <DataGridTextColumn Header="Monster HP ×" Width="110"
+                                                    Binding="{Binding Hp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Header="Monster damage ×" Width="150"
+                                                    Binding="{Binding Damage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Header="Monster level +" Width="120"
+                                                    Binding="{Binding Level, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Header="Boss HP ×" Width="*"
+                                                    Binding="{Binding Boss, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock Style="{StaticResource Help}" Margin="0,6,0,0" Text="Stock: monster HP ×0.7 / 1 / 1.3 / 1.3, damage ×0.7 / 1 / 2 / 1.3, level +0 / 0 / 0 / 30, boss HP ×0.7 / 1 / 1.3 / 5. Changing any value rewrites the game's two difficulty checks into a lookup of these tables (same size, same place); with the stock values back in place the original code is restored exactly." />
+                        <Button x:Name="difficultyStockButton" Content="Restore stock difficulty" HorizontalAlignment="Left"
+                                Margin="0,4,0,0" Click="DifficultyStock_Click" />
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
         </TabControl>
     </DockPanel>

@@ -9,7 +9,8 @@ namespace WorldExplorer.Infrastructure;
 /// <para>
 /// Undo/Redo deliberately do not reuse ApplicationCommands.Undo/Redo: those
 /// would be swallowed by a focused TextBox, whereas these always target the
-/// level editor's history (a focused TextBox still handles its own Ctrl+Z).
+/// history of the editor on screen, the level's or the script's (a focused
+/// TextBox still handles its own Ctrl+Z).
 /// </para>
 /// </summary>
 public static class AppCommands
@@ -31,6 +32,9 @@ public static class AppCommands
     public static readonly RoutedUICommand ResetCamera = Create("Reset Camera", nameof(ResetCamera), new KeyGesture(Key.Home, ModifierKeys.Control));
     public static readonly RoutedUICommand ToggleTheme = Create("Toggle Dark/Light Theme", nameof(ToggleTheme), new KeyGesture(Key.T, ModifierKeys.Control | ModifierKeys.Shift));
     public static readonly RoutedUICommand ToggleExplorer = Create("Toggle Explorer", nameof(ToggleExplorer), new KeyGesture(Key.B, ModifierKeys.Control));
+
+    /// <summary>Runs a game tool; the parameter is a <see cref="GameTools"/> id.</summary>
+    public static readonly RoutedUICommand RunTool = Create("Run Tool", nameof(RunTool));
 
     public static readonly RoutedUICommand Settings = Create("Settings…", nameof(Settings), new KeyGesture(Key.OemComma, ModifierKeys.Control, "Ctrl+,"));
     public static readonly RoutedUICommand Shortcuts = Create("Keyboard Shortcuts", nameof(Shortcuts), new KeyGesture(Key.F1));

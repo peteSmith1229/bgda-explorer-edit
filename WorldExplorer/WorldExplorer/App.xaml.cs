@@ -17,6 +17,12 @@ public partial class App
     private static readonly string SettingsFileName = "settings.ini";
     public static Section Settings = new();
 
+    /// <summary>
+    /// "Force opaque (ignore alpha)": on unless the user turned it off, so
+    /// textures with stray alpha values don't render half-transparent.
+    /// </summary>
+    public static bool ForceOpaqueSetting => Settings.Get("Textures.ForceOpaque", true);
+
     /// <summary>A file passed on the command line (e.g. "Open with…"), opened at startup.</summary>
     public static string? StartupFile { get; private set; }
 
@@ -31,7 +37,7 @@ public partial class App
             .FirstOrDefault(path => path != null && File.Exists(path));
 
         LoadSettings();
-        PalEntry.ForceOpaque = Settings.Get("Textures.ForceOpaque", false);
+        PalEntry.ForceOpaque = ForceOpaqueSetting;
         ThemeManager.Apply(ThemeManager.Parse(Settings.Get("Appearance.Theme", nameof(AppTheme.Dark))));
 
         DispatcherUnhandledException += OnDispatcherUnhandledException;

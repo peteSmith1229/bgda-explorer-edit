@@ -404,6 +404,7 @@ public partial class MainWindow : Window
     /// </summary>
     public bool ConfirmDiscardChanges(string action)
     {
+        ApplyTypedValues();
         if (!ViewModel.HasUnsavedChanges || ViewModel.World == null) return true;
 
         var result = MessageBox.Show(this,
@@ -696,15 +697,26 @@ public partial class MainWindow : Window
 
     private void Exit_Executed(object sender, ExecutedRoutedEventArgs e) => Close();
 
-    private void Undo_CanExecute(object sender, CanExecuteRoutedEventArgs e)
-        => e.CanExecute = ViewModel?.TheLevelViewModel.CanUndo == true;
+    /// <summary>While a script is selected, Undo and Redo use its history instead of the level's.</summary>
+    private ScriptEditorViewModel? ActiveScriptEditor => ViewModel?.ScriptEditor;
 
-    private void Undo_Executed(object sender, ExecutedRoutedEventArgs e) => ViewModel.TheLevelViewModel.Undo();
+    private void Undo_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        => e.CanExecute = ActiveScriptEditor is { } script ? script.CanUndo : ViewModel?.TheLevelViewModel.CanUndo == true;
+
+    private void Undo_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (ActiveScriptEditor is { } script) script.Undo();
+        else ViewModel.TheLevelViewModel.Undo();
+    }
 
     private void Redo_CanExecute(object sender, CanExecuteRoutedEventArgs e)
-        => e.CanExecute = ViewModel?.TheLevelViewModel.CanRedo == true;
+        => e.CanExecute = ActiveScriptEditor is { } script ? script.CanRedo : ViewModel?.TheLevelViewModel.CanRedo == true;
 
-    private void Redo_Executed(object sender, ExecutedRoutedEventArgs e) => ViewModel.TheLevelViewModel.Redo();
+    private void Redo_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (ActiveScriptEditor is { } script) script.Redo();
+        else ViewModel.TheLevelViewModel.Redo();
+    }
 
     private void Find_Executed(object sender, ExecutedRoutedEventArgs e)
     {
@@ -762,13 +774,13 @@ public partial class MainWindow : Window
     private void Settings_Executed(object sender, ExecutedRoutedEventArgs e)
     {
         var previousGame = ViewModel.SelectedGame;
-        var previousOpaque = App.Settings.Get("Textures.ForceOpaque", false);
+        var previousOpaque = App.ForceOpaqueSetting;
 
         var window = new SettingsWindow { Owner = this };
         if (window.ShowDialog() != true) return;
 
-        var newGame = GameOption.For(App.Settings.Get("Core.EngineVersion", previousGame.Version));
-        var opaqueChanged = App.Settings.Get("Textures.ForceOpaque", false) != previousOpaque;
+        var newGame = GameOption.FromSettings();
+        var opaqueChanged = App.ForceOpaqueSetting != previousOpaque;
         var gameChanged = !ReferenceEquals(newGame, previousGame);
 
         if (gameChanged)
@@ -800,6 +812,9 @@ public partial class MainWindow : Window
     // Saving
     // ─────────────────────────────────────────────────────────────────────────
 
+    /// <summary>Applies script values that were typed but not yet confirmed, so they aren't lost.</summary>
+    private void ApplyTypedValues() => ViewModel.ScriptEditor?.CommitAll();
+
     /// <summary>Saves the open file: the GOB, or a stand-alone LMP. Returns false if not saved.</summary>
     public bool SaveCurrent()
     {
@@ -818,6 +833,7 @@ public partial class MainWindow : Window
     /// </summary>
     public bool SaveArchive(LmpFile? lmpFile)
     {
+        ApplyTypedValues();
         if (lmpFile == null) return false;
         if (lmpFile is ClpFile)
         {
@@ -894,6 +910,7 @@ public partial class MainWindow : Window
     /// </summary>
     public bool SaveGob()
     {
+        ApplyTypedValues();
         var world = ViewModel.World;
         var gob = GetActiveGobFile();
         if (world == null || gob == null)
@@ -1306,10 +1323,109 @@ public partial class MainWindow : Window
     private void Menu_Delete_Click(object sender, RoutedEventArgs e) => LevelView.DeleteSelection();
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Tools (Dark Alliance)
+    // Game tools (Tools menu, toolbar drop-down, start page)
     // ─────────────────────────────────────────────────────────────────────────
 
-    private void MenuEditExecutableClick(object sender, RoutedEventArgs e)
+    private const string ToolMenuTag = "GameTool";
+
+    private void MenuTools_SubmenuOpened(object sender, RoutedEventArgs e)
+    {
+        // SubmenuOpened bubbles from the Game submenu too.
+        if (!ReferenceEquals(e.OriginalSource, MenuTools)) return;
+
+        for (var i = MenuTools.Items.Count - 1; i >= 0; i--)
+        {
+            if (MenuTools.Items[i] is FrameworkElement { Tag: ToolMenuTag }) MenuTools.Items.RemoveAt(i);
+        }
+
+        var at = MenuTools.Items.IndexOf(MenuToolsStart) + 1;
+        foreach (var item in CreateToolMenuItems()) MenuTools.Items.Insert(at++, item);
+    }
+
+    private void ToolsDropDown_Click(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu
+        {
+            PlacementTarget = ToolsDropDown,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+            VerticalOffset = 4
+        };
+        foreach (var item in CreateToolMenuItems()) menu.Items.Add(item);
+        menu.IsOpen = true;
+    }
+
+    /// <summary>Menu items for the selected game's tools; script tools come after a separator.</summary>
+    private List<FrameworkElement> CreateToolMenuItems()
+    {
+        var items = new List<FrameworkElement>();
+        var tools = ViewModel.AvailableTools;
+        if (tools.Count == 0)
+        {
+            items.Add(new MenuItem { Header = ViewModel.NoToolsText, IsEnabled = false, Tag = ToolMenuTag });
+            return items;
+        }
+
+        GameTool? previous = null;
+        foreach (var tool in tools)
+        {
+            if (previous != null && previous.NeedsScript != tool.NeedsScript)
+            {
+                items.Add(new Separator { Tag = ToolMenuTag });
+            }
+
+            var item = new MenuItem
+            {
+                Header = tool.MenuHeader.Replace("_", "__"),
+                Command = AppCommands.RunTool,
+                CommandParameter = tool.Id,
+                // Context-menu items sit outside the window's tree: route to the window explicitly.
+                CommandTarget = this,
+                Icon = new Controls.GeometryIcon { Data = (Geometry)FindResource(tool.IconKey) },
+                ToolTip = tool.Description,
+                Tag = ToolMenuTag
+            };
+            ToolTipService.SetShowOnDisabled(item, true);
+            items.Add(item);
+            previous = tool;
+        }
+
+        return items;
+    }
+
+    /// <summary>The selected script entry, if it can be edited (not in a read-only CLP).</summary>
+    private LmpEntryTreeViewModel? SelectedEditableScript() =>
+        ViewModel?.SelectedNode is LmpEntryTreeViewModel { Kind: NodeKind.Script, IsDeleted: false } entry &&
+        entry.LmpFileProperty is not ClpFile
+            ? entry
+            : null;
+
+    private void RunTool_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        var tool = GameTools.Find(e.Parameter as string);
+        e.CanExecute = ViewModel != null && tool != null && tool.Games.Contains(ViewModel.SelectedGame) &&
+                       (!tool.NeedsScript || SelectedEditableScript() != null);
+    }
+
+    private void RunTool_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        switch (e.Parameter as string)
+        {
+            case GameTools.ExecutableTuning:
+                OpenExecutableTuning();
+                break;
+            case GameTools.SaveGameEditor:
+                OpenSaveGameEditor();
+                break;
+            case GameTools.ScriptRewards when SelectedEditableScript() is { } script:
+                _contextManager.EditScriptRewards(script);
+                break;
+            case GameTools.InsertReward when SelectedEditableScript() is { } script:
+                _contextManager.InsertReward(script);
+                break;
+        }
+    }
+
+    private void OpenExecutableTuning()
     {
         var open = new OpenFileDialog
         {
@@ -1324,9 +1440,9 @@ public partial class MainWindow : Window
         {
             exe = JetBlackEngineLib.Data.Executable.BgdaExecutable.Open(open.FileName);
         }
-        catch (NotSupportedException ex)
+        catch (Exception ex) when (ex is NotSupportedException or IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show(this, ex.Message, "Unsupported file",
+            MessageBox.Show(this, ex.Message, ex is NotSupportedException ? "Unsupported file" : "Couldn't open the file",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
@@ -1334,7 +1450,7 @@ public partial class MainWindow : Window
         new ExecutableEditorWindow(exe) { Owner = this }.ShowDialog();
     }
 
-    private void MenuEditSaveClick(object sender, RoutedEventArgs e)
+    private void OpenSaveGameEditor()
     {
         var open = new OpenFileDialog
         {
@@ -1343,7 +1459,17 @@ public partial class MainWindow : Window
         };
         if (open.ShowDialog(this) != true) return;
 
-        var save = JetBlackEngineLib.Data.Save.BgdaSave.Open(open.FileName);
+        JetBlackEngineLib.Data.Save.BgdaSave save;
+        try
+        {
+            save = JetBlackEngineLib.Data.Save.BgdaSave.Open(open.FileName);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, ex.Message, "Couldn't open the file", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
         if (save.GetSlots().Count == 0)
         {
             MessageBox.Show(this,

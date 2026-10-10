@@ -1,4 +1,3 @@
-using JetBlackEngineLib;
 using JetBlackEngineLib.Data.Textures;
 using System.IO;
 using System.Windows;
@@ -20,14 +19,14 @@ public partial class SettingsWindow : Window
         ThemeManager.Attach(this);
 
         engineVersionBox.ItemsSource = GameOption.All;
-        engineVersionBox.SelectedItem = GameOption.For(App.Settings.Get("Core.EngineVersion", EngineVersion.DarkAlliance));
+        engineVersionBox.SelectedItem = GameOption.FromSettings();
 
         darkThemeRadio.IsChecked = ThemeManager.Current == AppTheme.Dark;
         lightThemeRadio.IsChecked = ThemeManager.Current == AppTheme.Light;
 
         dataPathTextblock.Text = App.Settings.Get("Files.DataPath", "");
         reopenLastFileCheckBox.IsChecked = App.Settings.Get("Files.ReopenLastFile", true);
-        forceOpaqueCheckBox.IsChecked = App.Settings.Get("Textures.ForceOpaque", false);
+        forceOpaqueCheckBox.IsChecked = App.ForceOpaqueSetting;
         gizmoSizeSlider.Value = App.Settings.Get("Editor.GizmoScale", 1.0);
     }
 
@@ -41,7 +40,7 @@ public partial class SettingsWindow : Window
         var game = engineVersionBox.SelectedItem as GameOption ?? GameOption.All[0];
         var theme = lightThemeRadio.IsChecked == true ? AppTheme.Light : AppTheme.Dark;
 
-        App.Settings["Core.EngineVersion"] = game.Version;
+        GameOption.SaveToSettings(game);
         App.Settings["Appearance.Theme"] = theme.ToString();
         App.Settings["Files.DataPath"] = dataPathTextblock.Text.Trim();
         App.Settings["Files.ReopenLastFile"] = reopenLastFileCheckBox.IsChecked == true;
@@ -56,6 +55,13 @@ public partial class SettingsWindow : Window
 
         App.SaveSettings();
         DialogResult = true;
+    }
+
+    private void EngineVersionBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        var note = (engineVersionBox.SelectedItem as GameOption)?.Note;
+        gameNoteText.Text = note ?? "";
+        gameNoteText.Visibility = note == null ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void BrowseButton_Click(object sender, RoutedEventArgs e)

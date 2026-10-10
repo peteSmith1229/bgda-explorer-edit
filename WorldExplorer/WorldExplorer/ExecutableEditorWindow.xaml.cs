@@ -1,8 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // COMPLETE FILE — replace WorldExplorer/WorldExplorer/ExecutableEditorWindow.xaml.cs
 //
-// Three tabs: XP per Level, Starting Stats, Feats & Spells.
+// Tabs: XP per Level, Starting Stats, Feats & Spells, Monster HP, Three Players.
 // A bad value in ANY tab aborts the save with a message; nothing is written.
+//
+// Three Players: switches the tested three-player patch (ADRIANNA19) on or off,
+// edits its balance / marker colours / small map, and edits the difficulty
+// scaling for every player count (BgdaExecutable.ThreePlayer.cs / .Difficulty.cs).
 // ═══════════════════════════════════════════════════════════════════════════════
 using System;
 using System.Collections.Generic;
@@ -11,6 +15,8 @@ using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 using JetBlackEngineLib.Data.Executable;
 using Microsoft.Win32;
 using WorldExplorer.Themes;
@@ -59,22 +65,56 @@ public partial class ExecutableEditorWindow : Window
     }
 
     /// <summary>
+    /// Difficulty factors used by the Monster HP predictions. One instance per window,
+    /// filled from the executable and updated live from the difficulty scaling grid on
+    /// the Three Players tab. Index 0 = Easy ... 3 = Extreme.
+    /// </summary>
+    public sealed class DifficultyModel
+    {
+        public float[] Hp { get; } = { 0.7f, 1.0f, 1.3f, 1.3f };
+        public float[] Level { get; } = { 0f, 0f, 0f, 30f };
+        public float[] Boss { get; } = { 0.7f, 1.0f, 1.3f, 5.0f };
+    }
+
+    /// <summary>A row of the difficulty scaling grid (Three Players tab).</summary>
+    public sealed class DifficultyRow : INotifyPropertyChanged
+    {
+        public int Index { get; init; }
+        public string Name { get; init; } = "";
+
+        private string _hp = "", _damage = "", _level = "", _boss = "";
+        public string Hp { get => _hp; set => Set(ref _hp, value, nameof(Hp)); }
+        public string Damage { get => _damage; set => Set(ref _damage, value, nameof(Damage)); }
+        public string Level { get => _level; set => Set(ref _level, value, nameof(Level)); }
+        public string Boss { get => _boss; set => Set(ref _boss, value, nameof(Boss)); }
+
+        private void Set(ref string field, string value, string name)
+        {
+            if (field == value) return;
+            field = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+    }
+
+    /// <summary>
     /// A row in the Monster HP tab. Implements INotifyPropertyChanged so the four
-    /// predicted-HP columns refresh as soon as the user edits the multiplier.
+    /// predicted-HP columns refresh as soon as the user edits the multiplier (or the
+    /// difficulty scaling on the Three Players tab).
     /// </summary>
     public sealed class MonsterRow : INotifyPropertyChanged
     {
         // ── HP model, derived from the executable and verified against in-game saves ──
-        //   HP = (rand%6 + 12) x ((f07 + extremeBonus + 2.33) x 0.3) x (f12 x difficulty)
-        // Difficulty dispatch at 0x0010D7C4:
+        //   HP = (rand%6 + 12) x ((f07 + levelBonus + 2.33) x 0.3) x (f12 x difficulty)
+        // Difficulty dispatch at 0x0010D7C4 (stock; editable on the Three Players tab):
         //   Easy x0.7 | Normal x1.0 | Hard x1.3 | Extreme x1.3 AND f07 += 30
         // Predictions using the default f07 (1.0) reproduce measured values exactly for
         // Kobold (4-5 / 5-8 / 7-11 / 77-110) and closely for SmallSpider. A few monsters
         // carry a higher f07 (Slime measured 3.0), so estimates for those read low.
         private const float RollMin = 12f, RollMax = 17f;
         private const float StatBase = 2.33f, StatScale = 0.3f;
-        private const float ExtremeBonus = 30f, DefaultF07 = 1f;
-        private static readonly float[] DifficultyScale = { 0.7f, 1.0f, 1.3f, 1.3f };
+        private const float DefaultF07 = 1f;
         // Bosses that write HP directly are scaled by a SEPARATE table (0x0012C930),
         // where Extreme is 5.0 rather than 1.3. Verified against Eldrith (literal 1500):
         // measured 1128 / 1508 / 2010 / 7500, the last read exactly from memory.
@@ -83,7 +123,8 @@ public partial class ExecutableEditorWindow : Window
         // stacked on top of the difficulty scalar. Confirmed live: Eldrith in 2-player
         // Extreme read exactly 12750 = 1500 x 5.0 x 1.7. The columns below show
         // SINGLE-PLAYER values; multiply by 1.7 for two players.
-        private static readonly float[] BossDifficultyScale = { 0.7f, 1.0f, 1.3f, 5.0f };
+        // The scaling factors themselves come from Model (stock: boss 0.7/1/1.3/5).
+        public DifficultyModel Model { get; init; } = new();
 
         public MonsterHp Source { get; init; } = null!;
         public string Name { get; init; } = "";
@@ -100,11 +141,17 @@ public partial class ExecutableEditorWindow : Window
                 if (_multiplier == value) return;
                 _multiplier = value;
                 OnChanged(nameof(Multiplier));
-                OnChanged(nameof(EasyHp));
-                OnChanged(nameof(NormalHp));
-                OnChanged(nameof(HardHp));
-                OnChanged(nameof(ExtremeHp));
+                RefreshPredictions();
             }
+        }
+
+        /// <summary>Re-evaluates the four predicted-HP columns.</summary>
+        public void RefreshPredictions()
+        {
+            OnChanged(nameof(EasyHp));
+            OnChanged(nameof(NormalHp));
+            OnChanged(nameof(HardHp));
+            OnChanged(nameof(ExtremeHp));
         }
 
         public string EasyHp    => Predict(0);
@@ -121,15 +168,15 @@ public partial class ExecutableEditorWindow : Window
                 if (!int.TryParse(_multiplier, NumberStyles.Integer,
                                   CultureInfo.InvariantCulture, out var flat) || flat <= 0)
                     return "";
-                return ((int)(flat * BossDifficultyScale[difficulty]))
+                return ((int)(flat * Model.Boss[difficulty]))
                        .ToString(CultureInfo.InvariantCulture);
             }
 
             if (!float.TryParse(_multiplier, NumberStyles.Float,
                                 CultureInfo.InvariantCulture, out var mult) || mult <= 0f)
                 return "";
-            var f07 = DefaultF07 + (difficulty == 3 ? ExtremeBonus : 0f);
-            var factor = (f07 + StatBase) * StatScale * mult * DifficultyScale[difficulty];
+            var f07 = DefaultF07 + Model.Level[difficulty];
+            var factor = (f07 + StatBase) * StatScale * mult * Model.Hp[difficulty];
             var lo = (int)(RollMin * factor);
             var hi = (int)(RollMax * factor);
             if (hi < 1) hi = 1;
@@ -149,6 +196,9 @@ public partial class ExecutableEditorWindow : Window
     private readonly List<FeatRow> _featRows;
     private readonly BgdaMonsters _monsters;
     private readonly List<MonsterRow> _monsterRows;
+    private readonly DifficultyModel _difficultyModel = new();
+    private readonly List<DifficultyRow> _difficultyRows;
+    private readonly bool _difficultyEditable;
 
     public ExecutableEditorWindow(BgdaExecutable exe)
     {
@@ -200,12 +250,13 @@ public partial class ExecutableEditorWindow : Window
         _monsters = BgdaMonsters.Open(exe.FilePath);
         _monsterRows = _monsters.GetMonsters().Select(mon => new MonsterRow
         {
+            Model      = _difficultyModel,
             Source     = mon,
             Name       = mon.Name,
             Multiplier = mon.Kind == MonsterHpKind.DirectHp
                 ? (mon.DirectHp?.ToString(CultureInfo.InvariantCulture) ?? "")
                 : (mon.Multiplier.HasValue
-                    ? mon.Multiplier.Value.ToString("0.####")
+                    ? mon.Multiplier.Value.ToString("0.####", CultureInfo.InvariantCulture)
                     : ""),
             Resistances = BgdaMonsters.DescribeResistances(mon.ResistMask),
             KindText   = mon.Kind switch
@@ -224,7 +275,38 @@ public partial class ExecutableEditorWindow : Window
             }
         }).ToList();
         monsterGrid.ItemsSource = _monsterRows;
+
+        // ── Three Players tab ──
+        var tpState = _exe.GetThreePlayerState();
+        threePlayerCheck.IsChecked = tpState == ThreePlayerState.On;
+        threePlayerCheck.IsEnabled = tpState != ThreePlayerState.Unrecognized;
+        ShowThreePlayerSettings(tpState == ThreePlayerState.On
+            ? _exe.GetThreePlayerSettings()
+            : BgdaExecutable.DefaultThreePlayerSettings());
+        UpdateThreePlayerStatus();
+
+        var difficultyState = _exe.GetDifficultyState();
+        _difficultyEditable = difficultyState != DifficultyCodeState.Unrecognized;
+        var scaling = _difficultyEditable ? _exe.GetDifficultyScaling() : BgdaExecutable.StockDifficulty();
+        _difficultyRows = Enumerable.Range(0, 4).Select(i => new DifficultyRow
+        {
+            Index = i,
+            Name = BgdaExecutable.DifficultyNames[i],
+            Hp = Format(scaling.MonsterHp[i]),
+            Damage = Format(scaling.MonsterDamage[i]),
+            Level = Format(scaling.LevelBonus[i]),
+            Boss = Format(scaling.BossHp[i])
+        }).ToList();
+        foreach (var row in _difficultyRows) row.PropertyChanged += (_, _) => RefreshMonsterPredictions();
+        difficultyGrid.ItemsSource = _difficultyRows;
+        difficultyGrid.IsReadOnly = !_difficultyEditable;
+        difficultyStockButton.IsEnabled = _difficultyEditable;
+        UpdateDifficultyStatus();
+        RefreshMonsterPredictions();
     }
+
+    /// <summary>Shortest text that reads back as the same float (0.7, 1.3, 2.4 ...).</summary>
+    private static string Format(float value) => value.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>Trims trailing zeros: 10.0 shows as "10", 0.25 stays "0.25".</summary>
     private static string FormatEnergy(float value) => value.ToString("0.####");
@@ -235,9 +317,18 @@ public partial class ExecutableEditorWindow : Window
         CommitGrid(statsGrid);
         CommitGrid(featGrid);
         CommitGrid(monsterGrid);
+        CommitGrid(difficultyGrid);
 
+        var wantThreePlayers = threePlayerCheck.IsChecked == true;
+        ThreePlayerSettings? threePlayerSettings;
+        DifficultyScaling? difficulty;
         try
         {
+            // the Three Players tab is only read and checked here; it is applied once a
+            // file name has been chosen, so cancelling leaves the loaded executable as it was
+            threePlayerSettings = wantThreePlayers ? ReadThreePlayerSettings() : null;
+            difficulty = _difficultyEditable ? ReadDifficulty() : null;
+
             ApplyXpEdits();
             ApplyStatEdits();
             ApplyFeatEdits();
@@ -257,8 +348,22 @@ public partial class ExecutableEditorWindow : Window
         };
         if (dialog.ShowDialog(this) != true) return;
 
+        try
+        {
+            ApplyThreePlayers(wantThreePlayers, threePlayerSettings);
+            if (difficulty is not null) _exe.SetDifficultyScaling(difficulty);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+        {
+            MessageBox.Show(this, ex.Message, "Executable Tuning",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return; // nothing written to disk
+        }
+
         _exe.Save(dialog.FileName);
         WriteMonsterEdits(dialog.FileName);
+        UpdateThreePlayerStatus();
+        UpdateDifficultyStatus();
         MessageBox.Show(this,
             "Saved. Replace the executable in your game image with this file " +
             "(keep your original as a backup). Changes affect new characters and future level-ups.",
@@ -344,6 +449,208 @@ public partial class ExecutableEditorWindow : Window
     }
 
     private bool _monstersChanged;
+
+    // ═══════════════════════════ Three Players tab ═══════════════════════════
+
+    private TextBox[] MarkerBoxes => new[]
+    {
+        m1RBox, m1GBox, m1BBox, m2RBox, m2GBox, m2BBox, m3RBox, m3GBox, m3BBox
+    };
+
+    private void ShowThreePlayerSettings(ThreePlayerSettings s)
+    {
+        tpHpBox.Text = Format(s.MonsterHp);
+        tpDamageBox.Text = Format(s.MonsterDamage);
+        tpBossBox.Text = Format(s.BossHp);
+        tpXpBox.Text = Format(s.XpValue);
+        tpGoldBox.Text = Format(s.GoldPerDrop);
+        tpGoldChanceBox.Text = Format(s.GoldChance);
+        tpItemBox.Text = Format(s.ItemChance);
+        tpOrbBox.Text = s.OrbDivisor.ToString(CultureInfo.InvariantCulture);
+        var boxes = MarkerBoxes;
+        for (var p = 0; p < 3; p++)
+        {
+            boxes[p * 3].Text = s.Markers[p].R.ToString(CultureInfo.InvariantCulture);
+            boxes[p * 3 + 1].Text = s.Markers[p].G.ToString(CultureInfo.InvariantCulture);
+            boxes[p * 3 + 2].Text = s.Markers[p].B.ToString(CultureInfo.InvariantCulture);
+        }
+
+        smXBox.Text = Format(s.SmallMapX);
+        smYBox.Text = Format(s.SmallMapY);
+        smWBox.Text = Format(s.SmallMapWidth);
+        smHBox.Text = Format(s.SmallMapHeight);
+        UpdateMarkerSwatches();
+    }
+
+    /// <summary>Reads and checks every three-player box (throws <see cref="ArgumentException"/>).</summary>
+    private ThreePlayerSettings ReadThreePlayerSettings()
+    {
+        var boxes = MarkerBoxes;
+        Rgb Marker(int p) => new(
+            ParseInt(boxes[p * 3], $"Player {p + 1} marker red"),
+            ParseInt(boxes[p * 3 + 1], $"Player {p + 1} marker green"),
+            ParseInt(boxes[p * 3 + 2], $"Player {p + 1} marker blue"));
+
+        var s = new ThreePlayerSettings
+        {
+            MonsterHp = ParseFloat(tpHpBox, "Three-player monster HP"),
+            MonsterDamage = ParseFloat(tpDamageBox, "Three-player monster damage"),
+            BossHp = ParseFloat(tpBossBox, "Three-player boss HP"),
+            XpValue = ParseFloat(tpXpBox, "Three-player XP value"),
+            GoldPerDrop = ParseFloat(tpGoldBox, "Three-player gold per drop"),
+            GoldChance = ParseFloat(tpGoldChanceBox, "Three-player gold drop chance"),
+            ItemChance = ParseFloat(tpItemBox, "Three-player item drop chance"),
+            OrbDivisor = ParseInt(tpOrbBox, "Orb of Undeath divisor"),
+            Markers = new[] { Marker(0), Marker(1), Marker(2) },
+            SmallMapX = ParseFloat(smXBox, "Small-map x"),
+            SmallMapY = ParseFloat(smYBox, "Small-map y"),
+            SmallMapWidth = ParseFloat(smWBox, "Small-map width"),
+            SmallMapHeight = ParseFloat(smHBox, "Small-map height")
+        };
+        BgdaExecutable.ValidateThreePlayerSettings(s);
+        return s;
+    }
+
+    /// <summary>Turns the patch on or off as ticked, then writes the settings.</summary>
+    private void ApplyThreePlayers(bool want, ThreePlayerSettings? settings)
+    {
+        var state = _exe.GetThreePlayerState();
+        if (want && state == ThreePlayerState.Off) _exe.EnableThreePlayers();
+        else if (!want && state == ThreePlayerState.On) _exe.DisableThreePlayers();
+        if (want && settings is not null) _exe.SetThreePlayerSettings(settings);
+    }
+
+    private void UpdateThreePlayerStatus()
+    {
+        var state = _exe.GetThreePlayerState(out var detail);
+        var want = threePlayerCheck.IsChecked == true;
+        threePlayerStatus.Text = state switch
+        {
+            ThreePlayerState.Off when want =>
+                "Three players will be turned on when you save. The file grows from " +
+                $"{MegaBytes(BgdaExecutable.StockFileLength)} to {MegaBytes(BgdaExecutable.ThreePlayerFileLength)}.",
+            ThreePlayerState.On when !want =>
+                "Three players will be turned off when you save: the original code is restored and the " +
+                "three-player settings below are discarded.",
+            _ => detail
+        };
+        threePlayerSettingsPanel.IsEnabled = want && state != ThreePlayerState.Unrecognized;
+    }
+
+    private void ThreePlayerCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!IsInitialized || threePlayerStatus is null) return;
+        UpdateThreePlayerStatus();
+    }
+
+    private void ThreePlayerDefaults_Click(object sender, RoutedEventArgs e) =>
+        ShowThreePlayerSettings(BgdaExecutable.DefaultThreePlayerSettings());
+
+    private void Marker_TextChanged(object sender, TextChangedEventArgs e) => UpdateMarkerSwatches();
+
+    private void UpdateMarkerSwatches()
+    {
+        if (m3Swatch is null) return;   // still loading
+        var boxes = MarkerBoxes;
+        var swatches = new[] { m1Swatch, m2Swatch, m3Swatch };
+        for (var p = 0; p < 3; p++)
+        {
+            byte Channel(TextBox b) =>
+                int.TryParse(b.Text?.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var v)
+                    ? (byte)Math.Clamp(v, 0, 255)
+                    : (byte)0;
+            swatches[p].Background = new SolidColorBrush(Color.FromRgb(
+                Channel(boxes[p * 3]), Channel(boxes[p * 3 + 1]), Channel(boxes[p * 3 + 2])));
+        }
+    }
+
+    /// <summary>Reads and checks the difficulty grid (throws <see cref="ArgumentException"/>).</summary>
+    private DifficultyScaling ReadDifficulty()
+    {
+        var d = new DifficultyScaling();
+        foreach (var row in _difficultyRows)
+        {
+            d.MonsterHp[row.Index] = ParseFloat(row.Hp, $"{row.Name} monster HP");
+            d.MonsterDamage[row.Index] = ParseFloat(row.Damage, $"{row.Name} monster damage");
+            d.LevelBonus[row.Index] = ParseFloat(row.Level, $"{row.Name} level bonus");
+            d.BossHp[row.Index] = ParseFloat(row.Boss, $"{row.Name} boss HP");
+        }
+
+        BgdaExecutable.ValidateDifficulty(d);
+        return d;
+    }
+
+    private void UpdateDifficultyStatus() =>
+        difficultyStatus.Text = _exe.GetDifficultyState() switch
+        {
+            DifficultyCodeState.Stock => "This executable has the original difficulty code.",
+            DifficultyCodeState.Table => "This executable has edited difficulty scaling.",
+            _ => "The difficulty code in this executable is not recognised (another patch?), so it is shown " +
+                 "read-only with the stock values."
+        };
+
+    private static string MegaBytes(int bytes) =>
+        (bytes / 1_000_000.0).ToString("0.0", CultureInfo.InvariantCulture) + " MB";
+
+    /// <summary>
+    /// The difficulty grid sits inside the tab's ScrollViewer; its own scroll viewer would
+    /// swallow the mouse wheel, so the wheel is handed on to the page.
+    /// </summary>
+    private void DifficultyGrid_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (e.Handled || sender is not FrameworkElement { Parent: UIElement parent }) return;
+        e.Handled = true;
+        parent.RaiseEvent(new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+        {
+            RoutedEvent = UIElement.MouseWheelEvent,
+            Source = sender
+        });
+    }
+
+    private void DifficultyStock_Click(object sender, RoutedEventArgs e)
+    {
+        CommitGrid(difficultyGrid);
+        var stock = BgdaExecutable.StockDifficulty();
+        foreach (var row in _difficultyRows)
+        {
+            row.Hp = Format(stock.MonsterHp[row.Index]);
+            row.Damage = Format(stock.MonsterDamage[row.Index]);
+            row.Level = Format(stock.LevelBonus[row.Index]);
+            row.Boss = Format(stock.BossHp[row.Index]);
+        }
+    }
+
+    /// <summary>Feeds the difficulty grid into the Monster HP predictions (bad cells are skipped).</summary>
+    private void RefreshMonsterPredictions()
+    {
+        foreach (var row in _difficultyRows)
+        {
+            if (TryParse(row.Hp, out var hp) && hp > 0f) _difficultyModel.Hp[row.Index] = hp;
+            if (TryParse(row.Level, out var level) && level >= 0f) _difficultyModel.Level[row.Index] = level;
+            if (TryParse(row.Boss, out var boss) && boss > 0f) _difficultyModel.Boss[row.Index] = boss;
+        }
+
+        foreach (var row in _monsterRows) row.RefreshPredictions();
+    }
+
+    private static bool TryParse(string? text, out float value) =>
+        float.TryParse(text?.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+
+    private static float ParseFloat(string? text, string what)
+    {
+        if (!TryParse(text, out var v))
+            throw new ArgumentException($"{what}: '{text}' is not a number.");
+        return v;
+    }
+
+    private static float ParseFloat(TextBox box, string what) => ParseFloat(box.Text, what);
+
+    private static int ParseInt(TextBox box, string what)
+    {
+        if (!int.TryParse(box.Text?.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var v))
+            throw new ArgumentException($"{what}: '{box.Text}' is not a whole number.");
+        return v;
+    }
 
     private void ApplyXpEdits()
     {
