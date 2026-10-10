@@ -20,6 +20,7 @@ using JetBlackEngineLib.Data.Textures;
 using JetBlackEngineLib.Data.World;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 
@@ -123,6 +124,16 @@ public class World
             count += Math.Max(0, lmp.PendingAdditions.Count - (saved?.Additions.Length ?? 0));
         }
         return count;
+    }
+
+    /// <summary>
+    /// The edited bytes the last save wrote for <paramref name="entryName"/>.
+    /// False when the saved file holds the entry as it was opened. Don't modify the result.
+    /// </summary>
+    public bool TryGetSavedEdit(LmpFile lmp, string entryName, [NotNullWhen(true)] out byte[]? data)
+    {
+        data = null;
+        return _savedStates.TryGetValue(lmp, out var saved) && saved.Edits.TryGetValue(entryName, out data);
     }
 
     /// <summary>True when <paramref name="entryName"/> was edited or deleted since the last save.</summary>

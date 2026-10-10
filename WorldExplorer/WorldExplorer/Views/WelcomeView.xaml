@@ -40,74 +40,60 @@
                            Text="…or drop a .GOB, .LMP, .CLP, .DDF, .SDB, .YAK or .HDR file anywhere on this window." />
             </StackPanel>
 
-            <!-- Recent files + game -->
+            <!-- Recent files and shortcuts | game and its tools -->
             <Grid Grid.Row="1" Margin="0,32,0,0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="3*" />
+                    <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="20" />
-                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <Border Style="{StaticResource Card}" Padding="8,12,8,8">
-                    <DockPanel>
-                        <Grid DockPanel.Dock="Top" Margin="8,0,4,8">
-                            <TextBlock Text="Recent files" Style="{StaticResource Text.Subtitle}" />
-                            <Button Style="{StaticResource Button.Link}" HorizontalAlignment="Right"
-                                    Content="Clear" Click="ClearRecent_Click"
-                                    Visibility="{Binding HasRecentFiles, Converter={StaticResource BoolToVisibility}}" />
-                        </Grid>
-                        <Grid>
-                            <TextBlock Margin="8,4,8,12" Style="{StaticResource Text.Secondary}"
-                                       Text="Files you open will appear here."
-                                       Visibility="{Binding HasRecentFiles, Converter={StaticResource InverseBoolToVisibility}}" />
-                            <ItemsControl ItemsSource="{Binding RecentFiles}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type infra:RecentFile}">
-                                        <Button x:Name="Entry" Style="{StaticResource Button.Subtle}"
-                                                HorizontalContentAlignment="Stretch" Padding="8,7" Margin="0,1"
-                                                Click="RecentFile_Click" Tag="{Binding Path}" ToolTip="{Binding Path}">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <controls:GeometryIcon Width="18" Height="18" Margin="0,0,12,0"
-                                                                       Data="{StaticResource Icon.Kind.Gob}"
-                                                                       Fill="{DynamicResource Brush.Icon.Gob}" />
-                                                <StackPanel Grid.Column="1">
-                                                    <TextBlock x:Name="Name" Text="{Binding FileName}" FontWeight="SemiBold"
+                <StackPanel>
+                    <Border Style="{StaticResource Card}" Padding="8,12,8,8">
+                        <DockPanel>
+                            <Grid DockPanel.Dock="Top" Margin="8,0,4,6">
+                                <TextBlock Text="Recent files" Style="{StaticResource Text.Subtitle}" />
+                                <Button Style="{StaticResource Button.Link}" HorizontalAlignment="Right"
+                                        Content="Clear" Click="ClearRecent_Click"
+                                        Visibility="{Binding HasRecentFiles, Converter={StaticResource BoolToVisibility}}" />
+                            </Grid>
+                            <Grid>
+                                <TextBlock Margin="8,2,8,8" Style="{StaticResource Text.Secondary}"
+                                           Text="Files you open will appear here."
+                                           Visibility="{Binding HasRecentFiles, Converter={StaticResource InverseBoolToVisibility}}" />
+                                <ItemsControl ItemsSource="{Binding StartPageRecentFiles}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type infra:RecentFile}">
+                                            <Button x:Name="Entry" Style="{StaticResource Button.Subtle}"
+                                                    HorizontalContentAlignment="Stretch" Padding="8,5"
+                                                    Click="RecentFile_Click" Tag="{Binding Path}" ToolTip="{Binding Path}">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <controls:GeometryIcon Width="16" Height="16" Margin="0,0,10,0"
+                                                                           Data="{StaticResource Icon.Kind.Gob}"
+                                                                           Fill="{DynamicResource Brush.Icon.Gob}" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding FileName}" FontWeight="SemiBold"
+                                                               VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="2" Text="{Binding Folder}" Style="{StaticResource Text.Caption}"
+                                                               Margin="10,0,0,0" VerticalAlignment="Center"
                                                                TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{Binding Folder}" Style="{StaticResource Text.Caption}"
-                                                               TextTrimming="CharacterEllipsis" />
-                                                </StackPanel>
-                                            </Grid>
-                                        </Button>
-                                        <DataTemplate.Triggers>
-                                            <DataTrigger Binding="{Binding Exists}" Value="False">
-                                                <Setter TargetName="Entry" Property="Opacity" Value="0.5" />
-                                                <Setter TargetName="Entry" Property="ToolTip" Value="File not found — click to remove it from the list" />
-                                            </DataTrigger>
-                                        </DataTemplate.Triggers>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </Grid>
-                    </DockPanel>
-                </Border>
-
-                <StackPanel Grid.Column="2">
-                    <Border Style="{StaticResource Card}">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <controls:GeometryIcon Data="{StaticResource Icon.Game}" Width="18" Height="18"
-                                                       Fill="{DynamicResource Brush.Accent}" />
-                                <TextBlock Text="Game" Style="{StaticResource Text.Subtitle}" Margin="10,0,0,0" />
-                            </StackPanel>
-                            <TextBlock Style="{StaticResource Text.Secondary}" Margin="0,8,0,10"
-                                       Text="Files are decoded with the selected game's formats. Pick the game the file came from." />
-                            <ComboBox ItemsSource="{Binding Games}" SelectedItem="{Binding SelectedGame, Mode=TwoWay}"
-                                      DisplayMemberPath="Name" />
-                        </StackPanel>
+                                                </Grid>
+                                            </Button>
+                                            <DataTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding Exists}" Value="False">
+                                                    <Setter TargetName="Entry" Property="Opacity" Value="0.5" />
+                                                    <Setter TargetName="Entry" Property="ToolTip" Value="File not found — click to remove it from the list" />
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Grid>
+                        </DockPanel>
                     </Border>
 
                     <Border Style="{StaticResource Card}" Margin="0,16,0,0">
@@ -141,6 +127,64 @@
                                 </Border>
                                 <TextBlock Grid.Row="3" Grid.Column="1" Text="All keyboard shortcuts" Style="{StaticResource Text.Secondary}" />
                             </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <controls:GeometryIcon Data="{StaticResource Icon.Game}" Width="18" Height="18"
+                                                       Fill="{DynamicResource Brush.Accent}" />
+                                <TextBlock Text="Game" Style="{StaticResource Text.Subtitle}" Margin="10,0,0,0" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Text.Secondary}" Margin="0,8,0,10"
+                                       Text="Files are decoded with the selected game's formats. Pick the game the file came from." />
+                            <ComboBox ItemsSource="{Binding Games}" SelectedItem="{Binding SelectedGame, Mode=TwoWay}"
+                                      DisplayMemberPath="Name" />
+                            <TextBlock Text="{Binding SelectedGame.Note}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                                       Margin="2,8,0,0"
+                                       Visibility="{Binding SelectedGame.Note, Converter={StaticResource NullToVisibility}}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Tools for the selected game -->
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0" Padding="8,12,8,8">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="8,0,0,4">
+                                <controls:GeometryIcon Data="{StaticResource Icon.Tools}" Width="18" Height="18"
+                                                       Fill="{DynamicResource Brush.Accent}" />
+                                <TextBlock Text="Tools" Style="{StaticResource Text.Subtitle}" Margin="10,0,0,0" />
+                                <TextBlock Text="{Binding SelectedGame.ShortName, StringFormat=for {0}}"
+                                           Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="8,1,0,0" />
+                            </StackPanel>
+                            <TextBlock Margin="8,4,8,8" Style="{StaticResource Text.Secondary}" Text="{Binding NoToolsText}"
+                                       Visibility="{Binding HasTools, Converter={StaticResource InverseBoolToVisibility}}" />
+                            <ItemsControl ItemsSource="{Binding AvailableTools}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type infra:GameTool}">
+                                        <Button Style="{StaticResource Button.Subtle}" HorizontalContentAlignment="Stretch"
+                                                Padding="8,7" Margin="0,1"
+                                                Command="{x:Static infra:AppCommands.RunTool}" CommandParameter="{Binding Id}"
+                                                ToolTip="{Binding Description}" ToolTipService.ShowOnDisabled="True">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <controls:GeometryIcon Width="18" Height="18" Margin="0,1,12,0" VerticalAlignment="Top"
+                                                                       controls:IconAssist.DataKey="{Binding IconKey}" />
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                                    <TextBlock Text="{Binding Description}" Style="{StaticResource Text.Caption}"
+                                                               TextWrapping="Wrap" Margin="0,2,0,0" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
                     </Border>
                 </StackPanel>

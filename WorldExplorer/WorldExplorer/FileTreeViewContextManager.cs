@@ -32,6 +32,7 @@ using System.Windows.Media.Imaging;
 using WorldExplorer.Controls;
 using WorldExplorer.DataExporters;
 using WorldExplorer.DataImporters;
+using WorldExplorer.Infrastructure;
 using WorldExplorer.Logging;
 using WorldExplorer.TreeView;
 using FolderBrowserDialog = System.Windows.Forms.FolderBrowserDialog;
@@ -95,9 +96,9 @@ internal class FileTreeViewContextManager
                 break;
             case WorldFileTreeViewModel worldFile:
                 Add("Log World Structure", "Icon.View.Details", () => LogWorldStructure(worldFile));
-                if (!ViewModel.IsDarkAlliance)
+                if (ViewModel.EngineVersion != EngineVersion.DarkAlliance)
                 {
-                    // Dark Alliance level textures don't use this table layout.
+                    // Dark Alliance-format level textures don't use this table layout.
                     Add("Log .TEX Data", "Icon.View.Texture", LogTexData);
                 }
                 AddSeparator();
@@ -143,7 +144,7 @@ internal class FileTreeViewContextManager
                 Add("Save Parsed VIF Data…", "Icon.Save", () => SaveParsedVifData(entry));
                 AddSeparator();
                 break;
-            case NodeKind.Script when ViewModel.IsDarkAlliance && editable:
+            case NodeKind.Script when editable && GameTools.IsAvailable(GameTools.ScriptRewards, ViewModel.SelectedGame):
                 // Reward patching follows the Dark Alliance script calling convention.
                 Add("Edit Script Rewards…", "Icon.Kind.Script", () => EditScriptRewards(entry));
                 Add("Insert Reward at Call Site…", "Icon.Add", () => InsertReward(entry));
@@ -241,7 +242,6 @@ internal class FileTreeViewContextManager
     // Helpers
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// <summary>The entry's current bytes: the pending edit if there is one, else the original.</summary>
     /// <summary>
     /// The entry's current bytes (pending edit or original) as a private copy:
     /// some editors patch in place, and a pending edit's array must never

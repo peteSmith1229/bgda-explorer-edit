@@ -18,7 +18,7 @@
         </StackPanel>
 
         <TextBlock Style="{StaticResource Text.Secondary}" Margin="0,16,0,0"
-                   Text="Explore and edit game data from Snowblind-engine PlayStation 2 games: Baldur's Gate: Dark Alliance, Champions: Return to Arms, Justice League Heroes and Fallout: Brotherhood of Steel." />
+                   Text="Explore and edit game data from Snowblind-engine PlayStation 2 games: Baldur's Gate: Dark Alliance and Dark Alliance II, Champions: Return to Arms, Justice League Heroes and Fallout: Brotherhood of Steel." />
 
         <TextBlock Text="CREDITS" Style="{StaticResource Text.Section}" FontSize="11" Margin="0,18,0,6" />
         <TextBlock TextWrapping="Wrap" LineHeight="20">

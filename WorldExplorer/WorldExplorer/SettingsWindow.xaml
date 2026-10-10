@@ -25,9 +25,11 @@
         <StackPanel>
             <!-- ── Game ── -->
             <TextBlock Text="GAME" Style="{StaticResource Heading}" />
-            <ComboBox x:Name="engineVersionBox" DisplayMemberPath="Name" />
+            <ComboBox x:Name="engineVersionBox" DisplayMemberPath="Name" SelectionChanged="EngineVersionBox_SelectionChanged" />
+            <TextBlock x:Name="gameNoteText" Style="{StaticResource Hint}" Foreground="{DynamicResource Brush.Warning}"
+                       Visibility="Collapsed" />
             <TextBlock Style="{StaticResource Hint}"
-                       Text="The game your files come from: it decides how levels, models and textures are decoded. Tools that only work with Dark Alliance (executable tuning, save editing, script rewards) are hidden for the other games." />
+                       Text="The game your files come from: it decides how levels, models and textures are decoded, and which tools the Tools menu offers." />
 
             <!-- ── Appearance ── -->
             <TextBlock Text="APPEARANCE" Style="{StaticResource Heading}" />
@@ -52,7 +54,7 @@
             <TextBlock Text="TEXTURES" Style="{StaticResource Heading}" />
             <CheckBox x:Name="forceOpaqueCheckBox" Content="Force opaque (ignore alpha)" />
             <TextBlock Style="{StaticResource Hint}"
-                       Text="Draws every texture fully opaque. Useful for seeing colour data hidden behind transparent pixels." />
+                       Text="On by default: textures are drawn fully opaque, so stray alpha values don't make them see-through. Turn it off to see the textures' transparency." />
 
             <!-- ── Level editor ── -->
             <TextBlock Text="LEVEL EDITOR" Style="{StaticResource Heading}" />

@@ -4,7 +4,7 @@ using System.Windows.Controls;
 
 namespace WorldExplorer.Views;
 
-/// <summary>Start page: open a file, reopen a recent one, or pick the game.</summary>
+/// <summary>Start page: open a file, reopen a recent one, pick the game or run one of its tools.</summary>
 public partial class WelcomeView : UserControl
 {
     public WelcomeView()
