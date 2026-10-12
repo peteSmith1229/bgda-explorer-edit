@@ -272,7 +272,19 @@ public class LevelViewModel : BaseViewModel
         InfoText = _worldData == null
             ? null
             : $"{Plural.Of(elementCount, "element")} · {Plural.Of(ObjectManager.Objects.Count, "object")}" +
-              (IsEditable ? "" : " · read-only preview");
+              SlotSummary() + (IsEditable ? "" : " · read-only preview");
+    }
+
+    /// <summary>
+    /// Dark Alliance: how many of the 384 monster slots (768-byte object pool) the level's objects
+    /// take, updated after every edit; the GOB's Overview page has the full budget.
+    /// </summary>
+    private string SlotSummary()
+    {
+        if (MainViewModel is not { } main || !ReferenceEquals(main.SelectedGame, GameOption.DarkAlliance)) return "";
+        var slots = BgdaLevelBudget.CountSlots(ObjectManager.Objects.Select(o => o.Name));
+        return $" · {slots.Medium:N0} of {BgdaLevelBudget.PoolSlots[1]:N0} monster slots" +
+               (slots.NotCreated > 0 ? $" · {Plural.Of(slots.NotCreated, "object")} won't fit" : "");
     }
 
     private void ResetState()

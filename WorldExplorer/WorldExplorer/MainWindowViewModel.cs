@@ -763,6 +763,7 @@ public class MainWindowViewModel : ObservableObject
                 overview.Facts.Add(new("Level textures", World.WorldTex != null
                     ? $"{World.WorldTex.FileName} (companion .TEX)"
                     : $"Not found — put {CompanionTexName(World)} next to the GOB"));
+                AddLevelBudget(overview, gob);
                 overview.Note = "Expand an archive to browse its contents. Level files (.world) open in the " +
                                 "Level editor; Ctrl+click objects and elements there to select them.";
                 break;
@@ -807,6 +808,29 @@ public class MainWindowViewModel : ObservableObject
 
         overview.Actions.AddRange(MainWindow.CreateOverviewActions(node));
         return overview;
+    }
+
+    /// <summary>
+    /// Dark Alliance GOBs: the object-pool and memory budget (as it would be saved, pending
+    /// edits included), with its headline numbers among the facts.
+    /// </summary>
+    private void AddLevelBudget(OverviewModel overview, GobFile gob)
+    {
+        if (!ReferenceEquals(_selectedGame, GameOption.DarkAlliance) || World == null) return;
+        try
+        {
+            var budget = BgdaLevelBudget.Analyze(gob, World.DataPath);
+            overview.Budget = LevelBudgetModel.From(budget);
+            overview.Facts.Add(new("Monster slots", $"{budget.Medium.Used:N0} of {budget.Medium.Slots:N0} used " +
+                                                    $"(768-byte pool) — room for about {budget.MonsterRoom:N0} more"));
+            overview.Facts.Add(new("Memory after loading", budget.FreeAfterLoadBytes >= 0
+                ? $"about {FileSizeConverter.Format(budget.FreeAfterLoadBytes)} free of {FileSizeConverter.Format(BgdaLevelBudget.HeapBytes)}"
+                : $"about {FileSizeConverter.Format(-budget.FreeAfterLoadBytes)} short — the level can't load"));
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            overview.Facts.Add(new("Level budget", $"Couldn't be worked out: {ex.Message}"));
+        }
     }
 
     private static string FileSizeOnDisk(string path)

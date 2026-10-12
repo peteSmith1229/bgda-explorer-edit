@@ -104,6 +104,9 @@ public class LmpFile
     /// </summary>
     public EngineVersion EngineVersion => _engineVersion;
 
+    /// <summary>Length of the archive as loaded (its size inside the GOB, or the file size).</summary>
+    public int DataLength => _dataLen;
+
     // -------------------------------------------------------------------------
     // Edit helpers (NEW)
     // -------------------------------------------------------------------------
