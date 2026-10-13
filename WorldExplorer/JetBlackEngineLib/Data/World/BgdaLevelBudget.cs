@@ -17,13 +17,19 @@
 //
 // MEMORY. The heap (26,869,564 bytes) holds, besides fixed data, every archive in
 // the level's GOB (loaded when the level starts; sound data goes to sound memory
-// and only a small stub stays), any archive an object or a world element needs
-// that is not in the GOB (loaded from the disc as a separate file, e.g. burnfrst's
-// trees and tents), the world buffer the .world file asks for (header field at
-// 0x60 x 128 KB) and the level's work buffer (level table entries x 4,784 bytes).
-// What is left is free; the game needs part of it while playing (dialogue voice
-// buffers, items, archives loaded later). The estimate of the free memory after
-// loading was within 2 KB of the game in all five save states.
+// and only a small stub stays), any archive the level needs that is not in the GOB
+// (loaded from the disc as a separate file when the level starts): an object's
+// model, an archive a constructor loads besides (Eldrith: mtlcrate.lmp), one a
+// UserParamProp names with lump= (cellar1's wine bottle), a world element's model
+// (burnfrst's trees and tents). Then the world buffer the .world file asks for
+// (header field at 0x60 x 128 KB) and the level's work buffer (level table entries
+// x 4,784 bytes). What is left is free; the game needs part of it while playing
+// (dialogue voice buffers, items, archives loaded later). The estimate of the free
+// memory after loading was within 2 KB of the game in all six save states (Town,
+// Crypt1, Mine2, towert, burnfrst, and cellar1 with a SteelGolem pasted from tower4).
+// A disc archive's sound data is only known from a copy of the file: next to the
+// GOB, or inside another GOB in the same folder (tower4's g_steel.lmp); without one
+// its whole file size is counted.
 // ═══════════════════════════════════════════════════════════════════════════════
 using System;
 using System.Collections.Generic;
@@ -128,7 +134,14 @@ public sealed class BgdaArchiveUse
     /// <summary>The archive holding objects.ob and the .world file.</summary>
     public bool IsLevelArchive { get; internal set; }
 
-    /// <summary>Object classes in objects.ob whose model comes from it.</summary>
+    /// <summary>
+    /// For an archive not in this GOB: another GOB in the same folder that holds the same file
+    /// (its sound data, and so its memory, were measured from that copy), or null.
+    /// </summary>
+    public string? FoundInGob { get; internal set; }
+
+    /// <summary>What needs it: object classes (their model), "Eldrith" (loads it besides),
+    /// "UserParamProp (lump=wine.lmp)", "world (N elements)".</summary>
     public List<string> UsedBy { get; } = new();
 }
 
@@ -157,8 +170,17 @@ public sealed class BgdaClassUse
     /// <summary>Objects that found no free slot and would not be created.</summary>
     public int NotCreated { get; internal set; }
 
+    /// <summary>Objects created (given a pool slot).</summary>
+    public int Created => Placed[0] + Placed[1] + Placed[2];
+
     /// <summary>The archive its model comes from (null when the class has none).</summary>
     public BgdaArchiveUse? Archive { get; internal set; }
+
+    /// <summary>
+    /// Archives its constructor loads besides the model's: by name (Eldrith: mtlcrate.lmp), or
+    /// named by its objects' properties (UserParamProp: lump=wine.lmp).
+    /// </summary>
+    public List<BgdaArchiveUse> AlsoLoads { get; } = new();
 }
 
 /// <summary>One line of the memory breakdown.</summary>
@@ -365,6 +387,7 @@ public sealed class BgdaLevelBudget
         // ---- objects.ob ----
         var classes = new Dictionary<string, BgdaClassUse>(StringComparer.Ordinal);
         var order = new List<BgdaClassUse>();
+        var propertyArchives = new List<(BgdaClassUse Use, string Archive)>();
         b.Pools = new[]
         {
             new BgdaPoolUse(BgdaPool.Small, 256, PoolSlots[0], 0, SmallRuntimeSlots),
@@ -411,6 +434,16 @@ public sealed class BgdaLevelBudget
                 cu.Placed[p]++;
                 b.Pools[p].Objects++;
                 if (p != (int)PoolFor(cu.Class.Size)) b.Pools[p].SpilledIn++;
+
+                // UserParamProp: its constructor loads the archive a lump= property names ("lump=wine.lmp")
+                if (cu.Class.ArchiveProperty is { } key)
+                {
+                    foreach (var prop in o.Properties)
+                    {
+                        if (prop.Length > key.Length + 1 && prop.StartsWith(key, StringComparison.Ordinal) && prop[key.Length] == '=')
+                            propertyArchives.Add((cu, prop[(key.Length + 1)..]));
+                    }
+                }
             }
 
             // ---- the .world file: the world buffer ----
@@ -433,8 +466,11 @@ public sealed class BgdaLevelBudget
         if (b.WorldFile == null && levelLmp != null)
             warnings.Add("No .world file was found next to objects.ob, so the world buffer is not counted.");
 
-        // ---- archives the objects and the world need that are not in the GOB: loaded from the disc ----
+        // ---- archives the level needs that are not in the GOB: loaded from the disc when it starts ----
+        // Their sound data (which goes to sound memory) is only known from a copy of the file: one next
+        // to the GOB, or the same archive inside another GOB in the folder (tower4's g_steel.lmp).
         Dictionary<string, string>? folderFiles = null;
+        Dictionary<string, GobCopy>? folderGobs = null;
         BgdaArchiveUse Resolve(string archive)
         {
             if (byName.TryGetValue(archive, out var a)) return a;
@@ -444,16 +480,28 @@ public sealed class BgdaLevelBudget
                 a = new BgdaArchiveUse(archive, BgdaArchiveSource.DiscFileFound) { FileBytes = fileBytes };
                 (a.SoundBytes, a.RamBytes) = RamEstimate(fileBytes, entries);
             }
-            else if (BgdaObjectClasses.DiscArchives.TryGetValue(archive, out var discBytes))
-            {
-                a = new BgdaArchiveUse(archive, BgdaArchiveSource.Disc)
-                {
-                    FileBytes = discBytes, RamBytes = discBytes + ArchiveOverheadBytes, RamIsUpperEstimate = true
-                };
-            }
             else
             {
-                a = new BgdaArchiveUse(archive, BgdaArchiveSource.Missing);
+                folderGobs ??= IndexFolderGobs(folder, gob.Name);
+                var copy = folderGobs.TryGetValue(archive, out var c) ? c : null;
+                if (BgdaObjectClasses.DiscArchives.TryGetValue(archive, out var discBytes))
+                {
+                    a = new BgdaArchiveUse(archive, BgdaArchiveSource.Disc) { FileBytes = discBytes };
+                    if (copy != null && copy.Length == discBytes && TryReadGobArchive(copy, out var copyEntries))
+                    {
+                        (a.SoundBytes, a.RamBytes) = RamEstimate(discBytes, copyEntries);
+                        a.FoundInGob = copy.Gob;
+                    }
+                    else
+                    {
+                        a.RamBytes = discBytes + ArchiveOverheadBytes;
+                        a.RamIsUpperEstimate = true;
+                    }
+                }
+                else
+                {
+                    a = new BgdaArchiveUse(archive, BgdaArchiveSource.Missing) { FoundInGob = copy?.Gob };
+                }
             }
 
             archives.Add(a);
@@ -461,13 +509,31 @@ public sealed class BgdaLevelBudget
             return a;
         }
 
-        foreach (var cu in order)
+        // the objects' models, and what their constructors load besides (only for objects that are created)
+        foreach (var cu in order.Where(c => c.Created > 0))
         {
-            var archive = cu.Class?.Archive;
-            if (archive == null) continue;
-            var a = Resolve(archive);
-            cu.Archive = a;
-            a.UsedBy.Add(cu.Name);
+            var cls = cu.Class!;
+            if (cls.Archive != null)
+            {
+                var a = Resolve(cls.Archive);
+                cu.Archive = a;
+                a.UsedBy.Add(cu.Name);
+            }
+
+            if (cls.ExtraArchive != null)
+            {
+                var a = Resolve(cls.ExtraArchive);
+                cu.AlsoLoads.Add(a);
+                if (!a.UsedBy.Contains(cu.Name)) a.UsedBy.Add(cu.Name);
+            }
+        }
+
+        foreach (var (cu, name) in propertyArchives)
+        {
+            var a = Resolve(name);
+            if (!cu.AlsoLoads.Contains(a)) cu.AlsoLoads.Add(a);
+            var user = $"{cu.Name} ({cu.Class!.ArchiveProperty}={name})";
+            if (!a.UsedBy.Contains(user)) a.UsedBy.Add(user);
         }
 
         // world elements with flag 0x0800 are models from a separate archive, loaded by name ("%s.lmp")
@@ -490,8 +556,6 @@ public sealed class BgdaLevelBudget
         b.WorkBufferEntries = BgdaObjectClasses.LevelEntries(b.LevelName);
 
         var discCount = archives.Count(a => a.Source != BgdaArchiveSource.Gob && a.Source != BgdaArchiveSource.Missing);
-        var discWorld = archives.Count(a => a.Source != BgdaArchiveSource.Gob && a.Source != BgdaArchiveSource.Missing &&
-                                            a.UsedBy.Any(u => u.StartsWith("world (")));
         b.MemoryParts = new[]
         {
             new BgdaMemoryPart("Start-up archives", StartupArchivesBytes,
@@ -503,8 +567,8 @@ public sealed class BgdaLevelBudget
                 $"{archives.Count(a => a.Source == BgdaArchiveSource.Gob)} archives, loaded when the level starts (sounds go to sound memory)", true),
             new BgdaMemoryPart("Archives from the disc", b.DiscArchivesBytes,
                 discCount == 0 ? "none - everything the objects and the world need is in this GOB"
-                    : $"{discCount} archive{(discCount == 1 ? "" : "s")} the objects{(discWorld > 0 ? " or the world" : "")} need that " +
-                      $"{(discCount == 1 ? "is" : "are")} not in this GOB", true),
+                    : $"{discCount} archive{(discCount == 1 ? "" : "s")} the level needs that {(discCount == 1 ? "is" : "are")} " +
+                      "not in this GOB, loaded when it starts", true),
             new BgdaMemoryPart("World buffer", b.WorldBufferUnits == 0 ? 0 : b.WorldBufferBytes + PerBlockBytes,
                 b.WorldFile == null ? "no .world file" : $"{b.WorldBufferUnits} x 128 KB, as {b.WorldFile} asks", true),
             new BgdaMemoryPart("Level work buffer", b.WorkBufferBytes + PerBlockBytes,
@@ -527,7 +591,8 @@ public sealed class BgdaLevelBudget
 
         foreach (var a in archives.Where(a => a.Source == BgdaArchiveSource.Missing))
             warnings.Add($"{string.Join(", ", a.UsedBy)} need{(a.UsedBy.Count == 1 ? "s" : "")} {a.Name}, which is neither in " +
-                         "this GOB nor on the game disc: the game has no model to load and will probably crash.");
+                         "this GOB nor on the game disc: the game has nothing to load and will probably crash." +
+                         (a.FoundInGob != null ? $" {a.FoundInGob} has it: copy it into this GOB." : ""));
 
         if (b.SlotStatus == BgdaBudgetStatus.Tight && b.NotCreated == 0)
             warnings.Add(b.Large.Free < 2
@@ -537,11 +602,17 @@ public sealed class BgdaLevelBudget
 
         foreach (var a in archives.Where(a => a.Source is BgdaArchiveSource.Disc or BgdaArchiveSource.DiscFileFound))
         {
-            var users = a.UsedBy.Where(u => !u.StartsWith("world (")).ToList();
-            if (users.Count == 0) continue;     // the original levels' own world models: nothing to warn about
+            // objects whose model it is (a pasted monster); the original levels' own disc loads - world models,
+            // an archive a constructor or a lump= property loads besides - are how the game works: no warning
+            var users = b.Classes.Where(c => ReferenceEquals(c.Archive, a)).Select(c => c.Name).ToList();
+            if (users.Count == 0) continue;
+            var size = a.RamIsUpperEstimate
+                ? $"at most {Mb(a.RamBytes)} counted - its sound data is only known from a copy of the file: put the GOB it " +
+                  "comes from, or the .LMP, in this folder"
+                : $"{Mb(a.RamBytes)} counted{(a.FoundInGob != null ? $", measured from {a.FoundInGob}" : "")}";
             warnings.Add($"{string.Join(", ", users)} need{(users.Count == 1 ? "s" : "")} {a.Name}, which is not in this " +
-                         $"GOB. The game loads it from the disc as a separate file when the level starts ({Mb(a.RamBytes)} " +
-                         $"{(a.RamIsUpperEstimate ? "at most, counted" : "counted")}); copy it into the GOB to keep the level self-contained.");
+                         $"GOB. The game loads it from the disc as a separate file when the level starts ({size}). Copy it " +
+                         $"{(a.FoundInGob != null ? $"from {a.FoundInGob} " : "")}into this GOB to keep the level self-contained.");
         }
 
         var unknown = b.Classes.Where(c => c.Class == null && !SpecialNames.ContainsKey(c.Name)).ToList();
@@ -762,23 +833,94 @@ public sealed class BgdaLevelBudget
         {
             using var f = File.OpenRead(path);
             fileBytes = f.Length;
-            var head = new byte[4];
-            if (f.Read(head, 0, 4) != 4) return false;
-            var n = BitConverter.ToInt32(head, 0);
-            if (n < 0 || n > 10000 || 4 + 64L * n > fileBytes) return false;
-            var dir = new byte[64 * n];
-            if (f.Read(dir, 0, dir.Length) != dir.Length) return false;
-            for (var i = 0; i < n; i++)
-            {
-                var name = DataUtil.GetString(dir, i * 64);
-                entries.Add(new Entry(name, BitConverter.ToInt32(dir, i * 64 + 56), BitConverter.ToInt32(dir, i * 64 + 60)));
-            }
-
-            return true;
+            return TryReadDirectory(f, 0, fileBytes, entries);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return false;
         }
+    }
+
+    /// <summary>An archive inside a GOB file: the GOB's file name, its path, and where the archive is in it.</summary>
+    private sealed record GobCopy(string Gob, string Path, long Offset, long Length);
+
+    /// <summary>
+    /// The archives in the other GOB files of <paramref name="folder"/> (name -> first GOB holding it,
+    /// GOBs in name order), from their directories only: 40-byte entries {name, offset at 0x20,
+    /// length at 0x24} up to an empty name.
+    /// </summary>
+    private static Dictionary<string, GobCopy> IndexFolderGobs(string? folder, string exceptName)
+    {
+        var map = new Dictionary<string, GobCopy>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrEmpty(folder) || !System.IO.Directory.Exists(folder)) return map;
+        try
+        {
+            var gobs = System.IO.Directory.EnumerateFiles(folder, "*.gob", new EnumerationOptions
+                {
+                    MatchCasing = MatchCasing.CaseInsensitive, RecurseSubdirectories = false
+                })
+                .Where(p => !Path.GetFileName(p).Equals(exceptName, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase);
+            foreach (var path in gobs)
+            {
+                try
+                {
+                    using var f = File.OpenRead(path);
+                    var entry = new byte[40];
+                    for (var i = 0; i < 4096 && 40L * (i + 1) <= f.Length; i++)
+                    {
+                        f.ReadExactly(entry);
+                        var end = Array.IndexOf(entry, (byte)0, 0, 32);
+                        if (end <= 0) break;
+                        var name = System.Text.Encoding.ASCII.GetString(entry, 0, end);
+                        long offset = BitConverter.ToInt32(entry, 0x20), length = BitConverter.ToInt32(entry, 0x24);
+                        if (offset < 0 || length < 4 || offset + length > f.Length) break;
+                        map.TryAdd(name, new GobCopy(Path.GetFileName(path), path, offset, length));
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+
+        return map;
+    }
+
+    /// <summary>Reads only the directory of an archive inside another GOB.</summary>
+    private static bool TryReadGobArchive(GobCopy copy, out List<Entry> entries)
+    {
+        entries = new List<Entry>();
+        try
+        {
+            using var f = File.OpenRead(copy.Path);
+            return TryReadDirectory(f, copy.Offset, copy.Length, entries);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>An archive's directory: a count, then 64-byte entries {name, offset at 56, length at 60}.</summary>
+    private static bool TryReadDirectory(Stream f, long start, long length, List<Entry> entries)
+    {
+        f.Seek(start, SeekOrigin.Begin);
+        var head = new byte[4];
+        f.ReadExactly(head);
+        var n = BitConverter.ToInt32(head, 0);
+        if (n < 0 || n > 10000 || 4 + 64L * n > length) return false;
+        var dir = new byte[64 * n];
+        f.ReadExactly(dir);
+        for (var i = 0; i < n; i++)
+        {
+            var name = DataUtil.GetString(dir, i * 64);
+            entries.Add(new Entry(name, BitConverter.ToInt32(dir, i * 64 + 56), BitConverter.ToInt32(dir, i * 64 + 60)));
+        }
+
+        return true;
     }
 }

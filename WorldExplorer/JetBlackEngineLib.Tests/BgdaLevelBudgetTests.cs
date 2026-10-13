@@ -54,6 +54,16 @@ public class BgdaLevelBudgetTests
     }
 
     [Test]
+    public void ClassTable_ArchivesConstructorsLoad()
+    {
+        Assert.That(BgdaObjectClasses.Find("Eldrith")!.ExtraArchive, Is.EqualTo("mtlcrate.lmp"), "measured in towert");
+        Assert.That(BgdaObjectClasses.Find("Lilivarra")!.ExtraArchive, Is.EqualTo("skeleton.lmp"));
+        Assert.That(BgdaObjectClasses.Find("UserParamProp")!.ArchiveProperty, Is.EqualTo("lump"), "lump=wine.lmp in cellar1");
+        Assert.That(BgdaObjectClasses.Find("ForceField")!.Archive, Is.EqualTo("forcedr.lmp"));
+        Assert.That(BgdaObjectClasses.Find("WaterStair")!.Archive, Is.EqualTo("waterst.lmp"));
+    }
+
+    [Test]
     public void Tavern_PoolsAndMemory()
     {
         var b = BgdaLevelBudget.Analyze(Gob("TAVERN.GOB"));
@@ -116,6 +126,47 @@ public class BgdaLevelBudgetTests
 
         var saved = BgdaLevelBudget.Analyze(Gob("TEST.GOB"));
         Assert.That(saved.Medium.Used, Is.EqualTo(0), "the file on disk is unchanged");
+    }
+
+    [Test]
+    public void LumpProperty_LoadsItsArchive_MeasuredFromAnotherGobInTheFolder()
+    {
+        // TEST.GOB with a UserParamProp naming shop.lmp, which is not in TEST.GOB but is in TAVERN.GOB
+        var folder = Path.Combine(Path.GetTempPath(), "bgda-budget-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            File.Copy(Path.Combine(_dir, "TEST.GOB"), Path.Combine(folder, "TEST.GOB"));
+            File.Copy(Path.Combine(_dir, "TAVERN.GOB"), Path.Combine(folder, "TAVERN.GOB"));
+            var gob = new GobFile(EngineVersion.DarkAlliance, Path.Combine(folder, "TEST.GOB"));
+            var lmp = gob.Directory["test.lmp"];
+            lmp.ReadDirectory();
+            var info = lmp.FindFile("objects.ob")!;
+            var original = lmp.FileData.AsSpan(info.StartOffset, info.Length).ToArray();
+            var objects = ObDecoder.Decode(original, 0, original.Length);
+            objects.Add(new ObjectData("UserParamProp", 0, new[] { 0f, 0f, 0f }, new List<string> { "lump=shop.lmp", "model=shop.vif" }));
+            lmp.ReplaceEntry("objects.ob", ObEncoder.Encode(objects, BitConverter.ToInt16(original, 2)));
+
+            var tavernShop = BgdaLevelBudget.Analyze(Gob("TAVERN.GOB")).Archives.First(a => a.Name == "shop.lmp");
+            var b = BgdaLevelBudget.Analyze(gob, folder);
+            var shop = b.Archives.First(a => a.Name == "shop.lmp");
+            Assert.That(shop.Source, Is.EqualTo(BgdaArchiveSource.Disc), "the game loads it from the disc when the level starts");
+            Assert.That(shop.UsedBy, Is.EqualTo(new[] { "UserParamProp (lump=shop.lmp)" }));
+            Assert.That(shop.FoundInGob, Is.EqualTo("TAVERN.GOB"));
+            Assert.That(shop.RamIsUpperEstimate, Is.False);
+            Assert.That(shop.SoundBytes, Is.EqualTo(19840), "its sound goes to sound memory, as from TAVERN.GOB");
+            Assert.That(shop.RamBytes, Is.EqualTo(tavernShop.RamBytes));
+            Assert.That(b.Classes.First(c => c.Name == "UserParamProp").AlsoLoads, Is.EqualTo(new[] { shop }));
+            Assert.That(b.Warnings.Any(w => w.Contains("shop.lmp")), Is.False, "the original levels' quest items do this too");
+
+            var alone = BgdaLevelBudget.Analyze(gob).Archives.First(a => a.Name == "shop.lmp");
+            Assert.That(alone.RamIsUpperEstimate, Is.True, "without a copy only the disc file size is known");
+            Assert.That(alone.RamBytes, Is.EqualTo(362272 + 256));
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
     }
 
     [Test]

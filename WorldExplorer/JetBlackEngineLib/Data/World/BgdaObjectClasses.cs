@@ -4,7 +4,8 @@
 // Drop into WorldExplorer/JetBlackEngineLib/Data/World/BgdaObjectClasses.cs
 //
 // Classes: the 186 names the object factory FUN_00121648 creates (186 pool calls), with the
-//   object size it asks the pool allocator for and the archive (.lmp) the model comes from.
+//   object size it asks the pool allocator for, the archive (.lmp) the model comes from, and the archives
+//   a constructor loads besides (by name, or named by the object's lump= property).
 // Levels: the per-level work-buffer entry count from the level table at 0x002AB2D8.
 // Disc archives: the 213 separate .LMP files on the disc and their sizes (the disc directory the
 //   game keeps in memory, read from a save state).
@@ -35,7 +36,12 @@ public enum BgdaObjectKind
 /// <param name="Name">The class name as objects.ob spells it (the game compares it exactly).</param>
 /// <param name="Size">Bytes the factory asks the object pools for.</param>
 /// <param name="Archive">The archive the model comes from, or null when the class has none of its own.</param>
-public sealed record BgdaObjectClass(string Name, int Size, string? Archive, BgdaObjectKind Kind);
+/// <param name="ExtraArchive">Another archive the constructor loads by name when the object is created
+/// (Eldrith: mtlcrate.lmp; Lilivarra: skeleton.lmp).</param>
+/// <param name="ArchiveProperty">A property whose value names an archive the constructor loads
+/// ("lump" for UserParamProp: lump=wine.lmp).</param>
+public sealed record BgdaObjectClass(string Name, int Size, string? Archive, BgdaObjectKind Kind,
+    string? ExtraArchive = null, string? ArchiveProperty = null);
 
 public static class BgdaObjectClasses
 {
@@ -83,7 +89,7 @@ public static class BgdaObjectClasses
         new("DrowFemale", 680, "drow_f.lmp", BgdaObjectKind.Monster),
         new("DrowMale", 664, "drow_m.lmp", BgdaObjectKind.Monster),
         new("DrowRider", 672, "drow_r.lmp", BgdaObjectKind.Monster),
-        new("Eldrith", 1000, "eldrith.lmp", BgdaObjectKind.Monster),
+        new("Eldrith", 1000, "eldrith.lmp", BgdaObjectKind.Monster, ExtraArchive: "mtlcrate.lmp"),
         new("FireElemental", 720, "fireele.lmp", BgdaObjectKind.Monster),
         new("FrostGiant", 664, "fgiant.lmp", BgdaObjectKind.Monster),
         new("DeadDwarf", 688, "kolgrim.lmp", BgdaObjectKind.Npc),
@@ -96,7 +102,7 @@ public static class BgdaObjectClasses
         new("Karne", 672, "karne.lmp", BgdaObjectKind.Monster),
         new("Kobold", 664, "kobold.lmp", BgdaObjectKind.Monster),
         new("KoboldShaman", 664, "kshaman.lmp", BgdaObjectKind.Monster),
-        new("Lilivarra", 744, "lilvarra.lmp", BgdaObjectKind.Monster),
+        new("Lilivarra", 744, "lilvarra.lmp", BgdaObjectKind.Monster, ExtraArchive: "skeleton.lmp"),
         new("Lizardman", 688, "lizardm.lmp", BgdaObjectKind.Monster),
         new("Minotaur", 664, "minotaur.lmp", BgdaObjectKind.Monster),
         new("Ogre", 664, "ogre.lmp", BgdaObjectKind.Monster),
@@ -132,7 +138,7 @@ public static class BgdaObjectClasses
         new("arrowShooter", 72, null, BgdaObjectKind.Object),
         new("fireballShooter", 72, null, BgdaObjectKind.Object),
         new("Shooter", 72, null, BgdaObjectKind.Object),
-        new("UserParamProp", 352, null, BgdaObjectKind.Object),
+        new("UserParamProp", 352, null, BgdaObjectKind.Object, ArchiveProperty: "lump"),
         new("SackSpill", 80, "sackburl.lmp", BgdaObjectKind.Object),
         new("Chest", 120, "chest.lmp", BgdaObjectKind.Object),
         new("Chest2", 120, "chest2.lmp", BgdaObjectKind.Object),
@@ -203,7 +209,7 @@ public static class BgdaObjectClasses
         new("Counter", 64, null, BgdaObjectKind.Object),
         new("Timer", 68, null, BgdaObjectKind.Object),
         new("Orb", 232, "orb.lmp", BgdaObjectKind.Object),
-        new("ForceField", 76, null, BgdaObjectKind.Object),
+        new("ForceField", 76, "forcedr.lmp", BgdaObjectKind.Object),
         new("Lamp", 120, null, BgdaObjectKind.Object),
         new("SignalFire", 124, null, BgdaObjectKind.Object),
         new("Gold", 176, null, BgdaObjectKind.Object),
@@ -226,7 +232,7 @@ public static class BgdaObjectClasses
         new("CemetaryWall", 80, "cemetary.lmp", BgdaObjectKind.Object),
         new("Bush", 136, "bush.lmp", BgdaObjectKind.Object),
         new("HutCloth", 136, "hutcloth.lmp", BgdaObjectKind.Object),
-        new("WaterStair", 68, null, BgdaObjectKind.Object),
+        new("WaterStair", 68, "waterst.lmp", BgdaObjectKind.Object),
         new("VineDoor", 68, null, BgdaObjectKind.Object)
     };
 
