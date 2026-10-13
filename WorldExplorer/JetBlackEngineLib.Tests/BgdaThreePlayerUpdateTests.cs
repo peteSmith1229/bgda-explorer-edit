@@ -8,8 +8,8 @@ using System.Text;
 namespace JetBlackEngineLib.Tests;
 
 /// <summary>
-/// Older three-player builds (ADRIANNA19, which the tab used to write, and ADRIANNA20) are
-/// recognised and updated to the current build. The older files are rebuilt here from the stock
+/// Older three-player builds (ADRIANNA21 and ADRIANNA19, which the tab used to write, and
+/// ADRIANNA20) are recognised and updated to the current build. The older files are rebuilt here from the stock
 /// executable in Test_files plus the differences the patch data stores (skipped when the stock
 /// executable is not present).
 /// </summary>
@@ -102,7 +102,7 @@ public class BgdaThreePlayerUpdateTests
     {
         var current = Current();
         var older = OlderBuilds();
-        Assert.That(older.Select(o => o.Name), Is.EqualTo(new[] { "ADRIANNA20", "ADRIANNA19" }));
+        Assert.That(older.Select(o => o.Name), Is.EqualTo(new[] { "ADRIANNA21", "ADRIANNA20", "ADRIANNA19" }));
 
         foreach (var (name, delta) in older)
         {
@@ -127,6 +127,24 @@ public class BgdaThreePlayerUpdateTests
             off2.Save(stock);
             Assert.That(File.ReadAllBytes(stock), Is.EqualTo(File.ReadAllBytes(_stockPath)), $"{name} turned off = stock");
         }
+    }
+
+    [Test]
+    public void Adrianna21_IsUpdated_ForTheMemoryCountersFix()
+    {
+        Assert.That(ThreePlayerPatch.CurrentName, Is.EqualTo("ADRIANNA22"));
+        var current = Current();
+        var (_, delta) = OlderBuilds().First(o => o.Name == "ADRIANNA21");
+        var bytes = (byte[])current.Clone();
+        foreach (var (off, old) in delta) old.CopyTo(bytes, off);
+        var exe = BgdaExecutable.Open(Write("a21.72", bytes));
+
+        Assert.That(exe.GetThreePlayerState(out var detail), Is.EqualTo(ThreePlayerState.Outdated), detail);
+        Assert.That(detail, Does.Contain("record for each level"), "says what the update changes");
+        // ADRIANNA21 hooked the level load at the texture-cache call (file 0x103A88); ADRIANNA22 has
+        // the stock call there and hooks the level loader call (file 0x103B74) instead
+        Assert.That(delta.Any(d => d.Offset <= 0x103A88 && 0x103A88 < d.Offset + d.Old.Length), Is.True);
+        Assert.That(delta.Any(d => d.Offset <= 0x103B74 && 0x103B74 < d.Offset + d.Old.Length), Is.True);
     }
 
     [Test]

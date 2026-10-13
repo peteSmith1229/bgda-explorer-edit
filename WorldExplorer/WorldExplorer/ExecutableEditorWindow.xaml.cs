@@ -4,8 +4,8 @@
 // Tabs: XP per Level, Starting Stats, Feats & Spells, Monster HP, Three Players.
 // A bad value in ANY tab aborts the save with a message; nothing is written.
 //
-// Three Players: switches the tested three-player patch (ADRIANNA21) on or off,
-// updates an older three-player build (ADRIANNA19 / ADRIANNA20) to ADRIANNA21 on
+// Three Players: switches the tested three-player patch (ADRIANNA22) on or off,
+// updates an older three-player build (ADRIANNA21 / 20 / 19) to ADRIANNA22 on
 // save, edits its balance / marker colours / small map, and edits the difficulty
 // scaling for every player count (BgdaExecutable.ThreePlayer.cs / .Difficulty.cs).
 // ═══════════════════════════════════════════════════════════════════════════════

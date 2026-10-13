@@ -2,8 +2,9 @@
 // NEW FILE: WorldExplorer/JetBlackEngineLib/Data/World/BgdaLevelBudget.cs
 //
 // How much of Baldur's Gate: Dark Alliance's fixed memory a level (GOB) uses, for
-// the PAL SLES_506.72 with three players (ADRIANNA21). Worked out from the game
-// code and checked against save states of Town, Crypt1, Mine2, towert and burnfrst.
+// the PAL SLES_506.72 with three players (ADRIANNA21 and ADRIANNA22: the same
+// memory). Worked out from the game code and checked against save states of Town,
+// Crypt1, Mine2, towert, burnfrst and cellar1.
 //
 // OBJECT POOLS. Every object in objects.ob that the object factory knows
 // (BgdaObjectClasses) takes one slot of a fixed pool when the level starts:
