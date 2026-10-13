@@ -63,10 +63,11 @@ public class MainWindowViewModel : ObservableObject
     // e.g. browsing models while looking at their textures stays on Texture.
     private readonly Dictionary<NodeKind, ContentView> _preferredViews = new();
 
-    /// <summary>Script editors by entry, so each keeps its undo history while the file is open.</summary>
-    private readonly Dictionary<(LmpFile Archive, string Entry), ScriptEditorViewModel> _scriptEditors = new();
+    /// <summary>Script and cutscene editors by entry, so each keeps its undo history while the file is open.</summary>
+    private readonly Dictionary<(LmpFile Archive, string Entry), EntryEditorViewModel> _entryEditors = new();
 
     private ScriptEditorViewModel? _scriptEditor;
+    private CutsceneEditorViewModel? _cutsceneEditor;
     private bool _updatingViews;
 
     // Level decoding runs on a worker thread; the gate keeps two decodes from
@@ -191,6 +192,16 @@ public class MainWindowViewModel : ObservableObject
         private set => SetProperty(ref _scriptEditor, value);
     }
 
+    /// <summary>The selected cutscene's editor (null unless a cutscene is selected), for the Cutscene view.</summary>
+    public CutsceneEditorViewModel? CutsceneEditor
+    {
+        get => _cutsceneEditor;
+        private set => SetProperty(ref _cutsceneEditor, value);
+    }
+
+    /// <summary>The editor of the selected script or cutscene: Undo, Redo and Save go to it.</summary>
+    public EntryEditorViewModel? ActiveEntryEditor => (EntryEditorViewModel?)_scriptEditor ?? _cutsceneEditor;
+
     public object? SelectedNode
     {
         get => _selectedNode;
@@ -204,6 +215,7 @@ public class MainWindowViewModel : ObservableObject
             LogText = null;
             DetailsTitle = null;
             ScriptEditor = null;
+            CutsceneEditor = null;
 
             try
             {
@@ -480,7 +492,7 @@ public class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(WindowTitle));
 
         foreach (var root in RootNodes) root.RefreshState();
-        _scriptEditor?.RefreshSaved();
+        ActiveEntryEditor?.RefreshSaved();
 
         if (ActiveView == ContentView.Overview && SelectedTreeNode != null)
         {
@@ -669,8 +681,9 @@ public class MainWindowViewModel : ObservableObject
         RootNodes.Clear();
         World = null;
         _gobFile = null;
-        _scriptEditors.Clear();
+        _entryEditors.Clear();
         ScriptEditor = null;
+        CutsceneEditor = null;
 
         OnPropertyChanged(nameof(World));
         OnPropertyChanged(nameof(IsFileOpen));
@@ -1393,39 +1406,41 @@ public class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The editor for a script entry: the one already open for it while the
-    /// entry still holds the bytes it last wrote (so its undo history
-    /// survives switching away), otherwise a new one.
+    /// The editor for a script or cutscene entry: the one already open for it
+    /// while the entry still holds the bytes it last wrote (so its undo
+    /// history survives switching away), otherwise a new one.
     /// </summary>
-    private ScriptEditorViewModel GetScriptEditor(LmpFile lmpFile, string entryName)
+    private T GetEntryEditor<T>(LmpFile lmpFile, string entryName, Func<Action, T> create)
+        where T : EntryEditorViewModel
     {
-        if (_scriptEditors.TryGetValue((lmpFile, entryName), out var editor) && editor.IsCurrent)
+        if (_entryEditors.TryGetValue((lmpFile, entryName), out var cached) && cached is T editor && editor.IsCurrent)
         {
             editor.RefreshSaved();
             return editor;
         }
 
-        ScriptEditorViewModel? created = null;
-        created = new ScriptEditorViewModel(World!, lmpFile, entryName,
-            GameTools.IsAvailable(GameTools.ScriptRewards, _selectedGame), () => OnScriptEdited(created!));
-        _scriptEditors[(lmpFile, entryName)] = created;
+        T? created = null;
+        created = create(() => OnEntryEdited(created!));
+        _entryEditors[(lmpFile, entryName)] = created;
         return created;
     }
 
-    /// <summary>A script editor changed its entry: update the title, tree markers and disassembly.</summary>
-    private void OnScriptEdited(ScriptEditorViewModel editor)
+    /// <summary>An entry editor changed its entry: update the title, tree markers and the Details text.</summary>
+    private void OnEntryEdited(EntryEditorViewModel editor)
     {
         NotifyIsArchiveDirty();
-        if (!ReferenceEquals(editor, _scriptEditor) || SelectedNode is not LmpEntryTreeViewModel) return;
+        if (!ReferenceEquals(editor, ActiveEntryEditor) || SelectedNode is not LmpEntryTreeViewModel) return;
 
         try
         {
             var bytes = editor.CurrentBytes();
-            LogText = ScrDecoder.Decode(bytes, 0, bytes.Length).Disassemble();
+            LogText = editor is CutsceneEditorViewModel
+                ? CutDecoder.Decode(bytes, 0, bytes.Length).Disassemble()
+                : ScrDecoder.Decode(bytes, 0, bytes.Length).Disassemble();
         }
         catch (Exception ex)
         {
-            LogText = $"Couldn't disassemble the edited script: {ex.Message}";
+            LogText = $"Couldn't decode the edited entry: {ex.Message}";
         }
     }
 
@@ -1540,7 +1555,9 @@ public class MainWindowViewModel : ObservableObject
                 // The script format (and so the editor) is Dark Alliance's.
                 if (EngineVersion == EngineVersion.DarkAlliance && World != null)
                 {
-                    ScriptEditor = GetScriptEditor(lmpFile, lmpEntry.Label);
+                    ScriptEditor = GetEntryEditor(lmpFile, lmpEntry.Label, changed => new ScriptEditorViewModel(
+                        World, lmpFile, lmpEntry.Label, GameTools.IsAvailable(GameTools.ScriptRewards, _selectedGame),
+                        changed));
                     ShowViews(ContentView.Script, ContentView.Script, ContentView.Details);
                 }
                 else
@@ -1555,7 +1572,18 @@ public class MainWindowViewModel : ObservableObject
                 var scene = CutDecoder.Decode(data.Data, data.Offset, data.Length);
                 LogText = scene.Disassemble();
                 DetailsTitle = "Cutscene";
-                ShowViews(ContentView.Details, ContentView.Details);
+                // The cutscene format (and so the editor) is Dark Alliance's.
+                if (EngineVersion == EngineVersion.DarkAlliance && World != null)
+                {
+                    CutsceneEditor = GetEntryEditor(lmpFile, lmpEntry.Label,
+                        changed => new CutsceneEditorViewModel(World, lmpFile, lmpEntry.Label, changed));
+                    ShowViews(ContentView.Cutscene, ContentView.Cutscene, ContentView.Details);
+                }
+                else
+                {
+                    ShowViews(ContentView.Details, ContentView.Details);
+                }
+
                 break;
             }
             case ".bin":

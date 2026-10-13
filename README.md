@@ -19,6 +19,12 @@ Alliance II files are read with the Dark Alliance formats for now.
   Change a number or a piece of text and press Enter; Ctrl+Z undoes it, and Ctrl+S saves it into the GOB with
   your other changes. Text longer than the original is added to the end of the script's data, and the code
   itself never moves, so jumps and labels stay valid. The disassembly is still in Details.
+- **Edit cutscenes**: select a cutscene (`.cut`, e.g. `intro.cut` in `CUTTOWN.GOB`, which plays when a New
+  Game starts) to open the Cutscene view. Settings has its subtitles, narration, music and position; Cast has
+  each character's name, starting position and facing; the keyframes, listed for the camera, the scene and
+  each character, say what happens and when. Change a time or a value and press Enter, or copy or delete a
+  keyframe: keyframes stay in time order, and undo and save work as for scripts. Actions whose meaning isn't
+  known yet show their stored numbers and can still be moved, copied or deleted.
 - **Tools** for the selected game are in the Tools menu, the Tools drop-down on the toolbar and the start page.
   For Dark Alliance: Executable Tuning (XP per level, starting stats, feats and spells, monster HP, three-player
   co-op and difficulty scaling, saved to a copy of `SLES_506.72`), the Save Game Editor (memory-card exports,
@@ -36,8 +42,9 @@ Press F1 in the app for every keyboard shortcut. Dark and light themes are avail
 Requires Windows and the .NET 10 SDK. Open `WorldExplorer/WorldExplorer.sln` in Visual Studio or Rider, or run
 `dotnet build WorldExplorer/WorldExplorer.sln`.
 
-`dotnet test WorldExplorer/WorldExplorer.sln` runs the library tests. The executable and script tests use the
-game files in `Test_files` (`SLES_506.72`, `TAVERN.GOB`) and are skipped if those are missing.
+`dotnet test WorldExplorer/WorldExplorer.sln` runs the library tests. The executable, script and cutscene tests
+use the game files in `Test_files` (`SLES_506.72`, `TAVERN.GOB`, `CUTTOWN.GOB`) and are skipped if those are
+missing.
 
 ## Credits:
 

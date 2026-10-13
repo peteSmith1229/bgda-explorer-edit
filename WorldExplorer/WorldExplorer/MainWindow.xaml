@@ -202,6 +202,9 @@
                             <MenuItem Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="Script" Header="Sc_ript">
                                 <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.View.Script}" /></MenuItem.Icon>
                             </MenuItem>
+                            <MenuItem Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="Cutscene" Header="Cutsce_ne">
+                                <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Kind.Cutscene}" /></MenuItem.Icon>
+                            </MenuItem>
                             <MenuItem Command="{x:Static infra:AppCommands.ShowView}" CommandParameter="Details" Header="_Details">
                                 <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.View.Details}" /></MenuItem.Icon>
                             </MenuItem>
@@ -434,6 +437,9 @@
                         </TabItem>
                         <TabItem Tag="{x:Static infra:ContentView.Script}">
                             <views:ScriptView DataContext="{Binding ScriptEditor}" />
+                        </TabItem>
+                        <TabItem Tag="{x:Static infra:ContentView.Cutscene}">
+                            <views:CutsceneView DataContext="{Binding CutsceneEditor}" />
                         </TabItem>
                         <TabItem Tag="{x:Static infra:ContentView.Details}">
                             <views:DetailsView />
