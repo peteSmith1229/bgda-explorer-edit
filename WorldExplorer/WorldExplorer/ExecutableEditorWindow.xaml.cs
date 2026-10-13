@@ -4,8 +4,9 @@
 // Tabs: XP per Level, Starting Stats, Feats & Spells, Monster HP, Three Players.
 // A bad value in ANY tab aborts the save with a message; nothing is written.
 //
-// Three Players: switches the tested three-player patch (ADRIANNA19) on or off,
-// edits its balance / marker colours / small map, and edits the difficulty
+// Three Players: switches the tested three-player patch (ADRIANNA21) on or off,
+// updates an older three-player build (ADRIANNA19 / ADRIANNA20) to ADRIANNA21 on
+// save, edits its balance / marker colours / small map, and edits the difficulty
 // scaling for every player count (BgdaExecutable.ThreePlayer.cs / .Difficulty.cs).
 // ═══════════════════════════════════════════════════════════════════════════════
 using System;
@@ -278,9 +279,10 @@ public partial class ExecutableEditorWindow : Window
 
         // ── Three Players tab ──
         var tpState = _exe.GetThreePlayerState();
-        threePlayerCheck.IsChecked = tpState == ThreePlayerState.On;
+        var tpOn = tpState is ThreePlayerState.On or ThreePlayerState.Outdated;
+        threePlayerCheck.IsChecked = tpOn;
         threePlayerCheck.IsEnabled = tpState != ThreePlayerState.Unrecognized;
-        ShowThreePlayerSettings(tpState == ThreePlayerState.On
+        ShowThreePlayerSettings(tpOn
             ? _exe.GetThreePlayerSettings()
             : BgdaExecutable.DefaultThreePlayerSettings());
         UpdateThreePlayerStatus();
@@ -511,12 +513,16 @@ public partial class ExecutableEditorWindow : Window
         return s;
     }
 
-    /// <summary>Turns the patch on or off as ticked, then writes the settings.</summary>
+    /// <summary>
+    /// Turns the patch on or off as ticked (an older three-player build is updated to the
+    /// current one), then writes the settings.
+    /// </summary>
     private void ApplyThreePlayers(bool want, ThreePlayerSettings? settings)
     {
         var state = _exe.GetThreePlayerState();
         if (want && state == ThreePlayerState.Off) _exe.EnableThreePlayers();
-        else if (!want && state == ThreePlayerState.On) _exe.DisableThreePlayers();
+        else if (want && state == ThreePlayerState.Outdated) _exe.UpgradeThreePlayers();
+        else if (!want && state is (ThreePlayerState.On or ThreePlayerState.Outdated)) _exe.DisableThreePlayers();
         if (want && settings is not null) _exe.SetThreePlayerSettings(settings);
     }
 
@@ -529,7 +535,7 @@ public partial class ExecutableEditorWindow : Window
             ThreePlayerState.Off when want =>
                 "Three players will be turned on when you save. The file grows from " +
                 $"{MegaBytes(BgdaExecutable.StockFileLength)} to {MegaBytes(BgdaExecutable.ThreePlayerFileLength)}.",
-            ThreePlayerState.On when !want =>
+            ThreePlayerState.On or ThreePlayerState.Outdated when !want =>
                 "Three players will be turned off when you save: the original code is restored and the " +
                 "three-player settings below are discarded.",
             _ => detail

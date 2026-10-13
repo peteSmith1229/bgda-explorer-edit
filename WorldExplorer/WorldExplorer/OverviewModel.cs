@@ -42,6 +42,11 @@ public sealed class OverviewModel
     /// <summary>Optional hint shown under the facts.</summary>
     public string? Note { get; set; }
 
+    /// <summary>Object-pool and memory budget of a Dark Alliance level (GOB pages only).</summary>
+    public LevelBudgetModel? Budget { get; set; }
+
+    public bool HasBudget => Budget != null;
+
     public bool HasBreakdown => Breakdown.Count > 0;
     public bool HasPendingChanges => PendingChanges.Count > 0;
     public bool HasActions => Actions.Count > 0;

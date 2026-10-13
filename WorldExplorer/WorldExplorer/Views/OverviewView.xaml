@@ -63,6 +63,188 @@
                 <TextBlock Text="{Binding Note}" TextWrapping="Wrap" />
             </Border>
 
+            <!-- Level budget (Dark Alliance GOBs): object pools and memory. DataContext: LevelBudgetModel. -->
+            <StackPanel Visibility="{Binding HasBudget, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel DataContext="{Binding Budget}">
+                    <TextBlock Text="LEVEL BUDGET" Style="{StaticResource Text.Section}" Margin="2,22,0,8" FontSize="11" />
+                    <Border Style="{StaticResource Card}" Padding="18,14">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontWeight="SemiBold"
+                                       Foreground="{Binding SummaryBrushKey, Converter={StaticResource ResourceKey}}" />
+                            <ItemsControl ItemsSource="{Binding Bars}" Margin="0,8,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type local:BudgetBar}">
+                                        <Grid Margin="0,8,0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="{Binding Title}" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Value}" FontWeight="SemiBold" Margin="16,0,0,0" />
+                                            <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Height="6" Margin="0,5,0,4"
+                                                         Minimum="0" Maximum="100" Value="{Binding Percent, Mode=OneWay}"
+                                                         Foreground="{Binding BrushKey, Converter={StaticResource ResourceKey}}" />
+                                            <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding Caption}"
+                                                       Style="{StaticResource Text.Caption}" TextWrapping="Wrap" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Callout}" Margin="0,14,0,0"
+                            Visibility="{Binding HasWarnings, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl ItemsSource="{Binding Warnings}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="•" Margin="0,0,8,0" />
+                                        <TextBlock Grid.Column="1" Text="{Binding}" TextWrapping="Wrap" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+
+                    <TextBlock Text="MEMORY" Style="{StaticResource Text.Section}" Margin="2,22,0,8" FontSize="11" />
+                    <Border Style="{StaticResource Card}" Padding="18,10">
+                        <ItemsControl ItemsSource="{Binding Parts}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type local:BudgetPart}">
+                                    <Grid Margin="0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetPartLabel" />
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetPartSize" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Label}" Margin="0,0,24,0"
+                                                   Foreground="{Binding BrushKey, Converter={StaticResource ResourceKey}}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Size}" FontWeight="SemiBold" TextAlignment="Right"
+                                                   Margin="0,0,24,0" Foreground="{Binding BrushKey, Converter={StaticResource ResourceKey}}" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Detail}" Style="{StaticResource Text.Caption}"
+                                                   TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+
+                    <StackPanel Visibility="{Binding HasClasses, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="OBJECTS IN OBJECTS.OB" Style="{StaticResource Text.Section}" Margin="2,22,0,8" FontSize="11" />
+                        <Border Style="{StaticResource Card}" Padding="12,8">
+                            <StackPanel>
+                                <Grid Margin="6,2,6,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetClassName" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetClassCount" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetClassSize" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetClassPool" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetClassArchive" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetClassMemory" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Class" Style="{StaticResource Text.Caption}" Margin="0,0,16,0" />
+                                    <TextBlock Grid.Column="1" Text="Count" Style="{StaticResource Text.Caption}" Margin="0,0,16,0" TextAlignment="Right" />
+                                    <TextBlock Grid.Column="2" Text="Object" Style="{StaticResource Text.Caption}" Margin="0,0,16,0" TextAlignment="Right" />
+                                    <TextBlock Grid.Column="3" Text="Pool" Style="{StaticResource Text.Caption}" Margin="0,0,16,0" />
+                                    <TextBlock Grid.Column="4" Text="Archive" Style="{StaticResource Text.Caption}" Margin="0,0,16,0" />
+                                    <TextBlock Grid.Column="5" Text="Memory" Style="{StaticResource Text.Caption}" Margin="0,0,16,0" TextAlignment="Right" />
+                                    <TextBlock Grid.Column="6" Text="Loaded from" Style="{StaticResource Text.Caption}" />
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding Classes}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type local:BudgetClassRow}">
+                                            <Grid Margin="6,3">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetClassName" />
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetClassCount" />
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetClassSize" />
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetClassPool" />
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetClassArchive" />
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetClassMemory" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Margin="0,0,16,0">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                               Foreground="{Binding BrushKey, Converter={StaticResource ResourceKey}}" />
+                                                    <TextBlock Text="{Binding Kind}" Style="{StaticResource Text.Caption}" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1" Text="{Binding Count}" Margin="0,0,16,0" TextAlignment="Right" />
+                                                <TextBlock Grid.Column="2" Text="{Binding Size}" Margin="0,0,16,0" TextAlignment="Right" />
+                                                <TextBlock Grid.Column="3" Text="{Binding Pool}" Margin="0,0,16,0" />
+                                                <TextBlock Grid.Column="4" Text="{Binding Archive}" Margin="0,0,16,0"
+                                                           FontFamily="{StaticResource Font.Mono}" FontSize="12" />
+                                                <TextBlock Grid.Column="5" Text="{Binding Memory}" Margin="0,0,16,0" TextAlignment="Right" />
+                                                <TextBlock Grid.Column="6" Text="{Binding Source}" Style="{StaticResource Text.Caption}"
+                                                           TextWrapping="Wrap" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <TextBlock Text="ARCHIVES THE LEVEL LOADS" Style="{StaticResource Text.Section}" Margin="2,22,0,8" FontSize="11" />
+                    <Border Style="{StaticResource Card}" Padding="12,8">
+                        <StackPanel>
+                            <Grid Margin="6,2,6,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetArchiveName" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetArchiveFile" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetArchiveSound" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetArchiveMemory" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetArchiveSource" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Archive" Style="{StaticResource Text.Caption}" Margin="0,0,16,0" />
+                                <TextBlock Grid.Column="1" Text="File" Style="{StaticResource Text.Caption}" Margin="0,0,16,0" TextAlignment="Right" />
+                                <TextBlock Grid.Column="2" Text="Sounds" Style="{StaticResource Text.Caption}" Margin="0,0,16,0" TextAlignment="Right" />
+                                <TextBlock Grid.Column="3" Text="Memory" Style="{StaticResource Text.Caption}" Margin="0,0,16,0" TextAlignment="Right" />
+                                <TextBlock Grid.Column="4" Text="Loaded from" Style="{StaticResource Text.Caption}" Margin="0,0,16,0" />
+                                <TextBlock Grid.Column="5" Text="Used by" Style="{StaticResource Text.Caption}" />
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding Archives}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type local:BudgetArchiveRow}">
+                                        <Grid Margin="6,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetArchiveName" />
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetArchiveFile" />
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetArchiveSound" />
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetArchiveMemory" />
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="BudgetArchiveSource" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Name}" Margin="0,0,16,0" FontFamily="{StaticResource Font.Mono}" FontSize="12" />
+                                            <TextBlock Grid.Column="1" Text="{Binding File}" Margin="0,0,16,0" TextAlignment="Right" />
+                                            <TextBlock Grid.Column="2" Text="{Binding Sound}" Margin="0,0,16,0" TextAlignment="Right"
+                                                       Style="{StaticResource Text.Caption}" />
+                                            <TextBlock Grid.Column="3" Text="{Binding Memory}" Margin="0,0,16,0" TextAlignment="Right"
+                                                       FontWeight="SemiBold" />
+                                            <TextBlock Grid.Column="4" Text="{Binding Source}" Margin="0,0,16,0" Style="{StaticResource Text.Caption}" />
+                                            <TextBlock Grid.Column="5" Text="{Binding UsedBy}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="{Binding Note}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="2,12,0,0" />
+                </StackPanel>
+            </StackPanel>
+
             <!-- Unsaved changes -->
             <StackPanel Visibility="{Binding HasPendingChanges, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="UNSAVED CHANGES" Style="{StaticResource Text.Section}" Margin="2,22,0,8" FontSize="11" />
