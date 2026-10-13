@@ -93,11 +93,12 @@ public sealed class LevelBudgetModel
             SummaryBrushKey = StatusBrush(worst),
             Note = $"For three players with ADRIANNA21 (the player characters take {b.Large.Players} of the 1 KB pool). " +
                    "Pool slots are counted from objects.ob as the game places them when the level starts; memory is " +
-                   "estimated from the archives in this GOB, those the objects or the world need from the disc, and the buffers the " +
+                   "estimated from the archives in this GOB, those the level needs from the disc, and the buffers the " +
                    $"level asks for, out of the game's {Size(BgdaLevelBudget.HeapBytes)} heap. Checked against save states of " +
-                   "Town, Crypt1, Mine2, towert and burnfrst (within 2 KB). While playing, spells and dropped items take more " +
-                   "slots and conversations more memory: the ADRIANNA21 counters (p2s_memreport.py) show the lowest free " +
-                   "values a level really reached."
+                   "Town, Crypt1, Mine2, towert, burnfrst and cellar1 with a pasted SteelGolem (within 2 KB). A disc archive's " +
+                   "sound data is only known from a copy (the .LMP, or a GOB holding it, in this folder); without one its " +
+                   "whole file is counted. While playing, spells and dropped items take more slots and conversations more " +
+                   "memory: the ADRIANNA21 counters (p2s_memreport.py) show the lowest free values a level really reached."
         };
 
         // ---- bars ----
@@ -164,6 +165,8 @@ public sealed class LevelBudgetModel
             if (c.NotCreated > 0) pool += $" ({N(c.NotCreated)} won't fit)";
             else if (cls != null && c.Placed[(int)c.Pool!.Value] < c.Count) pool += " (some spill)";
             var a = c.Archive;
+            // the model's archive, and what the constructor loads besides (Eldrith: mtlcrate.lmp; UserParamProp: lump=)
+            var all = (a == null ? c.AlsoLoads : c.AlsoLoads.Prepend(a)).Distinct().ToList();
             m.Classes.Add(new BudgetClassRow(
                 c.Name,
                 cls != null ? Describe(cls.Kind)
@@ -171,10 +174,11 @@ public sealed class LevelBudgetModel
                 N(c.Count),
                 cls == null ? "" : $"{cls.Size} B",
                 pool,
-                a?.Name ?? "",
-                a == null ? "" : a.Source == BgdaArchiveSource.Missing ? "missing" : (a.RamIsUpperEstimate ? "≤ " : "") + Size(a.RamBytes),
-                a == null ? "" : SourceText(a.Source),
-                c.NotCreated > 0 || a?.Source == BgdaArchiveSource.Missing ? "Brush.Danger"
+                string.Join(" + ", all.Select(x => x.Name)),
+                all.Count == 0 ? "" : all.Any(x => x.Source == BgdaArchiveSource.Missing) ? "missing"
+                : (all.Any(x => x.RamIsUpperEstimate) ? "≤ " : "") + Size(all.Sum(x => x.RamBytes)),
+                string.Join(", ", all.Select(SourceText).Distinct()),
+                c.NotCreated > 0 || all.Any(x => x.Source == BgdaArchiveSource.Missing) ? "Brush.Danger"
                 : a?.Source is BgdaArchiveSource.Disc or BgdaArchiveSource.DiscFileFound ? "Brush.Warning"
                 : cls == null ? (BgdaLevelBudget.SpecialNames.ContainsKey(c.Name) ? "Brush.TextMuted" : "Brush.Warning")
                 : "Brush.Text"));
@@ -188,7 +192,7 @@ public sealed class LevelBudgetModel
                 a.Source == BgdaArchiveSource.Missing ? "" : Size(a.FileBytes),
                 a.SoundBytes > 0 ? Size(a.SoundBytes) : "",
                 a.Source == BgdaArchiveSource.Missing ? "missing" : (a.RamIsUpperEstimate ? "≤ " : "") + Size(a.RamBytes),
-                SourceText(a.Source),
+                SourceText(a),
                 string.Join(", ", a.UsedBy)));
         }
 
@@ -206,11 +210,12 @@ public sealed class LevelBudgetModel
         _ => "object"
     };
 
-    private static string SourceText(BgdaArchiveSource s) => s switch
+    private static string SourceText(BgdaArchiveUse a) => a.Source switch
     {
         BgdaArchiveSource.Gob => "this GOB",
         BgdaArchiveSource.DiscFileFound => "disc (file found next to the GOB)",
+        BgdaArchiveSource.Disc when a.FoundInGob != null => $"disc (measured from {a.FoundInGob})",
         BgdaArchiveSource.Disc => "disc",
-        _ => "missing"
+        _ => a.FoundInGob != null ? $"missing ({a.FoundInGob} has it)" : "missing"
     };
 }
