@@ -697,24 +697,24 @@ public partial class MainWindow : Window
 
     private void Exit_Executed(object sender, ExecutedRoutedEventArgs e) => Close();
 
-    /// <summary>While a script is selected, Undo and Redo use its history instead of the level's.</summary>
-    private ScriptEditorViewModel? ActiveScriptEditor => ViewModel?.ScriptEditor;
+    /// <summary>While a script or cutscene is selected, Undo and Redo use its history instead of the level's.</summary>
+    private EntryEditorViewModel? ActiveEntryEditor => ViewModel?.ActiveEntryEditor;
 
     private void Undo_CanExecute(object sender, CanExecuteRoutedEventArgs e)
-        => e.CanExecute = ActiveScriptEditor is { } script ? script.CanUndo : ViewModel?.TheLevelViewModel.CanUndo == true;
+        => e.CanExecute = ActiveEntryEditor is { } entry ? entry.CanUndo : ViewModel?.TheLevelViewModel.CanUndo == true;
 
     private void Undo_Executed(object sender, ExecutedRoutedEventArgs e)
     {
-        if (ActiveScriptEditor is { } script) script.Undo();
+        if (ActiveEntryEditor is { } entry) entry.Undo();
         else ViewModel.TheLevelViewModel.Undo();
     }
 
     private void Redo_CanExecute(object sender, CanExecuteRoutedEventArgs e)
-        => e.CanExecute = ActiveScriptEditor is { } script ? script.CanRedo : ViewModel?.TheLevelViewModel.CanRedo == true;
+        => e.CanExecute = ActiveEntryEditor is { } entry ? entry.CanRedo : ViewModel?.TheLevelViewModel.CanRedo == true;
 
     private void Redo_Executed(object sender, ExecutedRoutedEventArgs e)
     {
-        if (ActiveScriptEditor is { } script) script.Redo();
+        if (ActiveEntryEditor is { } entry) entry.Redo();
         else ViewModel.TheLevelViewModel.Redo();
     }
 
@@ -812,8 +812,8 @@ public partial class MainWindow : Window
     // Saving
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// <summary>Applies script values that were typed but not yet confirmed, so they aren't lost.</summary>
-    private void ApplyTypedValues() => ViewModel.ScriptEditor?.CommitAll();
+    /// <summary>Applies script or cutscene values that were typed but not yet confirmed, so they aren't lost.</summary>
+    private void ApplyTypedValues() => ViewModel.ActiveEntryEditor?.CommitAll();
 
     /// <summary>Saves the open file: the GOB, or a stand-alone LMP. Returns false if not saved.</summary>
     public bool SaveCurrent()

@@ -14,6 +14,7 @@ public enum ContentView
     Skeleton,
     Texture,
     Script,
+    Cutscene,
     Details
 }
 
@@ -54,12 +55,15 @@ public sealed class ViewOption
     public static readonly ViewOption Script =
         new(ContentView.Script, "Script", "Icon.View.Script", "Engine calls in the script — edit their values");
 
+    public static readonly ViewOption Cutscene =
+        new(ContentView.Cutscene, "Cutscene", "Icon.Kind.Cutscene", "Cast and keyframes — edit their times and values");
+
     public static readonly ViewOption Details =
         new(ContentView.Details, "Details", "Icon.View.Details", "Decoded data, logs and hex dumps");
 
     /// <summary>Every view, in the order the switcher shows them.</summary>
     public static IReadOnlyList<ViewOption> All { get; } =
-        new[] { Overview, Level, Model, Skeleton, Texture, Script, Details };
+        new[] { Overview, Level, Model, Skeleton, Texture, Script, Cutscene, Details };
 
     public static ViewOption For(ContentView kind) => kind switch
     {
@@ -69,6 +73,7 @@ public sealed class ViewOption
         ContentView.Skeleton => Skeleton,
         ContentView.Texture => Texture,
         ContentView.Script => Script,
+        ContentView.Cutscene => Cutscene,
         _ => Details
     };
 }
