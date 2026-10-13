@@ -14,9 +14,10 @@ namespace WorldExplorer;
 
 /// <summary>
 /// The Cutscene view: a cutscene's sound and subtitle settings, its cast and
-/// its keyframes. Changing a value, a time, or copying or deleting a keyframe
-/// writes the cutscene straight into the archive's pending edits, so the next
-/// save (Ctrl+S) puts it in the GOB, and adds a step to its undo history.
+/// its keyframes. Changing a value, a time, copying or deleting a keyframe, or
+/// copying or removing a cast member writes the cutscene straight into the
+/// archive's pending edits, so the next save (Ctrl+S) puts it in the GOB, and
+/// adds a step to its undo history.
 /// </summary>
 public sealed class CutsceneEditorViewModel : EntryEditorViewModel
 {
@@ -43,6 +44,12 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
             p => !IsReadOnly && p is CutsceneKeyframeViewModel);
         DeleteCommand = new RelayCommand(p => Delete((CutsceneKeyframeViewModel)p!),
             p => !IsReadOnly && p is CutsceneKeyframeViewModel && Keyframes.Count > 1);
+        CopyCastCommand = new RelayCommand(p => CopyCast((CutsceneActorViewModel)p!),
+            p => !IsReadOnly && p is CutsceneActorViewModel row && _cutscene is { } c && row.Index < c.Cast.Count &&
+                 c.CheckCopy(c.Cast[row.Index], true) == null);
+        RemoveCastCommand = new RelayCommand(p => RemoveCast((CutsceneActorViewModel)p!),
+            p => !IsReadOnly && p is CutsceneActorViewModel row && _cutscene is { } c && row.Index < c.Cast.Count &&
+                 c.CheckRemove(c.Cast[row.Index]) == null);
         ClearFilterCommand = new RelayCommand(() => FilterText = "");
 
         TextValues = new[]
@@ -119,6 +126,12 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
 
     public ICommand DuplicateCommand { get; }
     public ICommand DeleteCommand { get; }
+
+    /// <summary>Copies a cast member, with its keyframes, to the end of the cast.</summary>
+    public ICommand CopyCastCommand { get; }
+
+    /// <summary>Removes a cast member and its keyframes; the keyframes of the members after it are renumbered.</summary>
+    public ICommand RemoveCastCommand { get; }
     public ICommand ClearFilterCommand { get; }
 
     /// <summary>"184 keyframes · 6 in the cast · 66.5 s".</summary>
@@ -257,6 +270,41 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
         if (added != null) RevealRequested?.Invoke(added);
     }
 
+    /// <summary>How far to the side (+X) a copy of a cast member starts: 32 units for each member with its name.</summary>
+    internal const float CopySpacing = 32;
+
+    private void CopyCast(CutsceneActorViewModel row)
+    {
+        if (_cutscene == null || IsReadOnly || row.Index >= _cutscene.Cast.Count) return;
+        var actor = _cutscene.Cast[row.Index];
+        var name = _cutscene.SuggestCopyName(actor);
+        var stem = Stem(actor.Name);
+        var offset = CopySpacing * _cutscene.Cast.Count(a => Stem(a.Name) == stem);
+        try
+        {
+            Apply(CastFocus, () => _cutscene.CopyActor(actor, name, offset, 0, 0, withKeyframes: true));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+        {
+            row.Values[0].SetError(ex.Message);
+        }
+
+        static string Stem(string name) => name.TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
+    }
+
+    private void RemoveCast(CutsceneActorViewModel row)
+    {
+        if (_cutscene == null || IsReadOnly || row.Index >= _cutscene.Cast.Count) return;
+        try
+        {
+            Apply(CastFocus, () => _cutscene.RemoveActor(_cutscene.Cast[row.Index]));
+        }
+        catch (InvalidOperationException ex)
+        {
+            row.Values[0].SetError(ex.Message);
+        }
+    }
+
     private void Delete(CutsceneKeyframeViewModel row)
     {
         if (_cutscene == null || IsReadOnly) return;
@@ -272,9 +320,43 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
 
     protected override void OnEdited()
     {
+        var castChanged = SyncCastRows();
         SyncKeyframeRows();
+        if (castChanged)
+        {
+            // positions in the cast moved: names, "Face" targets and actor numbers read differently now
+            foreach (var row in Keyframes) row.Rebind(row.Keyframe);
+        }
+
         UpdateSections();
         OnPropertyChanged(nameof(Summary));
+    }
+
+    /// <summary>One row per cast member after a member was copied or removed; true when the number changed.</summary>
+    private bool SyncCastRows()
+    {
+        if (_cutscene == null || Cast.Count == _cutscene.Cast.Count) return false;
+        while (Cast.Count > _cutscene.Cast.Count)
+        {
+            // rows show members by position: the last row goes (and takes no message with it)
+            foreach (var value in Cast[^1].Values) value.ClearError();
+            Cast.RemoveAt(Cast.Count - 1);
+        }
+
+        for (var i = Cast.Count; i < _cutscene.Cast.Count; i++)
+        {
+            var actor = new CutsceneActorViewModel(this, i);
+            foreach (var value in actor.Values) Track(value);
+            Cast.Add(actor);
+        }
+
+        foreach (var actor in Cast)
+        {
+            foreach (var value in actor.Values) value.Refresh();
+            actor.Refresh();
+        }
+
+        return true;
     }
 
     protected override byte[] Serialize() => _cutscene!.ToArray();
@@ -356,6 +438,7 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
         }
 
         foreach (var value in Values) value.Refresh();
+        foreach (var actor in Cast) actor.Refresh();
         UpdateSections();
         OnPropertyChanged(nameof(IsReadOnly));
         OnPropertyChanged(nameof(OtherInfo));
@@ -465,7 +548,10 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
         {
             var saved = _saved != null && i < _saved.Cast.Count ? _saved.Cast[i] : null;
             for (var v = 0; v < Cast[i].Values.Count; v++) Mark(Cast[i].Values[v], saved?[v]);
+            Cast[i].IsAdded = _saved != null && i >= _saved.Cast.Count;
         }
+
+        if (_saved != null) changes += Math.Abs(Cast.Count - _saved.Cast.Count);
 
         if (_saved == null)
         {
@@ -577,10 +663,14 @@ public sealed class CutsceneSection : ObservableObject
 }
 
 /// <summary>A row of the Cutscene view's cast list: name, start position and facing.</summary>
-public sealed class CutsceneActorViewModel
+public sealed class CutsceneActorViewModel : ObservableObject
 {
+    private readonly CutsceneEditorViewModel _owner;
+    private bool _isAdded;
+
     public CutsceneActorViewModel(CutsceneEditorViewModel owner, int index)
     {
+        _owner = owner;
         Index = index;
         CutsceneActor Actor() => owner.Cutscene!.Cast[index];
         string Context() => owner.CastName(index);
@@ -627,6 +717,33 @@ public sealed class CutsceneActorViewModel
 
     /// <summary>Name, X, Y, Z and facing.</summary>
     public IReadOnlyList<CutsceneValueViewModel> Values { get; }
+
+    /// <summary>Where the character comes from when the scene starts.</summary>
+    public string Source => _owner.Cutscene == null || Index >= _owner.Cutscene.Cast.Count
+        ? ""
+        : _owner.Cutscene.Cast[Index].IsCreated ? "created by the scene" : "an object already in the level";
+
+    public string SourceToolTip => _owner.Cutscene == null || Index >= _owner.Cutscene.Cast.Count
+        ? ""
+        : _owner.Cutscene.Cast[Index].IsCreated
+            ? "The scene creates this character when it starts. Player and Player2 are stand-ins for players 1 and 2 " +
+              "(Player3 for player 3 with the ADRIANNA23 executable, and only in three-player games); other names are " +
+              "object classes, such as Karne or Thief1. A name the game doesn't know creates nothing, and its keyframes are skipped."
+            : "The scene uses an object that is already in the level, near this start position: any character within " +
+              "12 units, or another object with this name.";
+
+    /// <summary>Added since the last save (shown with a marker).</summary>
+    public bool IsAdded
+    {
+        get => _isAdded;
+        set => SetProperty(ref _isAdded, value);
+    }
+
+    internal void Refresh()
+    {
+        OnPropertyChanged(nameof(Source));
+        OnPropertyChanged(nameof(SourceToolTip));
+    }
 
     /// <summary>A cast member's values as <see cref="Values"/> shows them.</summary>
     internal static string[] Format(CutsceneActor actor) => new[]
@@ -721,8 +838,10 @@ public sealed class CutsceneKeyframeViewModel : ObservableObject
         _ => "Icon.View.Skeleton"
     };
 
-    /// <summary>The stored parameters of an action that can't be edited (or "").</summary>
-    public string RawText => Keyframe.RawText;
+    /// <summary>The stored parameters of an action that can't be edited (or ""); for "Face", who it turns towards.</summary>
+    public string RawText => Keyframe.FaceTarget is { } target
+        ? target < 0 ? "no one (stops facing)" : $"towards {_owner.CastName(target)}"
+        : Keyframe.RawText;
 
     public bool HasRawText => RawText.Length > 0;
 
@@ -735,6 +854,8 @@ public sealed class CutsceneKeyframeViewModel : ObservableObject
         (CutsceneActorKind.Scene, 0) => "Shows the next line of the scene's subtitles.",
         (CutsceneActorKind.Scene, 3) => "Hides the subtitle on screen.",
         (CutsceneActorKind.Cast, 0) => "Makes the cast member walk to a point in the level (world units).",
+        (CutsceneActorKind.Cast, 1) => "Turns the cast member towards another one, or stops it (no one). What it does " +
+                                       "exactly isn't certain. It refers to the other member by position in the cast.",
         (CutsceneActorKind.Cast, 2) => "Plays an animation on the cast member. The animation is stored as a code, " +
                                        "so it can't be changed here.",
         _ when Fields.Count > 0 => "What this value does isn't known for certain.",

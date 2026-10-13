@@ -239,20 +239,46 @@
                 </ScrollViewer>
 
                 <!-- Cast -->
-                <ListBox ItemsSource="{Binding Cast}" Padding="6" ItemContainerStyle="{StaticResource RowItem}"
-                         KeyboardNavigation.TabNavigation="Continue"
-                         Visibility="{Binding ShowCast, Converter={StaticResource BoolToVisibility}}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate DataType="{x:Type local:CutsceneActorViewModel}">
-                            <DockPanel>
-                                <TextBlock DockPanel.Dock="Left" Text="{Binding Number}" Style="{StaticResource Text.Caption}"
-                                           FontFamily="{StaticResource Font.Mono}" Width="34" VerticalAlignment="Center" />
-                                <ItemsControl ItemsSource="{Binding Values}" ItemTemplate="{StaticResource ValueTemplate}"
-                                              ItemsPanel="{StaticResource WrapPanelTemplate}" Focusable="False" />
-                            </DockPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                <DockPanel Visibility="{Binding ShowCast, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                               Margin="16,12,16,4" MaxWidth="760" HorizontalAlignment="Left"
+                               Text="Keyframes refer to cast members by their number. A copy goes at the end of the cast, with copies of the member's keyframes, so nothing else changes. Removing a member removes its keyframes and renumbers the members after it. Player and Player2 are players 1 and 2; with the ADRIANNA23 executable, Player3 is player 3." />
+                    <ListBox ItemsSource="{Binding Cast}" Padding="6" ItemContainerStyle="{StaticResource RowItem}"
+                             KeyboardNavigation.TabNavigation="Continue">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type local:CutsceneActorViewModel}">
+                                <DockPanel>
+                                    <Grid DockPanel.Dock="Left" Width="34" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Number}" Style="{StaticResource Text.Caption}"
+                                                   FontFamily="{StaticResource Font.Mono}" />
+                                        <Ellipse Width="6" Height="6" Fill="{DynamicResource Brush.Modified}"
+                                                 HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0"
+                                                 ToolTip="Added since the last save"
+                                                 Visibility="{Binding IsAdded, Converter={StaticResource BoolToVisibility}}" />
+                                    </Grid>
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Style="{StaticResource Button.Subtle}"
+                                                controls:ControlAssist.Icon="{StaticResource Icon.Duplicate}"
+                                                Command="{Binding DataContext.CopyCastCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="Copy this cast member with its keyframes. The copy goes at the end of the cast with the next name (Player → Player2 → Player3) and starts 32 units further along X for each copy (its Move to points too); its keyframes happen at the same times." />
+                                        <Button Style="{StaticResource Button.Subtle}"
+                                                controls:ControlAssist.Icon="{StaticResource Icon.Delete}"
+                                                Command="{Binding DataContext.RemoveCastCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="Remove this cast member and its keyframes; the members after it move up one number (Ctrl+Z undoes this)" />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <ItemsControl ItemsSource="{Binding Values}" ItemTemplate="{StaticResource ValueTemplate}"
+                                                      ItemsPanel="{StaticResource WrapPanelTemplate}" Focusable="False" />
+                                        <TextBlock Text="{Binding Source}" ToolTip="{Binding SourceToolTip}"
+                                                   Style="{StaticResource Text.Caption}" Margin="0,0,0,3" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
 
                 <!-- Keyframes -->
                 <Grid Visibility="{Binding ShowKeyframes, Converter={StaticResource BoolToVisibility}}">
