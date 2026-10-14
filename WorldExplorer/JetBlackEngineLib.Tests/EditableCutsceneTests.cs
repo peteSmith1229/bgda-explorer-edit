@@ -393,16 +393,22 @@ public class EditableCutsceneTests
         cutscene.Keyframes.Select(k => (k.Time, k.Actor, k.Action, k.Parameters[0], k.Parameters[1], k.Parameters[2])).ToArray();
 
     [Test]
-    public void CopyNames_TakeTheNextNumber()
+    public void CopyNames_NumberThePlayersOnly()
     {
         var intro = EditableCutscene.Load(_intro);
 
         Assert.That(intro.SuggestCopyName(intro.Cast[0]), Is.EqualTo("Player2"));
-        Assert.That(intro.SuggestCopyName(intro.Cast[1]), Is.EqualTo("Thief3"), "Thief2 is taken");
-        Assert.That(intro.SuggestCopyName(intro.Cast[3]), Is.EqualTo("Karne2"));
+        Assert.That(intro.SuggestCopyName(intro.Cast[1]), Is.EqualTo("Thief1"), "another Thief1: Thief2 and Thief3 are other characters");
+        Assert.That(intro.SuggestCopyName(intro.Cast[3]), Is.EqualTo("Karne"));
         intro.CopyActor(intro.Cast[0], "Player2", 0, 0, 0, withKeyframes: false);
         Assert.That(intro.SuggestCopyName(intro.Cast[0]), Is.EqualTo("Player3"));
         Assert.That(intro.SuggestCopyName(intro.Cast[6]), Is.EqualTo("Player3"));
+        intro.CopyActor(intro.Cast[0], "Player3", 0, 0, 0, withKeyframes: false);
+        Assert.That(intro.SuggestCopyName(intro.Cast[7]), Is.EqualTo("Player3"), "with all three players, a copy keeps its name");
+        intro.RemoveActor(intro.Cast[6]);
+        Assert.That(intro.SuggestCopyName(intro.Cast[0]), Is.EqualTo("Player2"), "a free player name is used again");
+        intro.SetName(intro.Cast[3], "player");
+        Assert.That(intro.SuggestCopyName(intro.Cast[3]), Is.EqualTo("player"), "the game compares player names exactly");
     }
 
     [Test]
@@ -461,7 +467,7 @@ public class EditableCutsceneTests
         var karne = intro.Cast[3];
         var (x, y, z) = (karne.X, karne.Y, karne.Z);
         var copy = intro.CopyActor(karne, intro.SuggestCopyName(karne), 10, -20, 2, withKeyframes: true);
-        Assert.That(copy.Name, Is.EqualTo("Karne2"));
+        Assert.That(copy.Name, Is.EqualTo("Karne"));
         Assert.That((copy.X, copy.Y, copy.Z), Is.EqualTo((x + 10, y - 20, z + 2)));
         Assert.That(intro.Keyframes.Count(k => k.Actor == 6), Is.EqualTo(intro.Keyframes.Count(k => k.Actor == 3)));
         var moves = intro.Keyframes.Where(k => k.Actor == 3 && k.Description == "Move to").ToList();
@@ -558,5 +564,107 @@ public class EditableCutsceneTests
         Assert.That(lonely.CheckRemove(lonely.Cast[3]), Is.Not.Null);
         Assert.Throws<InvalidOperationException>(() => lonely.RemoveActor(lonely.Cast[3]));
         Assert.That(lonely.CheckRemove(lonely.Cast[0]), Is.Null, "a member without keyframes can go");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Animations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>Every "Play animation" keyframe of the stock intro, in time order: who, the animation file, the mode.</summary>
+    private static readonly (string Who, string File, int Mode)[] IntroAnimations =
+    {
+        ("Thief1", "thv1_headcrak.anm", 3), ("Player", "nw_deatha.anm", 1), ("Thief1", "tf1_01a.anm", 4),
+        ("Karne", "karn04a.anm", 4), ("Thief1", "tf1_01b.anm", 4), ("Thief2", "tf2_01.anm", 4),
+        ("Karne", "karn04b.anm", 4), ("NPCGuard1", "cw1_02.anm", 4), ("NPCGuard2", "cw2_01.anm", 4),
+        ("Player", "nw_idleb.anm", 2), ("Player", "nw_getup.anm", 0), ("NPCGuard1", "cw1_03.anm", 4),
+        ("NPCGuard2", "cw2_02.anm", 4), ("NPCGuard1", "cw1_04.anm", 4), ("NPCGuard2", "cw2_03.anm", 4),
+        ("NPCGuard1", "cw1_05.anm", 4), ("NPCGuard2", "cw2_04.anm", 4)
+    };
+
+    [Test]
+    public void IntroAnimations_AreNamedByTheirHash()
+    {
+        var intro = EditableCutscene.Load(_intro);
+        var plays = intro.Keyframes.Where(k => k.IsPlayAnimation).ToList();
+
+        Assert.That(plays.Select(k => (intro.Cast[k.Actor].Name, k.AnimationHash, k.AnimationMode)),
+            Is.EqualTo(IntroAnimations.Select(a => (a.Who, (int?)CutsceneAnimations.Hash(a.File), (int?)a.Mode))));
+        Assert.That(plays.All(k => k.AnimationPosition == null && k.Description == "Play animation"), Is.True);
+        Assert.That(intro.Keyframes.Where(k => !k.IsPlayAnimation)
+            .All(k => k.AnimationHash == null && k.AnimationPosition == null && k.AnimationMode == null), Is.True);
+        Assert.That(plays[1].RawText, Is.EqualTo("animation 0x603A8D34, mode 1"));
+
+        // intro2p.cut (which the game never plays) picks both players' fall by position: the first in their list.
+        var twoPlayers = EditableCutscene.Load(Stock("intro2p.cut"));
+        var falls = twoPlayers.Keyframes.Where(k => k.IsPlayAnimation).ToList();
+        Assert.That(falls.Select(k => (twoPlayers.Cast[k.Actor].Name, k.AnimationPosition, k.AnimationMode, k.AnimationHash)),
+            Is.EqualTo(new[] { ("Player", (int?)0, (int?)1, (int?)null), ("Player2", (int?)0, (int?)1, (int?)null) }));
+        Assert.That(falls[0].RawText, Is.EqualTo("animation #0 in the list, mode 1"));
+    }
+
+    [Test]
+    public void AnimationEdits_ChangeOnlyThatKeyframe()
+    {
+        var intro = EditableCutscene.Load(_intro);
+        var fall = intro.Keyframes.First(k => k.IsPlayAnimation && intro.Cast[k.Actor].Name == "Player");
+        var index = intro.IndexOf(fall);
+        var values = KeyframeAt(_intro, index) + 8;
+
+        intro.SetAnimation(fall, "nw_idleb");
+        Assert.That(fall.Parameters, Is.EqualTo(new[] { CutsceneAnimations.Hash("nw_idleb.anm"), 1, CutsceneAnimations.ByName }),
+            "the name's hash, the mode kept");
+        intro.SetAnimationMode(fall, 2);
+        Assert.That(fall.AnimationMode, Is.EqualTo(2));
+        var edited = intro.ToArray();
+
+        Assert.That(edited, Has.Length.EqualTo(_intro.Length));
+        Assert.That(Differences(_intro, edited).All(i => Within(i, values, 8)), Is.True, "only its first two values changed");
+        Assert.That(EditableCutscene.Load(edited).Keyframes[index].AnimationHash, Is.EqualTo(CutsceneAnimations.Hash("nw_idleb.anm")));
+
+        intro.SetAnimation(fall, "nw_deatha.anm");
+        intro.SetAnimationMode(fall, 1);
+        Assert.That(intro.ToArray(), Is.EqualTo(_intro), "back to the stock fall");
+
+        intro.SetAnimationPosition(fall, 5);
+        Assert.That((fall.AnimationPosition, fall.AnimationHash, fall.Parameters[2]), Is.EqualTo(((int?)5, (int?)null, 0)));
+        intro.SetAnimationHash(fall, CutsceneAnimations.Hash("nw_deatha.anm"));
+        Assert.That(intro.ToArray(), Is.EqualTo(_intro), "named by hash again");
+
+        // A keyframe that picks by position keeps its third value when it gets another position.
+        var twoPlayers = EditableCutscene.Load(Stock("intro2p.cut"));
+        var first = twoPlayers.Keyframes.First(k => k.IsPlayAnimation);
+        var third = first.Parameters[2];
+        twoPlayers.SetAnimationPosition(first, 3);
+        Assert.That(first.Parameters, Is.EqualTo(new[] { 3, 1, third }));
+    }
+
+    [Test]
+    public void InvalidAnimationEdits_AreRejected()
+    {
+        var intro = EditableCutscene.Load(_intro);
+        var other = EditableCutscene.Load(_intro);
+        var fall = intro.Keyframes.First(k => k.IsPlayAnimation);
+        var move = intro.Keyframes.First(k => k.Description == "Move to");
+        var longest = new string('a', CutsceneAnimations.MaxFileNameLength - 4);
+
+        Assert.That(EditableCutscene.CheckAnimationName("nw_deatha"), Is.Null);
+        Assert.That(EditableCutscene.CheckAnimationName(longest), Is.Null);
+        Assert.That(EditableCutscene.CheckAnimationName(longest + ".anm"), Is.Null);
+        Assert.That(EditableCutscene.CheckAnimationName(longest + "a"), Is.Not.Null);
+        Assert.That(EditableCutscene.CheckAnimationMode(5), Is.Null);
+        Assert.Throws<ArgumentException>(() => intro.SetAnimation(fall, ""));
+        Assert.Throws<ArgumentException>(() => intro.SetAnimation(fall, "nw death"));
+        Assert.Throws<ArgumentException>(() => intro.SetAnimation(fall, "café"));
+        Assert.Throws<ArgumentException>(() => intro.SetAnimation(fall, longest + "a"));
+        Assert.Throws<ArgumentException>(() => intro.SetAnimation(move, "nw_deatha"));
+        Assert.Throws<ArgumentException>(() => intro.SetAnimationHash(move, 1));
+        Assert.Throws<ArgumentException>(() => intro.SetAnimationPosition(move, 1));
+        Assert.Throws<ArgumentException>(() => intro.SetAnimationMode(move, 1));
+        Assert.Throws<ArgumentException>(() => intro.SetAnimation(other.Keyframes.First(k => k.IsPlayAnimation), "nw_idleb"));
+        Assert.Throws<ArgumentException>(() => intro.SetAnimationMode(fall, 6));
+        Assert.Throws<ArgumentException>(() => intro.SetAnimationMode(fall, -1));
+        Assert.Throws<ArgumentException>(() => intro.SetAnimationPosition(fall, -1));
+
+        Assert.That(intro.ToArray(), Is.EqualTo(_intro), "nothing changed");
     }
 }

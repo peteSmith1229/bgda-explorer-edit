@@ -142,12 +142,32 @@ public sealed class CutsceneKeyframe
     /// </summary>
     public int? FaceTarget => ActorKind == CutsceneActorKind.Cast && Action == 1 ? _parameters[0] : null;
 
+    /// <summary>True for a cast member's "Play animation" keyframe (see <see cref="CutsceneAnimations"/>).</summary>
+    public bool IsPlayAnimation => ActorKind == CutsceneActorKind.Cast && Action == CutsceneAnimations.Action;
+
+    /// <summary>
+    /// For a "Play animation" keyframe that names its animation: the <see cref="CutsceneAnimations.Hash"/> of the
+    /// animation's file name. Null when it picks the animation by position, and for every other keyframe.
+    /// </summary>
+    public int? AnimationHash => IsPlayAnimation && _parameters[2] == CutsceneAnimations.ByName ? _parameters[0] : null;
+
+    /// <summary>
+    /// For a "Play animation" keyframe that picks its animation by position in the character's list (counting
+    /// from 0): that position. Null otherwise.
+    /// </summary>
+    public int? AnimationPosition => IsPlayAnimation && _parameters[2] != CutsceneAnimations.ByName ? _parameters[0] : null;
+
+    /// <summary>For a "Play animation" keyframe: its play mode (see <see cref="CutsceneAnimations.Modes"/>). Null otherwise.</summary>
+    public int? AnimationMode => IsPlayAnimation ? _parameters[1] : null;
+
     /// <summary>The parameters of an action that can't be edited, as stored, or "" when there is nothing to show.</summary>
     public string RawText => (ActorKind, Action) switch
     {
         (CutsceneActorKind.Scene, _) => "", // what is stored here is left over from the authoring tool
         (CutsceneActorKind.Cast, 1) => _parameters[0] < 0 ? "no one" : $"cast member {_parameters[0] + 1}",
-        (CutsceneActorKind.Cast, 2) => $"animation 0x{_parameters[0]:X8}, {_parameters[1]}",
+        (CutsceneActorKind.Cast, CutsceneAnimations.Action) => _parameters[2] == CutsceneAnimations.ByName
+            ? $"animation 0x{_parameters[0]:X8}, mode {_parameters[1]}"
+            : $"animation #{_parameters[0]} in the list, mode {_parameters[1]}",
         _ when Fields.Count > 0 => "",
         _ => string.Join(", ", _parameters.Select(p => $"0x{p:X8}"))
     };
@@ -220,6 +240,15 @@ public sealed class CutsceneActor
         _offset = offset;
         Index = index;
     }
+
+    /// <summary>
+    /// The names the game makes player stand-ins for: players 1 and 2, and player 3 with the ADRIANNA23
+    /// executable or later. The game compares them exactly.
+    /// </summary>
+    public static readonly IReadOnlyList<string> PlayerNames = new[] { "Player", "Player2", "Player3" };
+
+    /// <summary>True when the game makes a player stand-in for a cast member called <paramref name="name"/>.</summary>
+    public static bool IsPlayerName(string name) => PlayerNames.Contains(name, StringComparer.Ordinal);
 
     /// <summary>Position in the cast; keyframes refer to cast members by it.</summary>
     public int Index { get; }

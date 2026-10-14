@@ -1,10 +1,12 @@
 using JetBlackEngineLib.Data.CutScenes;
 using JetBlackEngineLib.Data.DataContainers;
+using JetBlackEngineLib.Data.World;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -33,9 +35,12 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
     private string _filterText = "";
 
     /// <param name="changed">Called after the entry's bytes change (title, tree markers, disassembly).</param>
-    public CutsceneEditorViewModel(World world, LmpFile archive, string entryName, Action changed)
+    /// <param name="animations">Reads the animations the cast can use (called once, when first needed); none when null.</param>
+    public CutsceneEditorViewModel(World world, LmpFile archive, string entryName, Action changed,
+        Func<CutsceneAnimationCatalog>? animations = null)
         : base(world, archive, entryName, "cutscene", changed)
     {
+        _readAnimations = animations;
         _keyframesView = new ListCollectionView(Keyframes) { Filter = item => IsShown((CutsceneKeyframeViewModel)item) };
         _sectionsView = new ListCollectionView(Sections);
         _sectionsView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(CutsceneSection.Group)));
@@ -175,6 +180,207 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
     internal EditableCutscene? Cutscene => _cutscene;
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Animations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private readonly Func<CutsceneAnimationCatalog>? _readAnimations;
+    private CutsceneAnimationCatalog? _animations;
+
+    /// <summary>What each cast member can play, by position in the cast (checked again after every change).</summary>
+    private readonly Dictionary<int, AnimationList> _animationLists = new();
+
+    /// <summary>A cast member's animations and the list its "animation" boxes offer.</summary>
+    private sealed class AnimationList
+    {
+        public AnimationList(string castName, CutsceneAnimationChoices choices, IReadOnlyList<CutsceneChoice> items)
+        {
+            CastName = castName;
+            Choices = choices;
+            Items = items;
+        }
+
+        public string CastName { get; }
+        public CutsceneAnimationChoices Choices { get; }
+        public IReadOnlyList<CutsceneChoice> Items { get; }
+
+        /// <summary>The cutscene changed since the list was made: check it before using it again.</summary>
+        public bool Stale { get; set; }
+    }
+
+    private static readonly AnimationList NoAnimations =
+        new("", CutsceneAnimationChoices.None, Array.Empty<CutsceneChoice>());
+
+    /// <summary>The animations the cast can use: read from the archives when first needed.</summary>
+    internal CutsceneAnimationCatalog Animations => _animations ??= _readAnimations?.Invoke() ?? CutsceneAnimationCatalog.Empty;
+
+    /// <summary>The play modes, for the "mode" lists.</summary>
+    internal static readonly IReadOnlyList<CutsceneChoice> ModeChoices =
+        CutsceneAnimations.Modes.Select(m => new CutsceneChoice(m.Text, m.Description)).ToList();
+
+    /// <summary>What cast member <paramref name="actor"/> can play.</summary>
+    internal CutsceneAnimationChoices AnimationChoices(int actor) => AnimationListOf(actor).Choices;
+
+    /// <summary>The list the "animation" boxes of cast member <paramref name="actor"/> offer.</summary>
+    internal IReadOnlyList<CutsceneChoice> AnimationItems(int actor) => AnimationListOf(actor).Items;
+
+    private AnimationList AnimationListOf(int actor)
+    {
+        if (_cutscene == null || actor < 0 || actor >= _cutscene.Cast.Count) return NoAnimations;
+        var name = _cutscene.Cast[actor].Name;
+        _animationLists.TryGetValue(actor, out var list);
+        if (list != null && list.CastName == name && !list.Stale) return list;
+
+        // Members with the same name are the same character: what they already play shows which archive it uses.
+        var cast = _cutscene.Cast;
+        var played = _cutscene.Keyframes
+            .Where(k => k.AnimationHash != null && k.Actor < cast.Count && cast[k.Actor].Name == name)
+            .Select(k => k.AnimationHash!.Value);
+        var choices = Animations.ChoicesFor(name, played);
+        if (list != null && list.CastName == name && list.Choices.Archives.SequenceEqual(choices.Archives))
+        {
+            list.Stale = false; // the same list: the boxes keep it
+            return list;
+        }
+
+        var items = choices.Animations.Select(a => new CutsceneChoice(
+                a.InAll ? a.Name : $"{a.Name} ({string.Join(", ", a.Archives.Select(Path.GetFileNameWithoutExtension))} only)",
+                $"{a.Name}.anm, in {string.Join(", ", a.Archives)}"))
+            .ToList();
+        list = new AnimationList(name, choices, items);
+        _animationLists[actor] = list;
+        return list;
+    }
+
+    /// <summary>Checks the animation lists again after the cast or the keyframes changed.</summary>
+    private void RefreshAnimationLists()
+    {
+        foreach (var list in _animationLists.Values) list.Stale = true;
+        foreach (var row in Keyframes) row.RefreshChoices();
+    }
+
+    /// <summary>
+    /// What a "Play animation" keyframe's "animation" box shows: the animation's name, 0x… for a code no archive
+    /// has, or #n for a position in the character's list.
+    /// </summary>
+    internal string AnimationText(CutsceneKeyframe keyframe)
+    {
+        if (keyframe.AnimationPosition is { } position) return "#" + position.ToString(CultureInfo.InvariantCulture);
+        if (keyframe.AnimationHash is not { } hash) return "";
+        return Animations.NameOf(hash, AnimationChoices(keyframe.Actor)) ?? $"0x{hash:X8}";
+    }
+
+    /// <summary>What a "Play animation" keyframe's "mode" box shows, e.g. "1 · Play and hold".</summary>
+    internal static string ModeText(CutsceneKeyframe keyframe) => keyframe.AnimationMode is not { } mode
+        ? ""
+        : CutsceneAnimations.ModeOf(mode)?.Text ?? mode.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>The first word of what was typed or picked ("elf_b_death1 (elf only)" gives "elf_b_death1").</summary>
+    private static string FirstWord(string text)
+    {
+        var trimmed = text.Trim();
+        var end = trimmed.IndexOfAny(new[] { ' ', '\t' });
+        return end < 0 ? trimmed : trimmed[..end];
+    }
+
+    /// <summary>
+    /// Applies an "animation" box: a name from the list (or another archive's, any case, with or without .anm),
+    /// 0x… for a code, or #n for a position. Returns why it can't be applied, or null.
+    /// </summary>
+    internal string? ApplyAnimation(CutsceneKeyframeViewModel row, string draft)
+    {
+        if (_cutscene == null) return null;
+        var keyframe = row.Keyframe;
+        var text = FirstWord(draft);
+        if (text.Length == 0) return "Enter an animation, such as nw_deatha.";
+
+        if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!int.TryParse(text[2..], NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var hash))
+            {
+                return "Enter a code such as 0x603A8D34, or pick an animation from the list.";
+            }
+
+            if (keyframe.AnimationHash != hash) ApplyKeyframe(row, () => _cutscene.SetAnimationHash(keyframe, hash));
+            return null;
+        }
+
+        if (text.StartsWith('#'))
+        {
+            if (!int.TryParse(text[1..], NumberStyles.None, CultureInfo.InvariantCulture, out var position))
+            {
+                return "Enter a position such as #0, or pick an animation from the list.";
+            }
+
+            if (keyframe.AnimationPosition != position) ApplyKeyframe(row, () => _cutscene.SetAnimationPosition(keyframe, position));
+            return null;
+        }
+
+        // When the game is known to use these archives (players, townspeople), the name must be one of theirs;
+        // archives that were worked out from the keyframes may be wrong, so another archive's animation is allowed.
+        var choices = AnimationChoices(keyframe.Actor);
+        var name = choices.Find(text)?.Name ?? (choices.IsCertain ? null : Animations.FindName(text));
+        if (name == null)
+        {
+            var problem = EditableCutscene.CheckAnimationName(text);
+            if (problem != null) return problem;
+            if (Animations.Archives.Count > 0)
+            {
+                return choices.Archives.Count > 0
+                    ? $"{CutsceneAnimations.ShortName(text)} isn't one of {CastName(keyframe.Actor)}'s animations " +
+                      $"({string.Join(", ", choices.Archives)}). Pick one from the list."
+                    : $"No archive here has {CutsceneAnimations.FileName(text)}.";
+            }
+
+            name = text; // no archives to check against
+        }
+
+        if (keyframe.AnimationHash != CutsceneAnimations.Hash(CutsceneAnimations.FileName(name)))
+        {
+            ApplyKeyframe(row, () => _cutscene.SetAnimation(keyframe, name));
+        }
+
+        return null;
+    }
+
+    /// <summary>Applies a "mode" box ("1 · Play and hold", or just its number). Returns why it can't be applied, or null.</summary>
+    internal string? ApplyAnimationMode(CutsceneKeyframeViewModel row, string draft)
+    {
+        if (_cutscene == null) return null;
+        if (!int.TryParse(FirstWord(draft), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var mode))
+        {
+            return "Pick a play mode from the list.";
+        }
+
+        var problem = EditableCutscene.CheckAnimationMode(mode);
+        if (problem != null) return problem;
+        if (row.Keyframe.AnimationMode != mode) ApplyKeyframe(row, () => _cutscene.SetAnimationMode(row.Keyframe, mode));
+        return null;
+    }
+
+    /// <summary>
+    /// Names a cast member can have: the player stand-ins, then the characters the game's object factory makes
+    /// (townspeople, creatures and monsters).
+    /// </summary>
+    internal static readonly IReadOnlyList<CutsceneChoice> CastNameChoices = new[]
+        {
+            new CutsceneChoice("Player", "Player 1's stand-in: the character player 1 chose."),
+            new CutsceneChoice("Player2", "Player 2's stand-in (only in games with 2 or more players)."),
+            new CutsceneChoice("Player3",
+                "Player 3's stand-in (only in three-player games, with the ADRIANNA23 executable or later).")
+        }
+        .Concat(BgdaObjectClasses.All
+            .Where(c => c.Kind is BgdaObjectKind.Npc or BgdaObjectKind.Ambient or BgdaObjectKind.Monster)
+            .OrderBy(c => c.Kind switch { BgdaObjectKind.Npc => 0, BgdaObjectKind.Monster => 1, _ => 2 })
+            .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(c => new CutsceneChoice(c.Name, c.Kind switch
+            {
+                BgdaObjectKind.Npc => "Townsperson or story character",
+                BgdaObjectKind.Ambient => "Harmless creature",
+                _ => "Monster (it may fight)"
+            } + (c.Archive != null ? $" · {c.Archive}" : ""))))
+        .ToList();
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Editing
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -270,26 +476,40 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
         if (added != null) RevealRequested?.Invoke(added);
     }
 
-    /// <summary>How far to the side (+X) a copy of a cast member starts: 32 units for each member with its name.</summary>
-    internal const float CopySpacing = 32;
+    /// <summary>How far apart along X copies of a cast member start (see <see cref="CopySlot"/>).</summary>
+    internal const float CopySpacing = 48;
 
+    /// <summary>
+    /// Where along X copy <paramref name="slot"/> (1, 2, 3, …) starts from the first member of its kind:
+    /// 48 units one way, 48 the other way, then 96, -96, and so on.
+    /// </summary>
+    internal static float CopySlot(int slot) => CopySpacing * ((slot + 1) / 2) * (slot % 2 == 1 ? 1 : -1);
+
+    /// <summary>
+    /// Copies a cast member with its keyframes. Player stand-ins count as one kind and anyone else goes by name: the
+    /// copy starts at the first free place beside the first of its kind (<see cref="CopySlot"/>), with its Move to
+    /// points moved by the same amount.
+    /// </summary>
     private void CopyCast(CutsceneActorViewModel row)
     {
         if (_cutscene == null || IsReadOnly || row.Index >= _cutscene.Cast.Count) return;
         var actor = _cutscene.Cast[row.Index];
         var name = _cutscene.SuggestCopyName(actor);
-        var stem = Stem(actor.Name);
-        var offset = CopySpacing * _cutscene.Cast.Count(a => Stem(a.Name) == stem);
+        var kind = _cutscene.Cast.Where(a => CutsceneActor.IsPlayerName(actor.Name)
+            ? CutsceneActor.IsPlayerName(a.Name)
+            : a.Name == actor.Name).ToList();
+        var first = kind[0];
+        var slot = Enumerable.Range(1, EditableCutscene.MaxCast)
+            .First(s => kind.All(a => Math.Abs(a.X - (first.X + CopySlot(s))) >= CopySpacing / 2));
+        var dx = first.X + CopySlot(slot) - actor.X;
         try
         {
-            Apply(CastFocus, () => _cutscene.CopyActor(actor, name, offset, 0, 0, withKeyframes: true));
+            Apply(CastFocus, () => _cutscene.CopyActor(actor, name, dx, 0, 0, withKeyframes: true));
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
         {
             row.Values[0].SetError(ex.Message);
         }
-
-        static string Stem(string name) => name.TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
     }
 
     private void RemoveCast(CutsceneActorViewModel row)
@@ -328,6 +548,7 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
             foreach (var row in Keyframes) row.Rebind(row.Keyframe);
         }
 
+        RefreshAnimationLists();
         UpdateSections();
         OnPropertyChanged(nameof(Summary));
     }
@@ -437,6 +658,7 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
             foreach (var value in TextValues.Concat(PositionValues)) Track(value);
         }
 
+        RefreshAnimationLists();
         foreach (var value in Values) value.Refresh();
         foreach (var actor in Cast) actor.Refresh();
         UpdateSections();
@@ -678,8 +900,9 @@ public sealed class CutsceneActorViewModel : ObservableObject
         Values = new[]
         {
             new CutsceneValueViewModel(owner, "name", Context,
-                "The character this cast member is, e.g. Player or Karne. Change it only to another character the " +
-                "level has, or the scene may not find them.", 150, null,
+                "The character this cast member is: Player, Player2 or Player3, or a character class such as Thief1 " +
+                "or Karne (the list). Pick a character whose archive the level loads, or it may not appear; " +
+                "its animations come from that archive.", 150, null,
                 () => owner.Cutscene == null ? "" : Actor().Name,
                 draft =>
                 {
@@ -688,7 +911,8 @@ public sealed class CutsceneActorViewModel : ObservableObject
                     if (problem != null) return problem;
                     if (name != Actor().Name) owner.ApplyCast(() => owner.Cutscene!.SetName(Actor(), name));
                     return null;
-                }),
+                },
+                () => CutsceneEditorViewModel.CastNameChoices),
             Coordinate(owner, 0, Actor, Context),
             Coordinate(owner, 1, Actor, Context),
             Coordinate(owner, 2, Actor, Context),
@@ -841,7 +1065,7 @@ public sealed class CutsceneKeyframeViewModel : ObservableObject
     /// <summary>The stored parameters of an action that can't be edited (or ""); for "Face", who it turns towards.</summary>
     public string RawText => Keyframe.FaceTarget is { } target
         ? target < 0 ? "no one (stops facing)" : $"towards {_owner.CastName(target)}"
-        : Keyframe.RawText;
+        : Keyframe.IsPlayAnimation ? "" : Keyframe.RawText;
 
     public bool HasRawText => RawText.Length > 0;
 
@@ -856,8 +1080,8 @@ public sealed class CutsceneKeyframeViewModel : ObservableObject
         (CutsceneActorKind.Cast, 0) => "Makes the cast member walk to a point in the level (world units).",
         (CutsceneActorKind.Cast, 1) => "Turns the cast member towards another one, or stops it (no one). What it does " +
                                        "exactly isn't certain. It refers to the other member by position in the cast.",
-        (CutsceneActorKind.Cast, 2) => "Plays an animation on the cast member. The animation is stored as a code, " +
-                                       "so it can't be changed here.",
+        (CutsceneActorKind.Cast, 2) => "Plays an animation on the cast member: which one (from the archive of the " +
+                                       "character it is) and how (mode).",
         _ when Fields.Count > 0 => "What this value does isn't known for certain.",
         _ => "What this event does isn't known. You can move it in time, copy it or delete it."
     };
@@ -892,13 +1116,50 @@ public sealed class CutsceneKeyframeViewModel : ObservableObject
 
     internal void RefreshWho() => OnPropertyChanged(nameof(Who));
 
+    /// <summary>Re-reads the lists of the row's boxes (the cast member's animations may have changed).</summary>
+    internal void RefreshChoices()
+    {
+        foreach (var field in Fields)
+        {
+            if (field.HasChoices) field.RefreshChoices();
+        }
+    }
+
     internal bool Matches(string filter) =>
         Who.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
         What.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
         RawText.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
         Values.Any(v => v.Value.Contains(filter, StringComparison.OrdinalIgnoreCase));
 
-    private IReadOnlyList<CutsceneValueViewModel> BuildFields() => Keyframe.Fields.Select(field =>
+    private IReadOnlyList<CutsceneValueViewModel> BuildFields() =>
+        Keyframe.IsPlayAnimation ? BuildAnimationFields() : BuildValueFields();
+
+    /// <summary>A "Play animation" keyframe's boxes: which animation (from a list) and how (mode).</summary>
+    private IReadOnlyList<CutsceneValueViewModel> BuildAnimationFields() => new[]
+    {
+        new CutsceneValueViewModel(_owner, "animation", () => Context,
+            "Which animation to play: pick one of the cast member's animations, or type its name. A name marked " +
+            "\"(elf only)\" plays only when that player is that character. 0x… is a code no archive here has; " +
+            "#n picks by position in the character's own list.",
+            170, null,
+            () => _owner.AnimationText(Keyframe),
+            draft => _owner.ApplyAnimation(this, draft),
+            () => _owner.AnimationItems(Keyframe.Actor),
+            note: () => _owner.AnimationChoices(Keyframe.Actor) is { Archives.Count: > 0 } choices
+                ? $"From {choices.Source}."
+                : "No archive with this cast member's animations was found in the GOB or its folder."),
+        new CutsceneValueViewModel(_owner, "mode", () => Context,
+            "How to play it. Characters play animations in layers: a new one goes on top and blends in.",
+            190, null,
+            () => CutsceneEditorViewModel.ModeText(Keyframe),
+            draft => _owner.ApplyAnimationMode(this, draft),
+            () => CutsceneEditorViewModel.ModeChoices, choicesOnly: true,
+            note: () => Keyframe.AnimationMode is { } mode && CutsceneAnimations.ModeOf(mode) is { } known
+                ? known.Description
+                : "The game doesn't know this mode: the animation doesn't play.")
+    };
+
+    private IReadOnlyList<CutsceneValueViewModel> BuildValueFields() => Keyframe.Fields.Select(field =>
     {
         var (unit, width, hint) = field.Kind switch
         {
@@ -928,7 +1189,13 @@ public sealed class CutsceneKeyframeViewModel : ObservableObject
     }).ToList();
 }
 
-/// <summary>A value box in the Cutscene view.</summary>
+/// <summary>A value to pick from a box's list: what goes in the box, and what it means (its tooltip).</summary>
+public sealed record CutsceneChoice(string Text, string? ToolTip)
+{
+    public override string ToString() => Text;
+}
+
+/// <summary>A value box in the Cutscene view: a text box, or a box with a list to pick from.</summary>
 public sealed class CutsceneValueViewModel : EditValueViewModel
 {
     private readonly CutsceneEditorViewModel _owner;
@@ -937,10 +1204,16 @@ public sealed class CutsceneValueViewModel : EditValueViewModel
     private readonly string _description;
     private readonly Func<string> _read;
     private readonly Func<string, string?> _apply;
+    private readonly Func<IReadOnlyList<CutsceneChoice>>? _choices;
+    private readonly Func<string>? _note;
 
     /// <param name="apply">Applies a draft (through the editor, as an undoable step) and returns an error, or null.</param>
+    /// <param name="choices">The values the box's list offers; null for a plain text box.</param>
+    /// <param name="choicesOnly">Only the list's values can be picked (nothing can be typed).</param>
+    /// <param name="note">More about the current value, added to the tooltip.</param>
     public CutsceneValueViewModel(CutsceneEditorViewModel owner, string name, Func<string> context, string description,
-        double boxWidth, string? unit, Func<string> read, Func<string, string?> apply)
+        double boxWidth, string? unit, Func<string> read, Func<string, string?> apply,
+        Func<IReadOnlyList<CutsceneChoice>>? choices = null, bool choicesOnly = false, Func<string>? note = null)
     {
         _owner = owner;
         _name = name;
@@ -948,9 +1221,32 @@ public sealed class CutsceneValueViewModel : EditValueViewModel
         _description = description;
         _read = read;
         _apply = apply;
+        _choices = choices;
+        _note = note;
+        ChoicesOnly = choicesOnly;
         BoxWidth = boxWidth;
         Unit = unit;
         Refresh();
+    }
+
+    /// <summary>The values the box's list offers, or null for a plain text box.</summary>
+    public IReadOnlyList<CutsceneChoice>? Choices => _choices?.Invoke();
+
+    /// <summary>The box has a list to pick from.</summary>
+    public bool HasChoices => _choices != null;
+
+    /// <summary>Only the list's values can be picked: nothing can be typed in the box.</summary>
+    public bool ChoicesOnly { get; }
+
+    /// <summary>Re-reads the list (the cast member's animations may have changed).</summary>
+    internal void RefreshChoices()
+    {
+        var draft = Draft;
+        OnPropertyChanged(nameof(Choices));
+        // An editable ComboBox empties its text when its list is replaced by one without the selected item:
+        // put back what the box held.
+        if (Draft != draft) Draft = draft;
+        RefreshToolTip();
     }
 
     public override string Name => _name;
@@ -969,6 +1265,7 @@ public sealed class CutsceneValueViewModel : EditValueViewModel
     protected override IEnumerable<string> Describe()
     {
         yield return _description;
+        if (_note?.Invoke() is { Length: > 0 } note) yield return note;
     }
 
     public override void Commit() => _owner.Commit(this, _apply);

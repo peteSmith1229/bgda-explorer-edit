@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -7,8 +8,8 @@ namespace WorldExplorer.Views;
 
 /// <summary>
 /// Shows a cutscene's settings, cast and keyframes and lets their values be
-/// changed. A value is applied on Enter or when the box loses focus; Esc puts
-/// the current value back.
+/// changed. A value is applied on Enter or when the box loses focus (a box with
+/// a list also when the list closes on a choice); Esc puts the current value back.
 /// </summary>
 public partial class CutsceneView : UserControl
 {
@@ -55,6 +56,18 @@ public partial class CutsceneView : UserControl
 
     private void ValueBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
         => ValueOf(sender)?.Commit();
+
+    /// <summary>A value picked from a list is applied as soon as the list closes on it.</summary>
+    private void Choice_DropDownClosed(object? sender, EventArgs e)
+    {
+        if (sender is ComboBox { SelectedItem: not null }) ValueOf(sender)?.Commit();
+    }
+
+    /// <summary>What was typed in a box with a list is applied when the focus leaves the box and its list.</summary>
+    private void Choice_IsKeyboardFocusWithinChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is false && sender is ComboBox { IsDropDownOpen: false }) ValueOf(sender)?.Commit();
+    }
 
     private void Find_Executed(object sender, ExecutedRoutedEventArgs e)
     {

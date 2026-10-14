@@ -36,10 +36,52 @@
             </Style.Triggers>
         </Style>
 
+        <!-- A value with a list to pick from (an animation, a play mode, a cast member's character); it can be typed
+             in too unless only the list's values are allowed (ChoicesOnly). What is typed or picked is applied on
+             Enter, when the list closes on a choice, or when the box loses focus. -->
+        <Style x:Key="ChoiceBox" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="Padding" Value="6,2,26,2" />
+            <Setter Property="FontFamily" Value="{StaticResource Font.Mono}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Width" Value="{Binding BoxWidth}" />
+            <Setter Property="IsEditable" Value="True" />
+            <Setter Property="IsTextSearchEnabled" Value="True" />
+            <Setter Property="StaysOpenOnEdit" Value="True" />
+            <Setter Property="MaxDropDownHeight" Value="320" />
+            <Setter Property="ItemsSource" Value="{Binding Choices}" />
+            <Setter Property="DisplayMemberPath" Value="Text" />
+            <Setter Property="TextSearch.TextPath" Value="Text" />
+            <Setter Property="Text" Value="{Binding Draft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <Setter Property="ToolTip" Value="{Binding ToolTip}" />
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+                        <Setter Property="ToolTip" Value="{Binding ToolTip}" />
+                    </Style>
+                </Setter.Value>
+            </Setter>
+            <EventSetter Event="KeyDown" Handler="ValueBox_KeyDown" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ChoicesOnly}" Value="True">
+                    <Setter Property="IsEditable" Value="False" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsModified}" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Modified}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding HasError}" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Danger}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <!-- A value's box (or the value itself, when read-only), its unit, and change or error markers. -->
         <DataTemplate x:Key="BoxTemplate" DataType="{x:Type local:CutsceneValueViewModel}">
             <StackPanel Orientation="Horizontal">
                 <TextBox x:Name="Box" Style="{StaticResource ValueBox}" />
+                <ComboBox x:Name="Choice" Style="{StaticResource ChoiceBox}" Visibility="Collapsed"
+                          DropDownClosed="Choice_DropDownClosed"
+                          IsKeyboardFocusWithinChanged="Choice_IsKeyboardFocusWithinChanged" />
                 <Border x:Name="Fixed" Visibility="Collapsed" Background="{DynamicResource Brush.SurfaceAlt}"
                         CornerRadius="4" Padding="7,4" VerticalAlignment="Center" ToolTip="{Binding ToolTip}">
                     <TextBlock Text="{Binding Value}" FontFamily="{StaticResource Font.Mono}" FontSize="12"
@@ -56,8 +98,13 @@
                 </Border>
             </StackPanel>
             <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding HasChoices}" Value="True">
+                    <Setter TargetName="Box" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="Choice" Property="Visibility" Value="Visible" />
+                </DataTrigger>
                 <DataTrigger Binding="{Binding IsEditable}" Value="False">
                     <Setter TargetName="Box" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="Choice" Property="Visibility" Value="Collapsed" />
                     <Setter TargetName="Fixed" Property="Visibility" Value="Visible" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsModified}" Value="True">
@@ -242,7 +289,7 @@
                 <DockPanel Visibility="{Binding ShowCast, Converter={StaticResource BoolToVisibility}}">
                     <TextBlock DockPanel.Dock="Top" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
                                Margin="16,12,16,4" MaxWidth="760" HorizontalAlignment="Left"
-                               Text="Keyframes refer to cast members by their number. A copy goes at the end of the cast, with copies of the member's keyframes, so nothing else changes. Removing a member removes its keyframes and renumbers the members after it. Player and Player2 are players 1 and 2; with the ADRIANNA23 executable, Player3 is player 3." />
+                               Text="Keyframes refer to cast members by their number. A copy goes at the end of the cast, with copies of the member's keyframes, so nothing else changes. Removing a member removes its keyframes and renumbers the members after it. Player and Player2 are players 1 and 2; with the ADRIANNA23 executable, Player3 is player 3. Any other name is a character class: pick one from the name's list to make a copy someone else." />
                     <ListBox ItemsSource="{Binding Cast}" Padding="6" ItemContainerStyle="{StaticResource RowItem}"
                              KeyboardNavigation.TabNavigation="Continue">
                         <ListBox.ItemTemplate>
@@ -261,7 +308,7 @@
                                                 controls:ControlAssist.Icon="{StaticResource Icon.Duplicate}"
                                                 Command="{Binding DataContext.CopyCastCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
-                                                ToolTip="Copy this cast member with its keyframes. The copy goes at the end of the cast with the next name (Player → Player2 → Player3) and starts 32 units further along X for each copy (its Move to points too); its keyframes happen at the same times." />
+                                                ToolTip="Copy this cast member with its keyframes, at the end of the cast. A player's copy is the next player (Player → Player2 → Player3); anyone else's keeps the name (another Thief1). The copy starts 48 units to one side along X, the next one 48 to the other side, then 96…, and its Move to points move with it; its keyframes happen at the same times." />
                                         <Button Style="{StaticResource Button.Subtle}"
                                                 controls:ControlAssist.Icon="{StaticResource Icon.Delete}"
                                                 Command="{Binding DataContext.RemoveCastCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"

@@ -21,7 +21,7 @@ public enum CutsceneText
 /// A Baldur's Gate: Dark Alliance cutscene (.cut) that can be changed and
 /// written back: the header's sound and subtitle names and its position, the
 /// cast (name, start position, facing; copy or remove a member) and the
-/// keyframes (time and values; copy or delete them).
+/// keyframes (time, values, which animation plays and how; copy or delete them).
 /// <para>
 /// Layout: a header, the cast (0x2C bytes each), the keyframes (0x14 bytes
 /// each, in time order) and, in every scene shipped with the game, room for
@@ -264,27 +264,16 @@ public sealed class EditableCutscene
     }
 
     /// <summary>
-    /// A name for a copy of <paramref name="actor"/> that isn't in the cast yet: the name with the next
-    /// number, e.g. Player → Player2 → Player3, Thief1 → Thief2.
+    /// A name for a copy of <paramref name="actor"/>. A player stand-in's copy is the first player the cast
+    /// doesn't have yet (Player → Player2 → Player3; with all three, the same name). Anyone else's copy keeps
+    /// the name: it is the character's class, so another Thief1 is "Thief1" (Thief2 and Thief3 are other
+    /// characters with their own animations).
     /// </summary>
     public string SuggestCopyName(CutsceneActor actor)
     {
         CheckOwner(actor);
-        var name = actor.Name;
-        var digits = name.Length;
-        while (digits > 0 && char.IsAsciiDigit(name[digits - 1])) digits--;
-        var stem = name[..digits];
-        var number = digits < name.Length && int.TryParse(name[digits..], out var n) ? n : 1;
-        var taken = _cast.Select(a => a.Name).ToHashSet(StringComparer.Ordinal);
-        string candidate;
-        do
-        {
-            number++;
-            var suffix = number.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            candidate = stem[..Math.Min(stem.Length, MaxNameLength - suffix.Length)] + suffix;
-        } while (taken.Contains(candidate));
-
-        return candidate;
+        if (!CutsceneActor.IsPlayerName(actor.Name)) return actor.Name;
+        return CutsceneActor.PlayerNames.FirstOrDefault(player => _cast.All(a => a.Name != player)) ?? actor.Name;
     }
 
     /// <summary>Why <paramref name="actor"/> can't be copied, or null when it can.</summary>
@@ -444,6 +433,77 @@ public sealed class EditableCutscene
         var index = RequireIndex(keyframe);
         if (_keyframes.Count == 1) throw new InvalidOperationException("A cutscene needs at least one keyframe.");
         _keyframes.RemoveAt(index);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Animations ("Play animation" keyframes)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>Why <paramref name="name"/> can't name an animation ("nw_deatha" or "nw_deatha.anm"), or null when it can.</summary>
+    public static string? CheckAnimationName(string name)
+    {
+        if (name.Length == 0) return "Enter an animation, such as nw_deatha.";
+        var longest = CutsceneAnimations.MaxFileNameLength - CutsceneAnimations.Extension.Length;
+        if (CutsceneAnimations.FileName(name).Length > CutsceneAnimations.MaxFileNameLength)
+        {
+            return $"Use {longest} characters or fewer.";
+        }
+
+        return name.Any(c => c <= 0x20 || c > 0x7E) ? "Use plain ASCII letters, digits and punctuation, without spaces." : null;
+    }
+
+    /// <summary>
+    /// Makes a "Play animation" keyframe play the animation file <paramref name="name"/> ("nw_deatha" or
+    /// "nw_deatha.anm") of the character's archive. The keyframe then names its animation by hash; its play
+    /// mode stays.
+    /// </summary>
+    public void SetAnimation(CutsceneKeyframe keyframe, string name)
+    {
+        RequireAnimation(keyframe);
+        Require(CheckAnimationName(name));
+        SetAnimationHash(keyframe, CutsceneAnimations.Hash(CutsceneAnimations.FileName(name)));
+    }
+
+    /// <summary>Makes a "Play animation" keyframe name its animation by <paramref name="hash"/> (see <see cref="CutsceneAnimations.Hash"/>).</summary>
+    public void SetAnimationHash(CutsceneKeyframe keyframe, int hash)
+    {
+        RequireAnimation(keyframe);
+        keyframe.SetParameter(0, hash);
+        keyframe.SetParameter(2, CutsceneAnimations.ByName);
+    }
+
+    /// <summary>
+    /// Makes a "Play animation" keyframe pick its animation by <paramref name="position"/> in the character's
+    /// list (counting from 0), as intro2p.cut does.
+    /// </summary>
+    public void SetAnimationPosition(CutsceneKeyframe keyframe, int position)
+    {
+        RequireAnimation(keyframe);
+        if (position < 0) throw new ArgumentException("Enter a position from 0.", nameof(position));
+        keyframe.SetParameter(0, position);
+        if (keyframe.Parameters[2] == CutsceneAnimations.ByName) keyframe.SetParameter(2, 0);
+    }
+
+    /// <summary>Why <paramref name="mode"/> can't be a play mode, or null when it can.</summary>
+    public static string? CheckAnimationMode(int mode) => CutsceneAnimations.ModeOf(mode) != null
+        ? null
+        : $"Choose a play mode from 0 to {CutsceneAnimations.Modes.Count - 1}.";
+
+    /// <summary>Sets how a "Play animation" keyframe plays its animation (see <see cref="CutsceneAnimations.Modes"/>).</summary>
+    public void SetAnimationMode(CutsceneKeyframe keyframe, int mode)
+    {
+        RequireAnimation(keyframe);
+        Require(CheckAnimationMode(mode));
+        keyframe.SetParameter(1, mode);
+    }
+
+    private void RequireAnimation(CutsceneKeyframe keyframe)
+    {
+        RequireIndex(keyframe);
+        if (!keyframe.IsPlayAnimation)
+        {
+            throw new ArgumentException("The keyframe doesn't play an animation.", nameof(keyframe));
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
