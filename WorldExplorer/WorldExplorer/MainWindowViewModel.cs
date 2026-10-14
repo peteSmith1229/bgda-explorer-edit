@@ -73,6 +73,9 @@ public class MainWindowViewModel : ObservableObject
     private CutsceneEditorViewModel? _cutsceneEditor;
     private bool _updatingViews;
 
+    /// <summary>Details shows the selected entry's hex dump (shown again when its length setting changes).</summary>
+    private bool _showsHexDump;
+
     // Level decoding runs on a worker thread; the gate keeps two decodes from
     // sharing a level texture cache at the same time.
     private readonly SemaphoreSlim _decodeGate = new(1, 1);
@@ -217,6 +220,7 @@ public class MainWindowViewModel : ObservableObject
 
             LogText = null;
             DetailsTitle = null;
+            _showsHexDump = false;
             ScriptEditor = null;
             CutsceneEditor = null;
 
@@ -422,6 +426,12 @@ public class MainWindowViewModel : ObservableObject
             ApplyGame(value);
             if (World != null) _ = MainWindow.ReloadAsync();
         }
+    }
+
+    /// <summary>Shows the selection again if Details is showing its hex dump (after the dump's length setting changed).</summary>
+    public void RefreshHexDump()
+    {
+        if (_showsHexDump) SelectedNode = _selectedNode;
     }
 
     /// <summary>Stores and announces a game change without reloading.</summary>
@@ -1273,8 +1283,9 @@ public class MainWindowViewModel : ObservableObject
         catch (Exception ex)
         {
             LogText = $"Failed to decode {lmpEntry.Label} as {ext}: {ex.GetType().Name}: {ex.Message}\n\n"
-                      + HexDump(data.Data, data.Offset, Math.Min(data.Length, 256));
+                      + HexDumpStart(data);
             DetailsTitle = "Decode failed";
+            _showsHexDump = true;
             ShowViews(ContentView.Details, ContentView.Details);
         }
     }
@@ -1386,6 +1397,19 @@ public class MainWindowViewModel : ObservableObject
             sb.AppendFormat("  {0:D4}: {1}\n", i / 32, name);
         }
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// The start of an entry as a hex dump, as many bytes as the Hex dump
+    /// length setting allows, after a line saying how much of the entry it is.
+    /// </summary>
+    private static string HexDumpStart(EntryData data)
+    {
+        var length = Math.Min(data.Length, App.HexDumpLengthSetting);
+        var extent = length == data.Length
+            ? $"All {data.Length:N0} bytes:"
+            : $"First {length:N0} of {data.Length:N0} bytes (change how many in Settings):";
+        return $"{extent}\n\n{HexDump(data.Data, data.Offset, length)}";
     }
 
     private static string HexDump(byte[] data, int offset, int length)
@@ -1650,9 +1674,9 @@ public class MainWindowViewModel : ObservableObject
                 break;
             }
             default:
-                LogText = $"{lmpEntry.Label}\nNo decoder for extension '{ext}'. First {Math.Min(data.Length, 256)} bytes:\n\n"
-                          + HexDump(data.Data, data.Offset, Math.Min(data.Length, 256));
+                LogText = $"{lmpEntry.Label}\nNo decoder for extension '{ext}'. {HexDumpStart(data)}";
                 DetailsTitle = "Hex dump";
+                _showsHexDump = true;
                 ShowViews(ContentView.Details, ContentView.Details);
                 break;
         }

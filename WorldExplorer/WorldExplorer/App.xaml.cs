@@ -23,6 +23,33 @@ public partial class App
     /// </summary>
     public static bool ForceOpaqueSetting => Settings.Get("Textures.ForceOpaque", true);
 
+    /// <summary>How many bytes a hex dump in Details shows unless the user changes it.</summary>
+    public const int DefaultHexDumpLength = 256;
+
+    /// <summary>Fewest and most bytes the Hex dump length setting allows (a line of the dump is 16 bytes).</summary>
+    public const int MinHexDumpLength = 16;
+    public const int MaxHexDumpLength = 1024 * 1024;
+
+    /// <summary>
+    /// "Hex dump length": how many bytes of an entry the Details view shows as
+    /// a hex dump when there is no decoder for it or decoding it fails.
+    /// </summary>
+    public static int HexDumpLengthSetting
+    {
+        get
+        {
+            try
+            {
+                return Math.Clamp(Settings.Get("Details.HexDumpLength", DefaultHexDumpLength),
+                    MinHexDumpLength, MaxHexDumpLength);
+            }
+            catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException)
+            {
+                return DefaultHexDumpLength; // not a number, e.g. in a hand-edited settings.ini
+            }
+        }
+    }
+
     /// <summary>A file passed on the command line (e.g. "Open with…"), opened at startup.</summary>
     public static string? StartupFile { get; private set; }
 

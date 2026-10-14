@@ -42,6 +42,8 @@ Alliance II files are read with the Dark Alliance formats for now.
   the file is saved; you are asked before unsaved changes would be lost.
 - Level textures for a GOB come from the `.TEX` file with the same name next to it (e.g. `TAVERN.TEX`). They
   are drawn opaque by default; turn off Force opaque in Settings to see their transparency.
+- Entries without a decoder, or that fail to decode, are shown in Details as a hex dump of their first 256
+  bytes. Change Hex dump length in Settings (16 to 1,048,576 bytes) to see more or less of them.
 
 Press F1 in the app for every keyboard shortcut. Dark and light themes are available (Ctrl+Shift+T).
 

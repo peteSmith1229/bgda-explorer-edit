@@ -775,9 +775,15 @@ public partial class MainWindow : Window
     {
         var previousGame = ViewModel.SelectedGame;
         var previousOpaque = App.ForceOpaqueSetting;
+        var previousHexDumpLength = App.HexDumpLengthSetting;
 
         var window = new SettingsWindow { Owner = this };
         if (window.ShowDialog() != true) return;
+
+        if (App.HexDumpLengthSetting != previousHexDumpLength)
+        {
+            ViewModel.RefreshHexDump();
+        }
 
         var newGame = GameOption.FromSettings();
         var opaqueChanged = App.ForceOpaqueSetting != previousOpaque;
