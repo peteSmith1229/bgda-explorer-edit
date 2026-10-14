@@ -66,6 +66,28 @@
                 <Slider x:Name="gizmoSizeSlider" Minimum="0.5" Maximum="10" TickFrequency="0.5"
                         IsSnapToTickEnabled="True" VerticalAlignment="Center" />
             </DockPanel>
+
+            <!-- ── Details view ── -->
+            <TextBlock Text="DETAILS VIEW" Style="{StaticResource Heading}" />
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Hex dump length" VerticalAlignment="Center" Margin="0,0,14,0"
+                           Foreground="{DynamicResource Brush.TextSecondary}" />
+                <TextBox x:Name="hexDumpLengthBox" Width="100" TextAlignment="Right" MaxLength="7"
+                         InputMethod.IsInputMethodEnabled="False"
+                         ToolTip="A whole number of bytes. Up and Down go to the next or previous whole line of the dump (16 bytes)."
+                         PreviewTextInput="HexDumpLengthBox_PreviewTextInput"
+                         PreviewKeyDown="HexDumpLengthBox_PreviewKeyDown"
+                         DataObject.Pasting="HexDumpLengthBox_Pasting"
+                         TextChanged="HexDumpLengthBox_TextChanged" />
+                <TextBlock Text="bytes" VerticalAlignment="Center" Margin="8,0,0,0"
+                           Foreground="{DynamicResource Brush.TextSecondary}" />
+            </StackPanel>
+            <!-- Texts are set from the allowed range. The error shows over the hint, which keeps its space. -->
+            <Grid>
+                <TextBlock x:Name="hexDumpLengthHint" Style="{StaticResource Hint}" />
+                <TextBlock x:Name="hexDumpLengthError" Style="{StaticResource Hint}" Visibility="Collapsed"
+                           Foreground="{DynamicResource Brush.Danger}" />
+            </Grid>
         </StackPanel>
     </DockPanel>
 </Window>
