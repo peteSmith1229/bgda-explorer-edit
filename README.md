@@ -24,7 +24,15 @@ Alliance II files are read with the Dark Alliance formats for now.
   each character's name, starting position and facing; the keyframes, listed for the camera, the scene and
   each character, say what happens and when. Change a time or a value and press Enter, or copy or delete a
   keyframe: keyframes stay in time order, and undo and save work as for scripts. Actions whose meaning isn't
-  known yet show their stored numbers and can still be moved, copied or deleted.
+  known yet show their stored numbers and can still be moved, copied or deleted. "Play animation" keyframes
+  have two lists: the animation, from the archive of the character that plays it (found in the GOB and the
+  `.lmp` files in its folder; a player's list has what all three characters share first), and the play mode
+  (play once, hold, loop, gesture…). Cast members can be copied or removed too: keyframes refer to them by
+  number, so a copy (with copies of its keyframes, 48 units to one side, the next copy 48 to the other) goes
+  at the end of the cast, and removing one renumbers the keyframes of those after it. A copy of `Player` is
+  `Player2`, then `Player3`; a copy of anyone else keeps the name, and the name's list picks another
+  character. `Player` and `Player2` stand in for players 1 and 2; with the ADRIANNA23 executable, `Player3`
+  does for player 3 in three-player games.
 - **Tools** for the selected game are in the Tools menu, the Tools drop-down on the toolbar and the start page.
   For Dark Alliance: Executable Tuning (XP per level, starting stats, feats and spells, monster HP, three-player
   co-op and difficulty scaling, saved to a copy of `SLES_506.72`), the Save Game Editor (memory-card exports,

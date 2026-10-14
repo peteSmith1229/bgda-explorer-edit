@@ -66,6 +66,9 @@ public class MainWindowViewModel : ObservableObject
     /// <summary>Script and cutscene editors by entry, so each keeps its undo history while the file is open.</summary>
     private readonly Dictionary<(LmpFile Archive, string Entry), EntryEditorViewModel> _entryEditors = new();
 
+    /// <summary>The animations the open file's cutscenes can use (read when a cutscene first needs them).</summary>
+    private CutsceneAnimationCatalog? _cutsceneAnimations;
+
     private ScriptEditorViewModel? _scriptEditor;
     private CutsceneEditorViewModel? _cutsceneEditor;
     private bool _updatingViews;
@@ -682,6 +685,7 @@ public class MainWindowViewModel : ObservableObject
         World = null;
         _gobFile = null;
         _entryEditors.Clear();
+        _cutsceneAnimations = null;
         ScriptEditor = null;
         CutsceneEditor = null;
 
@@ -1425,6 +1429,20 @@ public class MainWindowViewModel : ObservableObject
         return created;
     }
 
+    /// <summary>
+    /// The animations the open file's cutscenes can use: those of the GOB's archives and of the separate archive
+    /// files (.lmp) in its folder and in the data folder of the settings, which hold the characters. Read once.
+    /// </summary>
+    private CutsceneAnimationCatalog CutsceneAnimationsOfFile()
+    {
+        if (_cutsceneAnimations != null) return _cutsceneAnimations;
+        var world = World;
+        if (world == null) return CutsceneAnimationCatalog.Empty;
+        _cutsceneAnimations = CutsceneAnimationCatalog.Read(world.WorldGob,
+            new[] { world.DataPath, App.Settings.Get("Files.DataPath", "") });
+        return _cutsceneAnimations;
+    }
+
     /// <summary>An entry editor changed its entry: update the title, tree markers and the Details text.</summary>
     private void OnEntryEdited(EntryEditorViewModel editor)
     {
@@ -1576,7 +1594,7 @@ public class MainWindowViewModel : ObservableObject
                 if (EngineVersion == EngineVersion.DarkAlliance && World != null)
                 {
                     CutsceneEditor = GetEntryEditor(lmpFile, lmpEntry.Label,
-                        changed => new CutsceneEditorViewModel(World, lmpFile, lmpEntry.Label, changed));
+                        changed => new CutsceneEditorViewModel(World, lmpFile, lmpEntry.Label, changed, CutsceneAnimationsOfFile));
                     ShowViews(ContentView.Cutscene, ContentView.Cutscene, ContentView.Details);
                 }
                 else

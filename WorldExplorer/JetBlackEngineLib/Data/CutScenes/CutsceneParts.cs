@@ -71,6 +71,7 @@ public static class CutsceneActions
         (CutsceneActorKind.Scene, 0) => "Next subtitle",
         (CutsceneActorKind.Scene, 3) => "Hide subtitle",
         (CutsceneActorKind.Cast, 0) => "Move to",
+        (CutsceneActorKind.Cast, 1) => "Face",
         (CutsceneActorKind.Cast, 2) => "Play animation",
         _ => $"Event {action}"
     };
@@ -121,7 +122,7 @@ public sealed class CutsceneKeyframe
     public float Time { get; internal set; }
 
     /// <summary>-100 for the camera, -99 for scene events, otherwise the cast member's index.</summary>
-    public short Actor { get; }
+    public short Actor { get; internal set; }
 
     public short Action { get; }
 
@@ -134,11 +135,39 @@ public sealed class CutsceneKeyframe
     /// <summary>The three raw parameters.</summary>
     public IReadOnlyList<int> Parameters => _parameters;
 
+    /// <summary>
+    /// For a cast member's "Face" keyframe: the index of the cast member it turns towards
+    /// (-1 = stops facing anyone); null for every other keyframe. Like <see cref="Actor"/>,
+    /// it refers to the cast by position.
+    /// </summary>
+    public int? FaceTarget => ActorKind == CutsceneActorKind.Cast && Action == 1 ? _parameters[0] : null;
+
+    /// <summary>True for a cast member's "Play animation" keyframe (see <see cref="CutsceneAnimations"/>).</summary>
+    public bool IsPlayAnimation => ActorKind == CutsceneActorKind.Cast && Action == CutsceneAnimations.Action;
+
+    /// <summary>
+    /// For a "Play animation" keyframe that names its animation: the <see cref="CutsceneAnimations.Hash"/> of the
+    /// animation's file name. Null when it picks the animation by position, and for every other keyframe.
+    /// </summary>
+    public int? AnimationHash => IsPlayAnimation && _parameters[2] == CutsceneAnimations.ByName ? _parameters[0] : null;
+
+    /// <summary>
+    /// For a "Play animation" keyframe that picks its animation by position in the character's list (counting
+    /// from 0): that position. Null otherwise.
+    /// </summary>
+    public int? AnimationPosition => IsPlayAnimation && _parameters[2] != CutsceneAnimations.ByName ? _parameters[0] : null;
+
+    /// <summary>For a "Play animation" keyframe: its play mode (see <see cref="CutsceneAnimations.Modes"/>). Null otherwise.</summary>
+    public int? AnimationMode => IsPlayAnimation ? _parameters[1] : null;
+
     /// <summary>The parameters of an action that can't be edited, as stored, or "" when there is nothing to show.</summary>
     public string RawText => (ActorKind, Action) switch
     {
         (CutsceneActorKind.Scene, _) => "", // what is stored here is left over from the authoring tool
-        (CutsceneActorKind.Cast, 2) => $"animation 0x{_parameters[0]:X8}, {_parameters[1]}",
+        (CutsceneActorKind.Cast, 1) => _parameters[0] < 0 ? "no one" : $"cast member {_parameters[0] + 1}",
+        (CutsceneActorKind.Cast, CutsceneAnimations.Action) => _parameters[2] == CutsceneAnimations.ByName
+            ? $"animation 0x{_parameters[0]:X8}, mode {_parameters[1]}"
+            : $"animation #{_parameters[0]} in the list, mode {_parameters[1]}",
         _ when Fields.Count > 0 => "",
         _ => string.Join(", ", _parameters.Select(p => $"0x{p:X8}"))
     };
@@ -158,6 +187,8 @@ public sealed class CutsceneKeyframe
     public bool WouldChange(CutsceneField field, double value) => ToRaw(field, value) != _parameters[field.Slot];
 
     internal void SetValue(CutsceneField field, double value) => _parameters[field.Slot] = ToRaw(field, value);
+
+    internal void SetParameter(int slot, int value) => _parameters[slot] = value;
 
     private static int ToRaw(CutsceneField field, double value) => field.Kind switch
     {
@@ -193,10 +224,12 @@ public sealed class CutsceneKeyframe
 public sealed class CutsceneActor
 {
     internal const int Size = 0x2C;
+    internal const int RuntimeSize = 0x08;     // +0x00 / +0x04: filled in by the game when the scene starts
     internal const int NameOffset = 0x08;
     internal const int NameSize = 0x14;
     private const int PositionOffset = 0x1C;
     private const int FacingOffset = 0x28;
+    private const int CreatedOffset = 0x2B;
 
     private readonly byte[] _data;
     private readonly int _offset;
@@ -208,8 +241,25 @@ public sealed class CutsceneActor
         Index = index;
     }
 
+    /// <summary>
+    /// The names the game makes player stand-ins for: players 1 and 2, and player 3 with the ADRIANNA23
+    /// executable or later. The game compares them exactly.
+    /// </summary>
+    public static readonly IReadOnlyList<string> PlayerNames = new[] { "Player", "Player2", "Player3" };
+
+    /// <summary>True when the game makes a player stand-in for a cast member called <paramref name="name"/>.</summary>
+    public static bool IsPlayerName(string name) => PlayerNames.Contains(name, StringComparer.Ordinal);
+
     /// <summary>Position in the cast; keyframes refer to cast members by it.</summary>
     public int Index { get; }
+
+    /// <summary>
+    /// True when the scene creates the character when it starts ("Player" and "Player2" are stand-ins
+    /// for players 1 and 2, "Player3" for player 3 with ADRIANNA23; other names are object classes such
+    /// as Karne). False when the scene takes an object already in the level near the start position
+    /// (any character within 12 units, or an object with this name).
+    /// </summary>
+    public bool IsCreated => _data[_offset + CreatedOffset] != 0;
 
     /// <summary>The character the cast member is, e.g. "Player" or "Karne".</summary>
     public string Name
