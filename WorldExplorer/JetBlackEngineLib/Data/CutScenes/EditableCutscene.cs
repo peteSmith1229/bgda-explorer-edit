@@ -32,7 +32,7 @@ public enum CutsceneText
 /// </para>
 /// <para>
 /// Keyframes refer to cast members by position (their actor number, and the
-/// target of a "Face" keyframe), so a copied member is added at the end of the
+/// target of a "Face" or camera "Look at" keyframe), so a copied member is added at the end of the
 /// cast, and removing one renumbers the keyframes of the members after it.
 /// </para>
 /// </summary>
@@ -351,8 +351,8 @@ public sealed class EditableCutscene
 
     /// <summary>
     /// Removes a cast member and its keyframes. The members after it move up one place, and the keyframes
-    /// are renumbered to match: their actor number and the target of "Face" keyframes. A "Face" keyframe
-    /// that turned towards the removed member now stops facing (-1).
+    /// are renumbered to match: their actor number and the target of "Face" and camera "Look at" keyframes.
+    /// One that turned towards the removed member now turns towards no one (-1).
     /// </summary>
     public void RemoveActor(CutsceneActor actor)
     {
@@ -369,7 +369,7 @@ public sealed class EditableCutscene
         _keyframes.RemoveAll(k => k.Actor == index);
         foreach (var keyframe in _keyframes)
         {
-            if (keyframe.FaceTarget is { } target && target >= 0)
+            if (keyframe.CastTarget is { } target && target >= 0)
             {
                 keyframe.SetParameter(0, target == index ? -1 : target > index ? target - 1 : target);
             }

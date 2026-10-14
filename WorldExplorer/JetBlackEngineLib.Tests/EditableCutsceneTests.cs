@@ -482,8 +482,8 @@ public class EditableCutsceneTests
     /// <summary>
     /// What removing cast member <paramref name="index"/> should leave: its keyframes gone, the members
     /// after it one place up, and "Face" keyframes that turned towards it turning towards no one.
-    /// (Only "Face" names another cast member: the game's other actions take positions, animations or
-    /// numbers.)
+    /// (Only "Face" and the camera's "Look at" name another cast member, and no shipped scene has a "Look at":
+    /// the game's other actions take positions, animations or numbers.)
     /// </summary>
     private static (float, short, short, int, int, int)[] AfterRemoving((float, short, short, int, int, int)[] keyframes, int index) =>
         keyframes.Where(k => k.Item2 != index).Select(k =>
@@ -666,5 +666,59 @@ public class EditableCutsceneTests
         Assert.Throws<ArgumentException>(() => intro.SetAnimationPosition(fall, -1));
 
         Assert.That(intro.ToArray(), Is.EqualTo(_intro), "nothing changed");
+    }
+
+    [Test]
+    public void SceneAndCameraActions_AreNamedForWhatTheGameDoes()
+    {
+        var intro = EditableCutscene.Load(_intro);
+        int Count(string description) => intro.Keyframes.Count(k => k.Description == description);
+
+        // Fourteen lines, each shown, its voice started (by a gesture or the scene) and waited for.
+        Assert.That(Count("Next subtitle"), Is.EqualTo(14));
+        Assert.That(Count("Wait for the voice line"), Is.EqualTo(14));
+        Assert.That(Count("Hide subtitle"), Is.EqualTo(1));
+        Assert.That(Count("Next voice line"), Is.EqualTo(2), "the narration, and the guard's Halt! (no gesture)");
+        Assert.That(intro.Keyframes.Count(k => k.IsPlayAnimation && k.AnimationMode == 4), Is.EqualTo(13), "gestures: the other 13 lines");
+        Assert.That(Count("Next music part"), Is.EqualTo(3));
+        Assert.That(Count("Cut"), Is.EqualTo(13));
+        Assert.That(Count("Smooth stop"), Is.EqualTo(9));
+        Assert.That(intro.Keyframes.All(k => CutsceneActions.IsKnown(k.ActorKind, k.Action)), Is.True,
+            "every action the intro uses is named");
+        Assert.That(CutsceneActions.Describe(CutsceneActorKind.Camera, 3), Is.EqualTo("Look at"));
+        Assert.That(CutsceneActions.IsKnown(CutsceneActorKind.Scene, 4), Is.False);
+        Assert.That(CutsceneActions.IsKnown(CutsceneActorKind.Cast, 7), Is.False);
+    }
+
+    [Test]
+    public void LookAtTargets_AreRenumberedLikeFaceTargets()
+    {
+        // No shipped scene has a camera "Look at" (action 3), so make one from the intro's first camera keyframe:
+        // look at cast member 3 (Karne).
+        var bytes = (byte[])_intro.Clone();
+        var at = KeyframeAt(bytes, 0);
+        var copy = KeyframeAt(bytes, Field(bytes, KeyframeCountField));    // and its copy at the end of the file
+        Assert.That(BitConverter.ToInt16(bytes, at + 4), Is.EqualTo(CutsceneActions.CameraActor));
+        foreach (var offset in new[] { at, copy })
+        {
+            BitConverter.GetBytes((short)3).CopyTo(bytes, offset + 6);
+            BitConverter.GetBytes(3).CopyTo(bytes, offset + 8);
+        }
+        var intro = EditableCutscene.Load(bytes);
+        var look = intro.Keyframes[0];
+        Assert.That(look.Description, Is.EqualTo("Look at"));
+        Assert.That(look.LookAtTarget, Is.EqualTo(3));
+        Assert.That(look.CastTarget, Is.EqualTo(3));
+        Assert.That(look.FaceTarget, Is.Null);
+        Assert.That(look.RawText, Is.EqualTo("cast member 4"));
+
+        intro.RemoveActor(intro.Cast[1]);                      // Thief1: Karne moves up to 2
+        Assert.That(intro.Keyframes[0].LookAtTarget, Is.EqualTo(2));
+        intro.RemoveActor(intro.Cast[2]);                      // Karne himself: the camera follows no one
+        Assert.That(intro.Keyframes[0].LookAtTarget, Is.EqualTo(-1));
+        Assert.That(intro.Keyframes[0].RawText, Is.EqualTo("no one"));
+        var saved = intro.ToArray();
+        Assert.That(BitConverter.ToInt32(saved, KeyframeAt(saved, 0) + 8), Is.EqualTo(-1));
+        Assert.That(EndsWithCopyOfFirstKeyframes(saved), Is.True, "the copy of the first keyframes follows");
     }
 }

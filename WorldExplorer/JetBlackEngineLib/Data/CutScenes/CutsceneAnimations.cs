@@ -99,8 +99,9 @@ public static class CutsceneAnimations
             "In the intro: Thief1's head-crack (34.2 s)."),
         new(4, "Gesture",
             "Blends in over 0.3 s, replaces what is playing and plays once; then the character's main animation " +
-            "repeats again. The game also takes the character as the one talking. " +
-            "In the intro: the talking gestures of Thief1, Thief2 and Karne."),
+            "repeats again. It also plays the scene's next voice line (the clock waits until the line has started) " +
+            "and takes the character as the one talking. " +
+            "In the intro: the talking gestures of Thief1, Thief2, Karne and the guards."),
         new(5, "Switch to, loop",
             "Blends in over 0.2 s, replaces what is playing and repeats.")
     };

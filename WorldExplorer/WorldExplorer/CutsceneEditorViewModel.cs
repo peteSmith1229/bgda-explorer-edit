@@ -1062,10 +1062,15 @@ public sealed class CutsceneKeyframeViewModel : ObservableObject
         _ => "Icon.View.Skeleton"
     };
 
-    /// <summary>The stored parameters of an action that can't be edited (or ""); for "Face", who it turns towards.</summary>
+    /// <summary>
+    /// The stored parameters of an action that can't be edited (or ""); for "Face" and the camera's "Look at",
+    /// the cast member it turns towards.
+    /// </summary>
     public string RawText => Keyframe.FaceTarget is { } target
         ? target < 0 ? "no one (stops facing)" : $"towards {_owner.CastName(target)}"
-        : Keyframe.IsPlayAnimation ? "" : Keyframe.RawText;
+        : Keyframe.LookAtTarget is { } followed
+            ? followed < 0 ? "no one (back to the camera's turn and tilt)" : $"follows {_owner.CastName(followed)}"
+            : Keyframe.IsPlayAnimation ? "" : Keyframe.RawText;
 
     public bool HasRawText => RawText.Length > 0;
 
@@ -1074,12 +1079,28 @@ public sealed class CutsceneKeyframeViewModel : ObservableObject
         (CutsceneActorKind.Camera, 0) => "Moves the camera to a point in the level (world units).",
         (CutsceneActorKind.Camera, 1) => "Turns the camera to face a direction (degrees).",
         (CutsceneActorKind.Camera, 2) => "Tilts the camera up or down (degrees).",
+        (CutsceneActorKind.Camera, 3) => "Turns the camera to follow a cast member as they move, until the next " +
+                                         "Look at (no one: back to the camera's turn and tilt). It refers to the " +
+                                         "member by position in the cast.",
+        (CutsceneActorKind.Camera, 4) => "Makes the camera's moves start and stop gently at this time. The game " +
+                                         "doesn't use the value.",
+        (CutsceneActorKind.Camera, 5) => "A cut: the camera keeps its last position, turn and tilt until this time, " +
+                                         "then jumps to the ones at this time (put them at the same time). The game " +
+                                         "doesn't use the value.",
         (CutsceneActorKind.Camera, 6) => "How far the camera draws the level.",
-        (CutsceneActorKind.Scene, 0) => "Shows the next line of the scene's subtitles.",
-        (CutsceneActorKind.Scene, 3) => "Hides the subtitle on screen.",
+        (CutsceneActorKind.Scene, 0) => "Shows the next subtitle: the one named above the first time, then the one " +
+                                        "after it in the level's subtitle file (cuttown_cut.uni…).",
+        (CutsceneActorKind.Scene, 1) => "Hides the subtitle on screen.",
+        (CutsceneActorKind.Scene, 2) => "Plays the next voice line: the narration named above the first time, then " +
+                                        "the line after it in the level's dialog list (dialog.bin). A Gesture (play " +
+                                        "mode 4) plays the next line too.",
+        (CutsceneActorKind.Scene, 3) => "Waits for the voice line playing to finish: the scene's clock stops until then.",
+        (CutsceneActorKind.Scene, 7) => "Plays the next part of the music: the music named above the first time, " +
+                                        "then the part after it in the level's dialog list.",
         (CutsceneActorKind.Cast, 0) => "Makes the cast member walk to a point in the level (world units).",
-        (CutsceneActorKind.Cast, 1) => "Turns the cast member towards another one, or stops it (no one). What it does " +
-                                       "exactly isn't certain. It refers to the other member by position in the cast.",
+        (CutsceneActorKind.Cast, 1) => "Turns the cast member towards another one, or stops it (no one). Townspeople " +
+                                       "such as Thief1 and the guards only stop: they don't turn. It refers to the " +
+                                       "other member by position in the cast.",
         (CutsceneActorKind.Cast, 2) => "Plays an animation on the cast member: which one (from the archive of the " +
                                        "character it is) and how (mode).",
         _ when Fields.Count > 0 => "What this value does isn't known for certain.",

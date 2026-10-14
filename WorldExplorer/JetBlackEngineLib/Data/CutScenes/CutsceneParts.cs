@@ -61,15 +61,37 @@ public static class CutsceneActions
         _ => CutsceneActorKind.Cast
     };
 
-    /// <summary>What the action does, e.g. "Position" (camera) or "Move to" (cast).</summary>
+    /// <summary>
+    /// What the action does, e.g. "Position" (camera) or "Move to" (cast). From the game's code:
+    /// <list type="bullet">
+    /// <item>Camera (FUN_00155AF8): Position, Turn and Tilt keyframes are three tracks that the camera follows
+    /// smoothly from keyframe to keyframe. "Look at" turns it to follow a cast member as they move (until the
+    /// next "Look at"; -1 goes back to the Turn and Tilt keyframes). "Smooth stop" makes the moves start and stop
+    /// gently at its time. "Cut" makes the camera keep its last position, turn and tilt until its time and then
+    /// jump to the keyframes at that time (the game also waits a moment for textures). "View distance" sets how
+    /// far the level is drawn (its value times 12). The value of Smooth stop and Cut isn't used.</item>
+    /// <item>Scene (FUN_00155528 and the clock, FUN_00157E60): "Next subtitle" shows the header's subtitle the
+    /// first time and the next one in the level's subtitle file after that (<see cref="CutsceneSubtitles"/>);
+    /// "Hide subtitle" hides it. "Next voice line" plays the header's narration the first time and the line after
+    /// it in the level's dialog list (dialog.bin) after that; a cast member's Gesture (play mode 4) plays the next
+    /// line too. "Wait for the voice line" stops the scene's clock until the line playing has finished. "Next music
+    /// part" plays the header's music the first time and the part after it in the list after that.</item>
+    /// </list>
+    /// </summary>
     public static string Describe(CutsceneActorKind kind, short action) => (kind, action) switch
     {
         (CutsceneActorKind.Camera, 0) => "Position",
         (CutsceneActorKind.Camera, 1) => "Turn",
         (CutsceneActorKind.Camera, 2) => "Tilt",
+        (CutsceneActorKind.Camera, 3) => "Look at",
+        (CutsceneActorKind.Camera, 4) => "Smooth stop",
+        (CutsceneActorKind.Camera, 5) => "Cut",
         (CutsceneActorKind.Camera, 6) => "View distance",
         (CutsceneActorKind.Scene, 0) => "Next subtitle",
-        (CutsceneActorKind.Scene, 3) => "Hide subtitle",
+        (CutsceneActorKind.Scene, 1) => "Hide subtitle",
+        (CutsceneActorKind.Scene, 2) => "Next voice line",
+        (CutsceneActorKind.Scene, 3) => "Wait for the voice line",
+        (CutsceneActorKind.Scene, 7) => "Next music part",
         (CutsceneActorKind.Cast, 0) => "Move to",
         (CutsceneActorKind.Cast, 1) => "Face",
         (CutsceneActorKind.Cast, 2) => "Play animation",
@@ -142,6 +164,12 @@ public sealed class CutsceneKeyframe
     /// </summary>
     public int? FaceTarget => ActorKind == CutsceneActorKind.Cast && Action == 1 ? _parameters[0] : null;
 
+    /// <summary>For the camera's "Look at" keyframe: the index of the cast member it follows (-1 = none); null otherwise.</summary>
+    public int? LookAtTarget => ActorKind == CutsceneActorKind.Camera && Action == 3 ? _parameters[0] : null;
+
+    /// <summary>The cast member a "Face" or "Look at" keyframe refers to by position (see <see cref="FaceTarget"/>).</summary>
+    public int? CastTarget => FaceTarget ?? LookAtTarget;
+
     /// <summary>True for a cast member's "Play animation" keyframe (see <see cref="CutsceneAnimations"/>).</summary>
     public bool IsPlayAnimation => ActorKind == CutsceneActorKind.Cast && Action == CutsceneAnimations.Action;
 
@@ -164,7 +192,8 @@ public sealed class CutsceneKeyframe
     public string RawText => (ActorKind, Action) switch
     {
         (CutsceneActorKind.Scene, _) => "", // what is stored here is left over from the authoring tool
-        (CutsceneActorKind.Cast, 1) => _parameters[0] < 0 ? "no one" : $"cast member {_parameters[0] + 1}",
+        (CutsceneActorKind.Cast, 1) or (CutsceneActorKind.Camera, 3) =>
+            _parameters[0] < 0 ? "no one" : $"cast member {_parameters[0] + 1}",
         (CutsceneActorKind.Cast, CutsceneAnimations.Action) => _parameters[2] == CutsceneAnimations.ByName
             ? $"animation 0x{_parameters[0]:X8}, mode {_parameters[1]}"
             : $"animation #{_parameters[0]} in the list, mode {_parameters[1]}",
