@@ -51,6 +51,10 @@ public abstract class EntryEditorViewModel : ObservableObject
         {
             _readOnlyReason = $"This {noun} is marked for deletion. Restore it from the explorer to edit it.";
         }
+        else if (archive.IsAdded(entryName))
+        {
+            _readOnlyReason = $"This {noun} was added to the archive. Save the file and open it again to edit it.";
+        }
     }
 
     protected World World { get; }
@@ -283,6 +287,8 @@ public abstract class EntryEditorViewModel : ObservableObject
     /// <summary>The entry as it is in the opened file.</summary>
     protected byte[] OriginalBytes()
     {
+        // An added entry has no original: its added bytes stand in.
+        if (Archive.IsAdded(EntryName)) return Archive.GetEntryBytes(EntryName)!;
         var entry = Archive.Directory[EntryName];
         return Archive.FileData.AsSpan(entry.StartOffset, entry.Length).ToArray();
     }

@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using JetBlackEngineLib;
 using JetBlackEngineLib.Data.World;
 using System;
 using System.ComponentModel;
@@ -364,6 +365,81 @@ public partial class LevelView
         }
     }
 
+    private void AddObject_Click(object sender, RoutedEventArgs e) => AddObject();
+
+    /// <summary>
+    /// Adds a new object (one of the game's classes, or a model from an
+    /// archive) to the level and selects it. <paramref name="archive"/> starts
+    /// the dialog on what that archive holds.
+    /// </summary>
+    public void AddObject(string? archive = null)
+    {
+        if (_lvm?.WorldNode == null || !_lvm.IsEditable)
+        {
+            Notifications?.Info("Open a level first", "Select a level (.world) in the explorer, then add objects to it.");
+            return;
+        }
+
+        if (_lvm.MainViewModel.EngineVersion != EngineVersion.DarkAlliance)
+        {
+            Notifications?.Info("Not for this game yet", "Adding objects knows the object classes of Baldur's Gate: Dark Alliance.");
+            return;
+        }
+
+        var (position, facing, hint) = NewObjectPlacement();
+        var dialog = new AddObjectWindow(_lvm.MainViewModel.World?.WorldGob, position, facing, hint, archive)
+        {
+            Owner = Window.GetWindow(this)
+        };
+        if (dialog.ShowDialog() != true || dialog.Result is not { } added) return;
+
+        var vod = _lvm.AddObjectToLevel(added);
+        if (vod != null)
+        {
+            ObjectSelected(vod);
+        }
+
+        Notifications?.Success($"{added.Name} added to {_lvm.WorldNode.Label}",
+            "Save the GOB (Ctrl+S) to write it into the level.");
+    }
+
+    /// <summary>Where a new object starts: under the mouse, next to the selection, or by the players' start.</summary>
+    private ((float X, float Y, float Z) Position, double Facing, string Hint) NewObjectPlacement()
+    {
+        var objects = _lvm?.ObjectManager.Objects ?? Array.Empty<ObjectData>();
+        var cursor = viewport.CursorPosition;
+        if (cursor.HasValue)
+        {
+            // From above, the mouse is often over a roof: stand it as high as the nearest character instead.
+            var (x, y) = ((float)(cursor.Value.X * 4.0), (float)(cursor.Value.Y * 4.0));
+            var nearest = objects
+                .Where(o => BgdaObjectClasses.Find(o.Name)?.Kind is BgdaObjectKind.Npc or BgdaObjectKind.Monster
+                    or BgdaObjectKind.Ambient or BgdaObjectKind.PlayerStart)
+                .OrderBy(o => (o.Floats[0] - x) * (o.Floats[0] - x) + (o.Floats[1] - y) * (o.Floats[1] - y))
+                .FirstOrDefault();
+            return nearest != null
+                ? ((x, y, nearest.Floats[2]), 0,
+                    $"It starts where the mouse last was over the level, as high as the nearest {nearest.Name}.")
+                : ((x, y, (float)(cursor.Value.Z * 4.0)), 0, "It starts where the mouse last was over the level.");
+        }
+
+        if (_lvm?.SelectedObject?.ObjectData is { } selected)
+        {
+            return ((selected.Floats[0] + 8, selected.Floats[1] + 8, selected.Floats[2]),
+                LevelObjects.FacingOf(selected.I6), $"It starts next to the selected {selected.Name}.");
+        }
+
+        var start = objects.FirstOrDefault(o => o.Name == "Player1" && o.GetProperty("default") == "1") ??
+                    objects.FirstOrDefault(o => o.Name == "Player1");
+        if (start != null)
+        {
+            return ((start.Floats[0] + 8, start.Floats[1] + 8, start.Floats[2]),
+                LevelObjects.FacingOf(start.I6), "It starts next to where the players start.");
+        }
+
+        return ((0, 0, 0), 0, "It starts at the middle of the level.");
+    }
+
     /// <summary>
     /// Duplicates the selected object (small offset, clipboard untouched) or
     /// the selected element, and selects the copy.
@@ -434,6 +510,7 @@ public partial class LevelView
             return item;
         }
 
+        var addItem = Item("Add Object…", "", "Icon.Add", () => AddObject());
         var copyItem = Item("Copy Object", "Ctrl+C", "Icon.Copy", CopySelectedObject);
         var pasteItem = Item("Paste Object", "Ctrl+V", "Icon.Paste", PasteObject);
         var duplicateItem = Item("Duplicate", "Ctrl+D", "Icon.Duplicate", DuplicateSelection);
@@ -442,6 +519,8 @@ public partial class LevelView
             () => (Window.GetWindow(this) as MainWindow)?.ResetCamera(ContentView.Level, animate: true));
 
         var menu = new ContextMenu();
+        menu.Items.Add(addItem);
+        menu.Items.Add(new Separator());
         menu.Items.Add(copyItem);
         menu.Items.Add(pasteItem);
         menu.Items.Add(new Separator());
@@ -456,6 +535,7 @@ public partial class LevelView
             var hasObject = _lvm?.SelectedObject != null;
             var hasSelection = hasObject || _lvm?.SelectedElement != null;
 
+            addItem.IsEnabled = editable && _lvm?.MainViewModel.EngineVersion == EngineVersion.DarkAlliance;
             copyItem.IsEnabled = hasObject;
             pasteItem.IsEnabled = editable && ObjectClipboard.HasObject();
             duplicateItem.IsEnabled = editable && hasSelection;

@@ -1088,6 +1088,8 @@ public partial class MainWindow : Window
             case GobTreeViewModel when world.WorldGob is { } gob:
                 yield return new OverviewAction("Save GOB…", "Icon.Save",
                     new RelayCommand(() => SaveGob()), IsPrimary: world.HasUnsavedChanges());
+                yield return new OverviewAction("Add Archive…", "Icon.Add",
+                    new RelayCommand(() => RunAction("Add archive", () => _contextManager.AddArchive(gob))));
                 yield return new OverviewAction("Export All Textures…", "Icon.Export",
                     new RelayCommand(() => RunAction("Export", () => _contextManager.BatchExportTextures(gob))));
                 break;
@@ -1101,6 +1103,14 @@ public partial class MainWindow : Window
                     {
                         yield return new OverviewAction("Save GOB…", "Icon.Save",
                             new RelayCommand(() => SaveGob()), IsPrimary: world.HasUnsavedChanges());
+                        if (world.EngineVersion == JetBlackEngineLib.EngineVersion.DarkAlliance)
+                        {
+                            yield return new OverviewAction("Place in Level…", "Icon.View.Level",
+                                new RelayCommand(() => RunAction("Place in level", () => PlaceInLevel(lmp))));
+                        }
+
+                        yield return new OverviewAction("Add Entry…", "Icon.Add",
+                            new RelayCommand(() => RunAction("Add entry", () => _contextManager.AddEntry(lmp))));
                     }
                     else
                     {
@@ -1158,6 +1168,13 @@ public partial class MainWindow : Window
 
     private void Menu_Import_AddEntry_Click(object sender, RoutedEventArgs e)
     {
+        // With the GOB itself selected, what can be added to it is an archive.
+        if (ViewModel.SelectedNode is GobTreeViewModel && GetActiveGobFile() is { } gob)
+        {
+            RunAction("Add archive", () => _contextManager.AddArchive(gob));
+            return;
+        }
+
         var lmp = GetActiveLmpFile();
         if (lmp == null || lmp is ClpFile)
         {
@@ -1165,6 +1182,96 @@ public partial class MainWindow : Window
             return;
         }
         RunAction("Add entry", () => _contextManager.AddEntry(lmp));
+    }
+
+    private void Menu_Import_AddArchive_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetActiveGobFile() is not { } gob)
+        {
+            ViewModel.Notifications.Info("Open a GOB first", "Archives (.lmp) are added to a level's GOB file.");
+            return;
+        }
+
+        RunAction("Add archive", () => _contextManager.AddArchive(gob));
+    }
+
+    /// <summary>
+    /// Opens Add Object on what <paramref name="lmp"/> holds, for the GOB's
+    /// level: opening the level first when the Level view isn't showing it.
+    /// </summary>
+    public void PlaceInLevel(LmpFile lmp)
+    {
+        var worldNode = FindLevelNode();
+        if (worldNode == null)
+        {
+            ViewModel.Notifications.Info("No level to place it in", $"{ViewModel.World?.Name} has no level (.world).");
+            return;
+        }
+
+        var levelModel = ViewModel.TheLevelViewModel;
+        if (ReferenceEquals(ViewModel.SelectedNode, worldNode) && ReferenceEquals(levelModel.WorldNode, worldNode))
+        {
+            LevelView.AddObject(lmp.Name);
+            return;
+        }
+
+        void OnSceneUpdated(object? sender, EventArgs e)
+        {
+            if (levelModel.WorldNode == null) return; // the empty view shown while the level decodes
+            levelModel.SceneUpdated -= OnSceneUpdated;
+            _placeInLevelPending = null;
+            if (ReferenceEquals(levelModel.WorldNode, worldNode))
+            {
+                Dispatcher.BeginInvoke(() => LevelView.AddObject(lmp.Name), DispatcherPriority.ApplicationIdle);
+            }
+        }
+
+        // Only the latest request opens the dialog once the level has loaded.
+        if (_placeInLevelPending != null) levelModel.SceneUpdated -= _placeInLevelPending;
+        _placeInLevelPending = OnSceneUpdated;
+        levelModel.SceneUpdated += _placeInLevelPending;
+        RevealAndSelect(worldNode);
+    }
+
+    /// <summary>The Place in Level request waiting for its level to load.</summary>
+    private EventHandler? _placeInLevelPending;
+
+    /// <summary>
+    /// Selects <paramref name="node"/> in the explorer, expanding its parents:
+    /// the tree only has an item for it (to select) once they are expanded.
+    /// </summary>
+    public void RevealAndSelect(TreeViewItemViewModel node)
+    {
+        if (node.Parent != null) node.Parent.IsExpanded = true;
+        Dispatcher.BeginInvoke(() =>
+        {
+            node.IsSelected = false;
+            node.IsSelected = true;
+        }, DispatcherPriority.Background);
+    }
+
+    /// <summary>The GOB's level: the .world in the archive named after the GOB, or the first one found.</summary>
+    private WorldFileTreeViewModel? FindLevelNode()
+    {
+        var gobNode = ViewModel.RootNodes.OfType<GobTreeViewModel>().FirstOrDefault();
+        if (gobNode == null) return null;
+
+        gobNode.ForceLoadChildren();
+        var levelArchive = Path.GetFileNameWithoutExtension(gobNode.Label) + ".lmp";
+        foreach (var archive in gobNode.Children.OfType<LmpTreeViewModel>()
+                     .OrderByDescending(a => a.Label.Equals(levelArchive, StringComparison.OrdinalIgnoreCase)))
+        {
+            if (archive.LmpFileProperty is ClpFile ||
+                !archive.LmpFileProperty.EffectiveEntryNames().Any(n => n.EndsWith(".world", StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            archive.ForceLoadChildren();
+            if (archive.Children.OfType<WorldFileTreeViewModel>().FirstOrDefault() is { } world) return world;
+        }
+
+        return null;
     }
 
     private void Menu_BatchExport_Textures_Click(object sender, RoutedEventArgs e)

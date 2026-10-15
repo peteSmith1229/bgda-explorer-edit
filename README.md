@@ -14,6 +14,32 @@ Alliance II files are read with the Dark Alliance formats for now.
   above the content or Ctrl+1…6; the app remembers which view you prefer for each kind of item.
 - **Edit levels**: Ctrl+click an object or element, then drag the gizmo or type values in the properties panel
   (Enter applies). Copy, paste, duplicate, delete, undo and redo are in the Edit menu.
+- **Add archives to a GOB**: right-click the GOB and choose Add Archive (.lmp)…, or use File › Import › Add
+  Archive (.LMP) to GOB…, then pick one or more `.lmp` files, e.g. `TMAN2.LMP` into `TAVERN.GOB`. A Dark
+  Alliance level loads every archive in its GOB when it starts, so their models, textures and animations can
+  be used by the level's objects. New archives go before `env.lmp`, like the game's own. A GOB holds at most
+  51 archives. The GOB's Overview shows how much memory is left once they are loaded. Until you save, you can
+  right-click an added archive and choose Remove Added Archive.
+- **Add entries to an archive**: right-click the archive and choose Add Entry…, or use File › Import › Add New
+  Entry to Archive…. The entry appears in the explorer straight away. It is saved in name order, because the
+  game looks entries up by name. An archive whose entries are out of order (such as `shop.lmp` in
+  `TAVERN.GOB`) keeps its order and gets the new entry at the end. The game never looks for an archive inside
+  another archive, so adding a `.lmp` file to an archive in a GOB offers to add it to the GOB instead.
+- **Add objects to a level** (Dark Alliance): in the Level view, click + on its toolbar or right-click and
+  choose Add Object…. You can also right-click an archive in the GOB and choose Place in Level…. There are two
+  kinds of object:
+  - **A character or object** is one of the classes the game creates: NPCs, monsters, chests and so on. The
+    list shows each class with the archive its model comes from, and whether that archive is in the GOB,
+    added to it, loaded from the disc or not found.
+  - **A model from an archive** shows any model in one of the GOB's archives with a texture and an animation
+    that loops, e.g. `barpatron.vif`, `bp_costume3.tex` and `bp_drinking1.anm` from `tman2.lmp`. This is a
+    `UserParamProp` object. It can't talk, walk or fight; that needs a class (e.g. `TownMale1`, whose model
+    is in `tman1.lmp`).
+
+  Set the position, the facing (one of 16 directions) and any `name=value` properties, e.g.
+  `callName=Patron1`. Undo works as for other edits, and Ctrl+S saves the object into the level's `objects.ob`.
+  Each new object takes a slot in one of the level's object pools: a chest takes a small slot, and a character
+  or a `UserParamProp` takes a monster slot. The level budget shows how many are left.
 - **Edit scripts**: select a level script (`script.scr`) to open the Script view, which lists every call the
   script makes to the engine (quests, dialogs, rewards, variables, monsters…) by function, with its values.
   Change a number or a piece of text and press Enter; Ctrl+Z undoes it, and Ctrl+S saves it into the GOB with
@@ -58,9 +84,9 @@ Press F1 in the app for every keyboard shortcut. Dark and light themes are avail
 Requires Windows and the .NET 10 SDK. Open `WorldExplorer/WorldExplorer.sln` in Visual Studio or Rider, or run
 `dotnet build WorldExplorer/WorldExplorer.sln`.
 
-`dotnet test WorldExplorer/WorldExplorer.sln` runs the library tests. The executable, item, script, cutscene and
-text tests use the game files in `Test_files` (`SLES_506.72`, `TAVERN.GOB`, `CUTTOWN.GOB`, `GTEXT.LMP`) and are
-skipped if those are missing.
+`dotnet test WorldExplorer/WorldExplorer.sln` runs the library tests. The executable, item, script, cutscene,
+archive and text tests use the game files in `Test_files` (`SLES_506.72`, `TAVERN.GOB`, `TEST.GOB`,
+`CUTTOWN.GOB`, `GTEXT.LMP`, `TMAN2.LMP`) and are skipped if those are missing.
 
 ## Credits:
 

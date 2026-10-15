@@ -93,6 +93,10 @@ public static class GobWriter
         IList<KeyValuePair<string, LmpFile>> entries)
     {
         int n = entries.Count;
+        if (engineVersion == EngineVersion.DarkAlliance && n > GobFile.MaxArchives)
+            throw new InvalidOperationException(
+                $"A GOB can hold at most {GobFile.MaxArchives} archives (the game reads its directory as one " +
+                $"2,048-byte sector); this one has {n}.");
  
         var packedLmps = new byte[n][];
         for (int i = 0; i < n; i++)
@@ -100,8 +104,7 @@ public static class GobWriter
             var lmp = entries[i].Value;
             if (lmp.IsDirty)
             {
-                if (lmp.Directory.Count == 0)
-                    lmp.ReadDirectory();
+                lmp.EnsureDirectory();
                 packedLmps[i] = LmpWriter.Pack(lmp);
             }
             else
@@ -165,6 +168,10 @@ public static class GobWriter
 /// </summary>
 public static byte[]? TryPatchInPlace(GobFile gobFile)
 {
+    // An added archive changes the directory and isn't in the original bytes.
+    if (gobFile.AddedArchives.Count > 0)
+        return null;
+
     // All LMPs in a GOB share the same underlying byte array (the whole GOB).
     var result = (byte[])gobFile.RawFileData.Clone();
  
@@ -179,8 +186,7 @@ public static byte[]? TryPatchInPlace(GobFile gobFile)
  
         // The pending-edit overlay is keyed against Directory entries; make
         // sure the directory is populated (it is lazily loaded by the tree).
-        if (lmp.Directory.Count == 0)
-            lmp.ReadDirectory();
+        lmp.EnsureDirectory();
  
         foreach (var (name, newBytes) in lmp.PendingEdits)
         {

@@ -80,6 +80,14 @@ public class LmpFile
         PendingDeletions.Count > 0 ||
         PendingAdditions.Count > 0;
 
+    /// <summary>
+    /// Longest entry name in a Dark Alliance archive: the directory's name field
+    /// is 56 bytes, terminator included.
+    /// </summary>
+    public const int MaxEntryNameLength = 55;
+
+    private bool _directoryRead;
+
     // -------------------------------------------------------------------------
     // Constructor
     // -------------------------------------------------------------------------
@@ -118,6 +126,15 @@ public class LmpFile
     /// </summary>
     public void ReplaceEntry(string entryName, byte[] newData)
     {
+        var added = PendingAdditions.FindIndex(
+            a => string.Equals(a.Name, entryName, StringComparison.OrdinalIgnoreCase));
+        if (added >= 0)
+        {
+            // A new entry: replacing it changes what will be added.
+            PendingAdditions[added] = (PendingAdditions[added].Name, newData);
+            return;
+        }
+
         if (!Directory.ContainsKey(entryName))
             throw new ArgumentException(
                 $"Entry '{entryName}' not found in archive '{Name}'.",
@@ -141,6 +158,14 @@ public class LmpFile
                 $"Entry '{entryName}' not found in archive '{Name}'.",
                 nameof(entryName));
 
+        if (!inDirectory)
+        {
+            // Only ever added: forgetting it leaves the archive as it was.
+            PendingAdditions.RemoveAll(
+                a => string.Equals(a.Name, entryName, StringComparison.OrdinalIgnoreCase));
+            return;
+        }
+
         PendingDeletions.Add(entryName);
         PendingEdits.Remove(entryName);
         PendingAdditions.RemoveAll(
@@ -148,23 +173,31 @@ public class LmpFile
     }
 
     /// <summary>
-    /// Schedules a new entry to be appended when the archive is next packed.
-    /// If an entry with the same name already exists in <see cref="Directory"/>
-    /// it is treated as a replacement instead.
+    /// Schedules a new entry to be added when the archive is next packed.
+    /// If an entry with the same name (ignoring case) already exists in
+    /// <see cref="Directory"/> it is treated as a replacement instead.
     /// </summary>
     public void AddEntry(string entryName, byte[] data)
     {
-        if (Directory.ContainsKey(entryName))
+        // The directory is read lazily; an entry added before it is read must
+        // still be checked against (and saved with) the entries already there.
+        EnsureDirectory();
+
+        if (FindDirectoryName(entryName) is { } existing)
         {
-            // Treat as a replacement of an existing entry.
+            // Treat as a replacement of the existing entry: two names differing
+            // only in case would share their pending edits.
+            ReplaceEntry(existing, data);
+            return;
+        }
+
+        if (IsAdded(entryName))
+        {
+            // Added already: this replaces its data, under the name it was added as.
             ReplaceEntry(entryName, data);
             return;
         }
 
-        // Remove any prior pending addition with the same name.
-        PendingAdditions.RemoveAll(
-            a => string.Equals(a.Name, entryName, StringComparison.OrdinalIgnoreCase));
-        PendingDeletions.Remove(entryName);
         PendingAdditions.Add((entryName, data));
     }
 
@@ -180,9 +213,109 @@ public class LmpFile
         PendingAdditions.Clear();
     }
 
+    /// <summary>True when <paramref name="entryName"/> is a new entry, added since the archive was opened.</summary>
+    public bool IsAdded(string entryName) => PendingAdditions.Any(
+        a => string.Equals(a.Name, entryName, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// The directory's spelling of <paramref name="entryName"/> (ignoring case,
+    /// an exact match first), or null when the directory has no such entry.
+    /// </summary>
+    public string? FindDirectoryName(string entryName)
+    {
+        EnsureDirectory();
+        if (Directory.ContainsKey(entryName)) return entryName;
+        return Directory.Keys.FirstOrDefault(n => string.Equals(n, entryName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// The name an entry added as <paramref name="entryName"/> is listed and
+    /// saved under: the existing entry's (ignoring case) when it replaces one.
+    /// </summary>
+    public string AddedEntryName(string entryName) =>
+        FindDirectoryName(entryName) ??
+        PendingAdditions.Select(a => a.Name).FirstOrDefault(n => string.Equals(n, entryName, StringComparison.OrdinalIgnoreCase)) ??
+        entryName;
+
+    /// <summary>True when the archive has (or will have) an entry named <paramref name="entryName"/>, ignoring case.</summary>
+    public bool HasEntry(string entryName) => FindDirectoryName(entryName) != null || IsAdded(entryName);
+
+    /// <summary>
+    /// The entry's bytes as they would be saved (an added entry, an edit or the
+    /// original data), or null when it isn't in the archive or is deleted. Don't
+    /// modify the result: it may be the pending data itself.
+    /// </summary>
+    public byte[]? GetEntryBytes(string entryName)
+    {
+        foreach (var (name, data) in PendingAdditions)
+        {
+            if (string.Equals(name, entryName, StringComparison.OrdinalIgnoreCase)) return data;
+        }
+
+        if (PendingDeletions.Contains(entryName)) return null;
+        if (PendingEdits.TryGetValue(entryName, out var edit)) return edit;
+
+        EnsureDirectory();
+        if (!Directory.TryGetValue(entryName, out var info)) return null;
+        var bytes = new byte[info.Length];
+        Buffer.BlockCopy(FileData, info.StartOffset, bytes, 0, info.Length);
+        return bytes;
+    }
+
+    /// <summary>
+    /// True when the directory is in name order, compared byte by byte as the
+    /// game does. The game finds an entry by binary search, so its archives are.
+    /// </summary>
+    public bool IsDirectorySorted()
+    {
+        string? previous = null;
+        foreach (var name in Directory.Keys)
+        {
+            if (previous != null && string.CompareOrdinal(previous, name) > 0) return false;
+            previous = name;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// The names of the entries as they would be saved: the directory without
+    /// deleted entries, plus added ones. An archive in name order stays in name
+    /// order (see <see cref="IsDirectorySorted"/>); otherwise new entries go last.
+    /// </summary>
+    public List<string> EffectiveEntryNames()
+    {
+        EnsureDirectory();
+        var names = Directory.Keys.Where(n => !PendingDeletions.Contains(n)).ToList();
+        names.AddRange(PendingAdditions.Select(a => a.Name).Where(n => !PendingDeletions.Contains(n)));
+        if (IsDirectorySorted()) names.Sort(string.CompareOrdinal);
+        return names;
+    }
+
+    /// <summary>Why <paramref name="name"/> can't name an entry, or null when it can.</summary>
+    public static string? CheckEntryName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "Enter a name.";
+        if (name.Length > MaxEntryNameLength) return $"Use {MaxEntryNameLength} characters or fewer.";
+        foreach (var c in name)
+        {
+            if (c < ' ' || c > '~' || c is '/' or '\\') return "Use plain letters, digits and punctuation, without slashes.";
+        }
+
+        return null;
+    }
+
     // -------------------------------------------------------------------------
     // Existing read-directory logic (unchanged)
     // -------------------------------------------------------------------------
+
+    /// <summary>Reads the directory unless it has been read already (the explorer reads it lazily).</summary>
+    public void EnsureDirectory()
+    {
+        if (_directoryRead) return;
+        ReadDirectory();
+        _directoryRead = true;
+    }
 
     public virtual void ReadDirectory()
     {

@@ -101,7 +101,7 @@
                                 <DataGridTextColumn Header="Kind" Binding="{Binding KindText}" Width="120" />
                                 <DataGridTextColumn Header="Damage" Binding="{Binding DamageText}" Width="64" />
                                 <DataGridTextColumn Header="Armour" Binding="{Binding ArmourText}" Width="60" />
-                                <DataGridTextColumn Header="Price" Binding="{Binding ValueText}" Width="72" />
+                                <DataGridTextColumn Header="Shop price" Binding="{Binding ValueText}" Width="80" />
                                 <DataGridTextColumn Header="Weight" Binding="{Binding WeightText}" Width="58" />
                                 <DataGridTextColumn Header="Modifiers" Binding="{Binding ModifiersText}" Width="*" />
                             </DataGrid.Columns>

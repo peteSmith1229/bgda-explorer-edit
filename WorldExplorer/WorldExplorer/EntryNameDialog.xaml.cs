@@ -1,7 +1,7 @@
 /*  Copyright (C) 2012 Ian Brown – see COPYING for licence terms */
 
+using JetBlackEngineLib.Data.DataContainers;
 using System;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using WorldExplorer.Themes;
@@ -45,9 +45,9 @@ public partial class EntryNameDialog : Window
         {
             isError = true;
         }
-        else if (name.Any(c => c > 0x7E || c < 0x20))
+        else if (LmpFile.CheckEntryName(name) is { } problem)
         {
-            message = "Use plain ASCII characters only.";
+            message = problem;
             isError = true;
         }
         else if (_entryExists?.Invoke(name) == true)

@@ -16,7 +16,9 @@
 
 using JetBlackEngineLib.Data.DataContainers;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using WorldExplorer.Infrastructure;
 
 namespace WorldExplorer.TreeView;
@@ -35,9 +37,17 @@ public class LmpTreeViewModel : AbstractLmpTreeViewModel
 
     public override string KindDescription => _lmpFile is ClpFile ? "Archive (CLP)" : "Archive (LMP)";
 
-    public override string? Detail => _lmpFile.Directory.Count > 0 ? Plural.Of(_lmpFile.Directory.Count, "item") : null;
+    public override string? Detail
+    {
+        get
+        {
+            var count = _lmpFile.Directory.Count + _lmpFile.PendingAdditions.Count;
+            return count > 0 ? Plural.Of(count, "item") : null;
+        }
+    }
 
-    public override bool IsModified => _lmpFile is not ClpFile && _world.HasUnsavedChanges(_lmpFile);
+    public override bool IsModified => _lmpFile is not ClpFile &&
+                                       (_world.HasUnsavedChanges(_lmpFile) || _world.IsArchiveUnsaved(_lmpFile));
 
     // Reading an archive directory is cheap, so the explorer filter may do it.
     protected override bool SearchLoadsChildren => true;
@@ -45,33 +55,67 @@ public class LmpTreeViewModel : AbstractLmpTreeViewModel
     protected override void LoadChildren()
     {
         _lmpFile.ReadDirectory();
-        foreach (var entry in _lmpFile.Directory)
+        foreach (var name in EntryNames())
         {
-            var ext = "";
-            try
-            {
-                ext = (Path.GetExtension(entry.Key) ?? "").ToLower();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                continue;
-            }
-
-            TreeViewItemViewModel child;
-            switch (ext)
-            {
-                case ".world":
-                    child = new WorldFileTreeViewModel(_world, this, _lmpFile, entry.Key);
-                    break;
-                default:
-                    child = new LmpEntryTreeViewModel(_world, this, _lmpFile, entry.Key);
-                    break;
-            }
-
-            Children.Add(child);
+            if (CreateChild(name) is { } child) Children.Add(child);
         }
 
+        RaiseDetailChanged();
+    }
+
+    /// <summary>
+    /// The entries to list: the directory (deleted ones too, marked) and the
+    /// entries added since opening, in the order they will be saved.
+    /// </summary>
+    private List<string> EntryNames()
+    {
+        var names = _lmpFile.Directory.Keys.ToList();
+        if (_lmpFile is ClpFile) return names;
+        names.AddRange(_lmpFile.PendingAdditions.Select(a => a.Name));
+        if (_lmpFile.IsDirectorySorted()) names.Sort(string.CompareOrdinal);
+        return names;
+    }
+
+    private TreeViewItemViewModel? CreateChild(string name)
+    {
+        string ext;
+        try
+        {
+            ext = (Path.GetExtension(name) ?? "").ToLower();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return null;
+        }
+
+        return ext == ".world"
+            ? new WorldFileTreeViewModel(_world, this, _lmpFile, name)
+            : new LmpEntryTreeViewModel(_world, this, _lmpFile, name);
+    }
+
+    /// <summary>Lists an entry just added to the archive, where it will be saved, and returns its node.</summary>
+    public TreeViewItemViewModel? ShowAddedEntry(string name)
+    {
+        if (HasDummyChild)
+        {
+            ForceLoadChildren(); // lists every entry, the new one included
+        }
+        else if (Children.All(c => c.Label != name) && CreateChild(name) is { } child)
+        {
+            var index = EntryNames().IndexOf(name);
+            Children.Insert(Math.Clamp(index, 0, Children.Count), child);
+        }
+
+        RaiseDetailChanged();
+        return Children.FirstOrDefault(c => c.Label == name);
+    }
+
+    /// <summary>Stops listing an added entry that was taken back.</summary>
+    public void RemoveEntryNode(string name)
+    {
+        var node = Children.FirstOrDefault(c => c.Label == name);
+        if (node != null) Children.Remove(node);
         RaiseDetailChanged();
     }
 }

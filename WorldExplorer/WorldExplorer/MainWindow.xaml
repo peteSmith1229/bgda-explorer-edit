@@ -136,6 +136,7 @@
                                 <MenuItem Header="Replace Selected Entry with File…" Click="Menu_Import_ReplaceEntry_Click" />
                                 <MenuItem Header="Import PNG into Selected Texture…" Click="Menu_Import_Texture_Click" />
                                 <MenuItem Header="Add New Entry to Archive…" Click="Menu_Import_AddEntry_Click" />
+                                <MenuItem Header="Add Archive (.LMP) to GOB…" Click="Menu_Import_AddArchive_Click" />
                             </MenuItem>
                             <MenuItem Header="_Export">
                                 <MenuItem.Icon><controls:GeometryIcon Data="{StaticResource Icon.Export}" /></MenuItem.Icon>

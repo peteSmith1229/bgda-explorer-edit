@@ -23,6 +23,7 @@ using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -114,6 +115,7 @@ internal class FileTreeViewContextManager
                 if (ViewModel.World?.WorldGob is { } gob)
                 {
                     Add("Save GOB…", "Icon.Save", () => _window.SaveGob());
+                    Add("Add Archive (.lmp)…", "Icon.Add", () => AddArchive(gob));
                     AddSeparator();
                     Add("Export All Textures as PNG…", "Icon.Export", () => BatchExportTextures(gob));
                 }
@@ -182,9 +184,18 @@ internal class FileTreeViewContextManager
             }
             Add(inGob ? "Save This Archive As .LMP…" : "Save Archive…", "Icon.Save",
                 () => _window.SaveArchive(lmp));
-            if (!inGob)
+            Add("Add Entry…", "Icon.Add", () => AddEntry(lmp));
+            if (inGob && ViewModel.World?.WorldGob is { } gob)
             {
-                Add("Add Entry…", "Icon.Add", () => AddEntry(lmp));
+                if (ViewModel.EngineVersion == EngineVersion.DarkAlliance)
+                {
+                    Add("Place in Level…", "Icon.View.Level", () => _window.PlaceInLevel(lmp));
+                }
+
+                if (gob.AddedArchives.Contains(lmp.Name))
+                {
+                    Add("Remove Added Archive", "Icon.Delete", () => RemoveAddedArchive(archive));
+                }
             }
             AddSeparator();
         }
@@ -249,8 +260,8 @@ internal class FileTreeViewContextManager
     /// </summary>
     private static byte[] GetEntryBytes(LmpFile lmp, string entryName)
     {
-        if (lmp.PendingEdits.TryGetValue(entryName, out var pending)) return (byte[])pending.Clone();
-        var entry = lmp.Directory[entryName];
+        if (lmp.GetEntryBytes(entryName) is { } current) return (byte[])current.Clone();
+        var entry = lmp.Directory[entryName]; // deleted: the bytes it had
         var bytes = new byte[entry.Length];
         Buffer.BlockCopy(lmp.FileData, entry.StartOffset, bytes, 0, entry.Length);
         return bytes;
@@ -558,6 +569,18 @@ internal class FileTreeViewContextManager
 
     public void DeleteEntry(LmpEntryTreeViewModel entry)
     {
+        var lmp = entry.LmpFileProperty;
+        if (lmp.IsAdded(entry.Label))
+        {
+            // Never saved: taking it back leaves nothing to restore.
+            lmp.DeleteEntry(entry.Label);
+            (entry.Parent as LmpTreeViewModel)?.RemoveEntryNode(entry.Label);
+            if (ReferenceEquals(ViewModel.SelectedNode, entry) && entry.Parent != null) entry.Parent.IsSelected = true;
+            EditApplied();
+            ViewModel.Notifications.Info($"'{entry.Label}' taken out of {lmp.Name}");
+            return;
+        }
+
         var result = MessageBox.Show(_window,
             $"Delete '{entry.Label}'?\n\nThe entry is removed when the archive is next saved. " +
             "Until then you can restore it from this menu.",
@@ -591,14 +614,138 @@ internal class FileTreeViewContextManager
         };
         if (openDialog.ShowDialog(_window) != true) return;
 
-        var nameDialog = new EntryNameDialog(Path.GetFileName(openDialog.FileName), lmpFile.Directory.ContainsKey) { Owner = _window };
+        // The game loads the archives a GOB holds; an archive inside another one is never read.
+        if (Path.GetExtension(openDialog.FileName).Equals(".lmp", StringComparison.OrdinalIgnoreCase) &&
+            ViewModel.World?.WorldGob is { } gob && gob.Directory.ContainsValue(lmpFile))
+        {
+            var answer = MessageBox.Show(_window,
+                $"{Path.GetFileName(openDialog.FileName)} is an archive. The game only loads archives that are in " +
+                $"{gob.Name} itself, not archives inside {lmpFile.Name}.\n\nAdd it to {gob.Name} as an archive instead?",
+                "Add Entry", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            if (answer == MessageBoxResult.Cancel) return;
+            if (answer == MessageBoxResult.Yes)
+            {
+                AddArchiveFiles(gob, new[] { openDialog.FileName });
+                return;
+            }
+        }
+
+        var nameDialog = new EntryNameDialog(Path.GetFileName(openDialog.FileName), lmpFile.HasEntry) { Owner = _window };
         if (nameDialog.ShowDialog() != true) return;
 
-        var entryName = nameDialog.EntryName;
+        // A name that differs from an entry's only in case replaces that entry.
+        var replacing = lmpFile.HasEntry(nameDialog.EntryName);
+        var entryName = lmpFile.AddedEntryName(nameDialog.EntryName);
         AssetImporter.AddEntryFromFile(lmpFile, entryName, openDialog.FileName);
         EditApplied();
-        ViewModel.Notifications.Success($"'{entryName}' added",
-            "New entries appear after the archive is saved and reopened.");
+
+        if (FindArchiveNode(lmpFile)?.ShowAddedEntry(entryName) is { } node)
+        {
+            if (ReferenceEquals(ViewModel.SelectedNode, node)) Reselect(node);
+            else _window.RevealAndSelect(node);
+        }
+
+        ViewModel.Notifications.Success(replacing ? $"'{entryName}' replaced" : $"'{entryName}' added to {lmpFile.Name}",
+            "The change is pending — save to write it to disk.");
+    }
+
+    /// <summary>Adds .lmp files to the open GOB as archives the level loads.</summary>
+    public void AddArchive(GobFile gob)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = $"Choose archives to add to {gob.Name}",
+            Filter = "LMP Archives|*.lmp|All Files|*.*",
+            Multiselect = true
+        };
+        if (ViewModel.World is { } world && Directory.Exists(world.DataPath)) dialog.InitialDirectory = world.DataPath;
+        if (dialog.ShowDialog(_window) != true) return;
+
+        AddArchiveFiles(gob, dialog.FileNames);
+    }
+
+    private void AddArchiveFiles(GobFile gob, IEnumerable<string> paths)
+    {
+        var added = new List<LmpFile>();
+        var problems = new List<string>();
+        foreach (var path in paths)
+        {
+            var fileName = Path.GetFileName(path);
+            try
+            {
+                if (gob.CheckNewArchiveName(fileName) is { } problem)
+                {
+                    problems.Add($"{fileName}: {problem}");
+                    continue;
+                }
+
+                added.Add(gob.AddArchive(fileName, File.ReadAllBytes(path)));
+            }
+            catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                problems.Add($"{fileName}: {ex.Message}");
+            }
+        }
+
+        if (added.Count > 0)
+        {
+            EditApplied();
+            var gobNode = ViewModel.RootNodes.OfType<GobTreeViewModel>().FirstOrDefault();
+            TreeViewItemViewModel? last = null;
+            foreach (var lmp in added) last = gobNode?.ShowAddedArchive(lmp) ?? last;
+            if (last != null) _window.RevealAndSelect(last);
+
+            ViewModel.Notifications.Success(
+                added.Count == 1 ? $"{added[0].Name} added to {gob.Name}" : $"{added.Count} archives added to {gob.Name}",
+                "Save the GOB to write it; the level loads it when it starts. In the Level view, Add Object… " +
+                "places what it holds.");
+        }
+
+        if (problems.Count > 0)
+        {
+            ViewModel.Notifications.Warning(
+                problems.Count == 1 ? "Couldn't add an archive" : $"Couldn't add {problems.Count} archives",
+                string.Join("\n", problems));
+        }
+    }
+
+    /// <summary>Takes an added archive back out of the GOB.</summary>
+    public void RemoveAddedArchive(LmpTreeViewModel node)
+    {
+        var gob = ViewModel.World?.WorldGob;
+        var lmp = node.LmpFileProperty;
+        if (gob == null || !gob.AddedArchives.Contains(lmp.Name)) return;
+
+        gob.RemoveAddedArchive(lmp.Name);
+        if (node.Parent is GobTreeViewModel gobNode)
+        {
+            if (ReferenceEquals(ViewModel.SelectedNode, node) || ViewModel.SelectedNode is LmpEntryTreeViewModel { Parent: var parent } && ReferenceEquals(parent, node))
+            {
+                gobNode.IsSelected = true;
+            }
+
+            gobNode.RemoveArchiveNode(lmp);
+        }
+
+        EditApplied();
+        ViewModel.Notifications.Info($"{lmp.Name} taken out of {gob.Name}");
+    }
+
+    /// <summary>The explorer node of an archive, when its parent has listed it.</summary>
+    private LmpTreeViewModel? FindArchiveNode(LmpFile lmp)
+    {
+        foreach (var root in ViewModel.RootNodes)
+        {
+            if (root is LmpTreeViewModel archive && ReferenceEquals(archive.LmpFileProperty, lmp)) return archive;
+            if (root is GobTreeViewModel gobNode)
+            {
+                var node = gobNode.Children.OfType<LmpTreeViewModel>()
+                    .FirstOrDefault(n => ReferenceEquals(n.LmpFileProperty, lmp));
+                if (node != null) return node;
+            }
+        }
+
+        return null;
     }
 
     public void EditScriptRewards(LmpEntryTreeViewModel entry)
