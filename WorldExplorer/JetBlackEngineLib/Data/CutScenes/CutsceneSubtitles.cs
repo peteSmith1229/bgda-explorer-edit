@@ -1,5 +1,5 @@
 using System.IO;
-using System.Text;
+using JetBlackEngineLib.Data.Text;
 
 namespace JetBlackEngineLib.Data.CutScenes;
 
@@ -9,8 +9,9 @@ public sealed record CutsceneSubtitle(string Key, string Text);
 /// <summary>
 /// A level's cutscene subtitles, e.g. cuttown_cut.uni in cuttown.lmp.
 /// <para>
-/// Layout: the subtitles one after another, each an ASCII key and a NUL, a NUL more when needed to reach an even
-/// offset, then the text in UTF-16LE and a 16-bit NUL. Four zero bytes end the file.
+/// Layout: the game's .uni text layout (<see cref="UniTextFile"/>): the subtitles one after another, each an ASCII
+/// key and a NUL, a NUL more when needed to reach an even offset, then the text in UTF-16LE and a 16-bit NUL. Four
+/// zero bytes end the file.
 /// </para>
 /// <para>
 /// How the game uses them (FUN_00158848 sets up a scene, FUN_00155528 runs its keyframes): the scene's header
@@ -29,8 +30,6 @@ public sealed class CutsceneSubtitles
         ("", "English"), ("_fr", "French"), ("_ge", "German"), ("_it", "Italian"), ("_sp", "Spanish")
     };
 
-    private const int EndLength = 4;
-
     private CutsceneSubtitles(List<CutsceneSubtitle> subtitles) => Subtitles = subtitles;
 
     /// <summary>The subtitles in file order (the order the game shows them in).</summary>
@@ -40,44 +39,19 @@ public sealed class CutsceneSubtitles
     public static CutsceneSubtitles Create() => new(new List<CutsceneSubtitle>());
 
     /// <summary>Reads a subtitle file; throws <see cref="InvalidDataException"/> when its layout isn't understood.</summary>
-    public static CutsceneSubtitles Read(byte[] data)
-    {
-        var subtitles = new List<CutsceneSubtitle>();
-        var at = 0;
-        while (at < data.Length && data[at] != 0)
-        {
-            var keyEnd = Array.IndexOf(data, (byte)0, at);
-            if (keyEnd < 0) throw Invalid($"The key at 0x{at:X} has no end.");
-            var key = Encoding.ASCII.GetString(data, at, keyEnd - at);
-            var text = keyEnd + 1;
-            if ((text & 1) != 0) text++;
-            var end = text;
-            while (end + 1 < data.Length && (data[end] != 0 || data[end + 1] != 0)) end += 2;
-            if (end + 1 >= data.Length) throw Invalid($"The text of {key} has no end.");
-            subtitles.Add(new CutsceneSubtitle(key, Encoding.Unicode.GetString(data, text, end - text)));
-            at = end + 2;
-        }
+    public static CutsceneSubtitles Read(byte[] data) =>
+        new(UniTextFile.Read(data).Entries.Select(e => new CutsceneSubtitle(e.Key, e.Text)).ToList());
 
-        return new CutsceneSubtitles(subtitles);
-    }
-
-    /// <summary>The file's bytes, laid out as the game's own files are.</summary>
+    /// <summary>The file's bytes, laid out as the game's own files are (the .uni layout of <see cref="UniTextFile"/>).</summary>
     public byte[] ToArray()
     {
-        using var stream = new MemoryStream();
         foreach (var (key, text) in Subtitles)
         {
             Require(CheckKey(key));
             Require(CheckText(text));
-            stream.Write(Encoding.ASCII.GetBytes(key));
-            stream.WriteByte(0);
-            if ((stream.Length & 1) != 0) stream.WriteByte(0);
-            stream.Write(Encoding.Unicode.GetBytes(text));
-            stream.Write(new byte[2]);
         }
 
-        stream.Write(new byte[EndLength]);
-        return stream.ToArray();
+        return new UniTextFile(Subtitles.Select(s => (s.Key, s.Text)).ToList()).ToArray();
     }
 
     /// <summary>The index of the subtitle with <paramref name="key"/>, or -1.</summary>
@@ -124,6 +98,4 @@ public sealed class CutsceneSubtitles
     {
         if (problem != null) throw new ArgumentException(problem);
     }
-
-    private static InvalidDataException Invalid(string message) => new($"Not a cutscene subtitle file: {message}");
 }

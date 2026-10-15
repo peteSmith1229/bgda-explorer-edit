@@ -34,10 +34,16 @@ Alliance II files are read with the Dark Alliance formats for now.
   character. `Player` and `Player2` stand in for players 1 and 2; with the ADRIANNA23 executable, `Player3`
   does for player 3 in three-player games.
 - **Tools** for the selected game are in the Tools menu, the Tools drop-down on the toolbar and the start page.
-  For Dark Alliance: Executable Tuning (XP per level, starting stats, feats and spells, monster HP, three-player
-  co-op and difficulty scaling, saved to a copy of `SLES_506.72`), the Save Game Editor (memory-card exports,
-  `.psu`), and Edit Script Rewards and Insert Reward at Call Site, which work on the selected script. Games
+  For Dark Alliance: Executable Tuning (XP per level, starting stats, feats and spells, items, monster HP,
+  three-player co-op and difficulty scaling, saved to a copy of `SLES_506.72`), the Save Game Editor (memory-card
+  exports, `.psu`), and Edit Script Rewards and Insert Reward at Call Site, which work on the selected script. Games
   without tools yet say so.
+- **Edit items** in Executable Tuning's Items tab: every weapon, armour piece, potion, ring and amulet (damage,
+  armour, price, weight, slot, stance, models and the 64 property bits, with the game's own damage and price
+  formulas previewed), the item models, what each shop sells, material multipliers, the enchant glow and the
+  random-loot lists. The eight spell-scroll records the game never uses can become new items. The names the game
+  shows come from `GTEXT.LMP` (found next to the executable or in the data folder of Settings) and are saved to it
+  after the executable.
 - **Save** with Ctrl+S. Edited items are marked with a dot in the explorer and the title bar shows `●` until
   the file is saved; you are asked before unsaved changes would be lost.
 - Level textures for a GOB come from the `.TEX` file with the same name next to it (e.g. `TAVERN.TEX`). They
@@ -52,9 +58,9 @@ Press F1 in the app for every keyboard shortcut. Dark and light themes are avail
 Requires Windows and the .NET 10 SDK. Open `WorldExplorer/WorldExplorer.sln` in Visual Studio or Rider, or run
 `dotnet build WorldExplorer/WorldExplorer.sln`.
 
-`dotnet test WorldExplorer/WorldExplorer.sln` runs the library tests. The executable, script and cutscene tests
-use the game files in `Test_files` (`SLES_506.72`, `TAVERN.GOB`, `CUTTOWN.GOB`) and are skipped if those are
-missing.
+`dotnet test WorldExplorer/WorldExplorer.sln` runs the library tests. The executable, item, script, cutscene and
+text tests use the game files in `Test_files` (`SLES_506.72`, `TAVERN.GOB`, `CUTTOWN.GOB`, `GTEXT.LMP`) and are
+skipped if those are missing.
 
 ## Credits:
 

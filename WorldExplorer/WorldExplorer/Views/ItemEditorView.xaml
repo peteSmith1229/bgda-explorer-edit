@@ -1,0 +1,377 @@
+<UserControl x:Class="WorldExplorer.Views.ItemEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:WorldExplorer"
+             mc:Ignorable="d" d:DesignWidth="1060" d:DesignHeight="560"
+             d:DataContext="{d:DesignInstance Type=local:ItemEditorModel}">
+    <!-- The Items tab of Executable Tuning. DataContext: ItemEditorModel. -->
+    <UserControl.Resources>
+        <Style x:Key="Help" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        </Style>
+        <Style x:Key="Heading" TargetType="TextBlock" BasedOn="{StaticResource Text.Section}">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Margin" Value="0,14,0,6" />
+        </Style>
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        </Style>
+        <Style x:Key="Field" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Margin" Value="0,3,18,3" />
+        </Style>
+        <Style x:Key="Pick" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="Margin" Value="0,3,18,3" />
+            <Setter Property="DisplayMemberPath" Value="Text" />
+            <Setter Property="SelectedValuePath" Value="Value" />
+        </Style>
+        <Style x:Key="Problem" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,6,0,0" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+        </Style>
+        <Style x:Key="Caution" TargetType="TextBlock" BasedOn="{StaticResource Problem}">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
+        </Style>
+        <Style x:Key="Swatch" TargetType="Border">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+            <Setter Property="Margin" Value="6,3,0,3" />
+        </Style>
+        <!-- a tick box per property bit; its tooltip says what the bit does -->
+        <DataTemplate x:Key="BitTemplate">
+            <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSet, Mode=TwoWay}" ToolTip="{Binding Effect}"
+                      Margin="0,3,16,3" MinWidth="130" />
+        </DataTemplate>
+        <ItemsPanelTemplate x:Key="WrapItems">
+            <WrapPanel />
+        </ItemsPanelTemplate>
+    </UserControl.Resources>
+
+    <Grid>
+        <TextBlock Style="{StaticResource Help}" Margin="0,8,0,0" Text="{Binding ItemsProblem}"
+                   Visibility="{Binding IsSupported, Converter={StaticResource InverseBoolToVisibility}}" />
+
+        <TabControl Visibility="{Binding IsSupported, Converter={StaticResource BoolToVisibility}}">
+
+            <!-- ═══════════════════════════════ Items ═══════════════════════════════ -->
+            <TabItem Header="Items">
+                <DockPanel Margin="0,4,0,0">
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+                        <Button DockPanel.Dock="Right" Content="Open GTEXT.LMP…" Margin="8,0,0,0" Click="OpenNames_Click" />
+                        <TextBlock Style="{StaticResource Help}" VerticalAlignment="Center" Margin="0" Text="{Binding NamesStatus}" />
+                    </DockPanel>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MinWidth="380" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="470" />
+                        </Grid.ColumnDefinitions>
+
+                        <DataGrid Grid.Column="0" x:Name="itemGrid" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="True"
+                                  SelectionMode="Single" HeadersVisibility="Column">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="" Width="22">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <TextBlock Text="●" Foreground="{DynamicResource Brush.Modified}" HorizontalAlignment="Center"
+                                                           ToolTip="Edited" Visibility="{Binding IsEdited, Converter={StaticResource BoolToVisibility}}" />
+                                                <TextBlock Text="!" FontWeight="Bold" Foreground="{DynamicResource Brush.Danger}" HorizontalAlignment="Center"
+                                                           ToolTip="{Binding Problem}" Visibility="{Binding Problem, Converter={StaticResource NullToVisibility}}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="34" />
+                                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="120" />
+                                <DataGridTextColumn Header="Shown as" Binding="{Binding ShownName}" Width="150" />
+                                <DataGridTextColumn Header="Kind" Binding="{Binding KindText}" Width="120" />
+                                <DataGridTextColumn Header="Damage" Binding="{Binding DamageText}" Width="64" />
+                                <DataGridTextColumn Header="Armour" Binding="{Binding ArmourText}" Width="60" />
+                                <DataGridTextColumn Header="Price" Binding="{Binding ValueText}" Width="72" />
+                                <DataGridTextColumn Header="Weight" Binding="{Binding WeightText}" Width="58" />
+                                <DataGridTextColumn Header="Modifiers" Binding="{Binding ModifiersText}" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Border Grid.Column="2" Style="{StaticResource Card}" Padding="14,10"
+                                Visibility="{Binding SelectedItem, Converter={StaticResource NullToVisibility}}">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel DataContext="{Binding SelectedItem}" Margin="0,0,8,4">
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Content="Undo changes" Click="RevertItem_Click"
+                                                ToolTip="Puts this item's boxes back as they are in the executable." />
+                                        <TextBlock FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                                            <Run Text="{Binding DisplayName, Mode=OneWay}" />
+                                            <Run Text="  #" Foreground="{DynamicResource Brush.TextMuted}" /><Run Text="{Binding Index, Mode=OneWay}" Foreground="{DynamicResource Brush.TextMuted}" />
+                                        </TextBlock>
+                                    </DockPanel>
+                                    <TextBlock Style="{StaticResource Help}" Margin="0,6,0,0" Text="{Binding NameHint}"
+                                               Visibility="{Binding IsSpare, Converter={StaticResource BoolToVisibility}}" />
+
+                                    <Grid Margin="0,6,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Item name" />
+                                        <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource Field}" IsEnabled="{Binding CanRename}"
+                                                 Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="The name item text uses (shops, levels, scripts): longsword+1+fire. Only the unused scroll records can be renamed." />
+                                        <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Shown as" />
+                                        <TextBox Grid.Row="0" Grid.Column="3" Style="{StaticResource Field}" Margin="0,3,0,3" IsEnabled="{Binding NamesLoaded}"
+                                                 Text="{Binding ShownName, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="The English name the game shows (GTEXT.LMP). Items with the same item name share it." />
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Category" />
+                                        <ComboBox Grid.Row="1" Grid.Column="1" Style="{StaticResource Pick}" IsEnabled="{Binding CanChangeCategory}"
+                                                  ItemsSource="{x:Static local:ItemRow.CategoryChoices}" SelectedValue="{Binding Category}"
+                                                  ToolTip="Which inventory list it goes in. Only the unused scroll records can change." />
+                                        <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Slot" />
+                                        <ComboBox Grid.Row="1" Grid.Column="3" Style="{StaticResource Pick}" Margin="0,3,0,3" IsEnabled="{Binding CanChangeSlot}"
+                                                  ItemsSource="{Binding SlotChoices}" SelectedValue="{Binding Slot}"
+                                                  ToolTip="Where it is worn or held." />
+
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Stance" />
+                                        <ComboBox Grid.Row="2" Grid.Column="1" Style="{StaticResource Pick}" IsEnabled="{Binding IsWeapon}"
+                                                  ItemsSource="{x:Static local:ItemRow.StanceChoices}" SelectedValue="{Binding Stance}"
+                                                  ToolTip="How a weapon is held and swung (its animations), and its value weight. The sorceress can't wield two-handed swords, axes or hammers." />
+                                        <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Damage type" />
+                                        <ComboBox Grid.Row="2" Grid.Column="3" Style="{StaticResource Pick}" Margin="0,3,0,3"
+                                                  ItemsSource="{x:Static local:ItemRow.DamageTypeChoices}" SelectedValue="{Binding DamageType}"
+                                                  ToolTip="The kind of hit, which monster resistances count against." />
+
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Damage min" />
+                                        <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource Field}" Text="{Binding DamageMin, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBlock Grid.Row="3" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Damage max" />
+                                        <TextBox Grid.Row="3" Grid.Column="3" Style="{StaticResource Field}" Margin="0,3,0,3" Text="{Binding DamageMax, UpdateSourceTrigger=PropertyChanged}" />
+
+                                        <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="+N" />
+                                        <TextBox Grid.Row="4" Grid.Column="1" Style="{StaticResource Field}" Text="{Binding Enchantment, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="0 to 15. Every one of these items has it; a +N in item text is OR-ed with it (+1 and +2 make +3)." />
+                                        <TextBlock Grid.Row="4" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Armour" />
+                                        <TextBox Grid.Row="4" Grid.Column="3" Style="{StaticResource Field}" Margin="0,3,0,3" Text="{Binding Armour, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="Armour class of the piece; each +N adds 1, rusty takes 1 off." />
+
+                                        <TextBlock Grid.Row="5" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Price" />
+                                        <TextBox Grid.Row="5" Grid.Column="1" Style="{StaticResource Field}" Text="{Binding Price, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="The base price of armour and other items. Weapons, rings and amulets are priced from their damage and bonuses instead." />
+                                        <TextBlock Grid.Row="5" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Weight" />
+                                        <TextBox Grid.Row="5" Grid.Column="3" Style="{StaticResource Field}" Margin="0,3,0,3" Text="{Binding Weight, UpdateSourceTrigger=PropertyChanged}" />
+
+                                        <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Stack size" />
+                                        <TextBox Grid.Row="6" Grid.Column="1" Style="{StaticResource Field}" Text="{Binding StackSize, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="How many one pickup or purchase gives (arrows: 20)." />
+                                        <TextBlock Grid.Row="6" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Looks" />
+                                        <TextBox Grid.Row="6" Grid.Column="3" Style="{StaticResource Field}" Margin="0,3,0,3" Text="{Binding Looks, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="How many models in a row from Model it can use (1 to 7). Each one made gets one: better materials pick later ones." />
+
+                                        <TextBlock Grid.Row="7" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Model" />
+                                        <TextBox Grid.Row="7" Grid.Column="1" Style="{StaticResource Field}" Text="{Binding Model, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="Held items: the first model (Models tab). Body armour, gloves, boots and helmets: the ARMOR.YAK entry worn (the next one is the enchanted look)." />
+                                        <TextBlock Grid.Row="7" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Pickup model" />
+                                        <TextBox Grid.Row="7" Grid.Column="3" Style="{StaticResource Field}" Margin="0,3,0,3" Text="{Binding PickupModel, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="The model on the ground and in the inventory (Models tab)." />
+                                    </Grid>
+
+                                    <TextBlock Style="{StaticResource Problem}" Text="{Binding Problem}"
+                                               Visibility="{Binding Problem, Converter={StaticResource NullToVisibility}}" />
+                                    <TextBlock Style="{StaticResource Caution}" Text="{Binding Warning}"
+                                               Visibility="{Binding Warning, Converter={StaticResource NullToVisibility}}" />
+                                    <TextBlock Style="{StaticResource Help}" Margin="0,8,0,0" Text="{Binding Preview}" />
+
+                                    <TextBlock Text="MODIFIERS" Style="{StaticResource Heading}" />
+                                    <TextBlock Style="{StaticResource Help}" Text="Every one of these items has the modifiers ticked here; item text adds more. Hover over one to see what it does." />
+                                    <ItemsControl ItemsSource="{Binding ModifierBits}" ItemTemplate="{StaticResource BitTemplate}"
+                                                  ItemsPanel="{StaticResource WrapItems}" />
+
+                                    <TextBlock Text="KIND" Style="{StaticResource Heading}" />
+                                    <TextBlock Style="{StaticResource Help}" Text="Bits the game never names: what the item is made of and what kind it is. They pick names (Mithral or Darkwood), random modifiers and drops." />
+                                    <ItemsControl ItemsSource="{Binding KindBits}" ItemTemplate="{StaticResource BitTemplate}"
+                                                  ItemsPanel="{StaticResource WrapItems}" />
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ═══════════════════════════════ Models ═══════════════════════════════ -->
+            <TabItem Header="Models">
+                <DockPanel Margin="0,4,0,0">
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Help}" Text="Each model is a .vif mesh and a .tex texture in EQUIPMNT.LMP, which the game loads by these names. Point a model at another model's files, or at new files you have added to EQUIPMNT.LMP (Add Entry… in the main window; a recoloured texture can be made with Export and Import PNG…). A name only this model uses is rewritten in place and must fit; a name other models share can only become a name some model already has. Models 49 (the maul), 58 and 101 (the scroll) are used by no item." />
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+                        <Button DockPanel.Dock="Right" Content="Open EQUIPMNT.LMP…" Margin="8,0,0,0" Click="OpenEquipment_Click" />
+                        <TextBlock Style="{StaticResource Help}" VerticalAlignment="Center" Margin="0" Text="{Binding EquipmentStatus}" />
+                    </DockPanel>
+                    <DataGrid ItemsSource="{Binding Models}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                              HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="#" Binding="{Binding Index}" IsReadOnly="True" Width="40" />
+                            <DataGridTextColumn Header="Model (.vif)" Width="170"
+                                                Binding="{Binding Vif, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Texture (.tex)" Width="170"
+                                                Binding="{Binding Tex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Used by" Binding="{Binding UsedBy}" IsReadOnly="True" Width="260" />
+                            <DataGridTextColumn Header="Problem" Binding="{Binding Problem}" IsReadOnly="True" Width="*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+                                        <Setter Property="TextWrapping" Value="Wrap" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ═══════════════════════════════ Shops ═══════════════════════════════ -->
+            <TabItem Header="Shops">
+                <Grid>
+                    <TextBlock Style="{StaticResource Help}" Margin="0,8,0,0" Text="{Binding ShopsProblem}"
+                               Visibility="{Binding ShopsSupported, Converter={StaticResource InverseBoolToVisibility}}" />
+                    <DockPanel Margin="0,4,0,0" Visibility="{Binding ShopsSupported, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Help}" Text="What each shop sells, as item text: an item name, then +N and modifier words joined by '+' (longsword+masterwork+2+fire). Bartley's list is used in the tavern, Branoch's in the mine camp and Sleyvas's everywhere else; on Extreme every shop sells the Extreme list and random items instead. Item names cost nothing; other new text has to fit in the shops' text area (about 400 bytes more than the game uses)." />
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Shop" />
+                            <ComboBox Style="{StaticResource Pick}" MinWidth="320" ItemsSource="{x:Static local:ItemEditorModel.ShopStocks}"
+                                      SelectedValue="{Binding SelectedShopStock}" />
+                        </StackPanel>
+                        <Border DockPanel.Dock="Bottom" Style="{StaticResource Card}" Padding="12,8" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Text="TRY ITEM TEXT" Style="{StaticResource Text.Section}" Margin="0,0,0,4" />
+                                <DockPanel>
+                                    <TextBox DockPanel.Dock="Left" Width="300" Text="{Binding TryText, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Words the game knows: fire, ice, shock, fireburst, iceburst, shockburst, wound, keen, speed, superhaste, disruption, defense, elven, fine, masterwork, mithril, adamantine, rusty, protection, strength, dexterity, constitution, intelligence, healthregeneration, magicregeneration, and numbers 1-15." />
+                                    <TextBlock Style="{StaticResource Help}" VerticalAlignment="Center" Margin="12,0,0,0" Text="{Binding TryResult}" />
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+                        <DataGrid ItemsSource="{Binding ShopRows}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                  HeadersVisibility="Column">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="#" Binding="{Binding Position}" IsReadOnly="True" Width="40" />
+                                <DataGridTextColumn Header="List" Binding="{Binding ListText}" IsReadOnly="True" Width="80" />
+                                <DataGridTextColumn Header="Item text" Width="260"
+                                                    Binding="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Header="In the game" Binding="{Binding Result}" IsReadOnly="True" Width="*" />
+                                <DataGridTextColumn Header="Problem" Binding="{Binding Problem}" IsReadOnly="True" Width="260">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+                                            <Setter Property="TextWrapping" Value="Wrap" />
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- ═══════════════════════════════ Loot & effects ═══════════════════════════════ -->
+            <TabItem Header="Loot &amp; effects">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,4,14,8">
+                        <TextBlock Text="MATERIALS" Style="{StaticResource Heading}" Margin="0,4,0,6" />
+                        <TextBlock Style="{StaticResource Help}" Text="How much each material multiplies a weapon's damage (the last one an item has wins). The game loads each with one instruction, so a value is rounded to one that fits: 1.5, 2, 2.25, 2.5, 3 and the like are exact." />
+                        <DataGrid ItemsSource="{Binding Materials}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                  HeadersVisibility="Column" HorizontalAlignment="Left" MinWidth="520" PreviewMouseWheel="Grid_PreviewMouseWheel">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Material" Binding="{Binding Name}" IsReadOnly="True" Width="170" />
+                                <DataGridTextColumn Header="Damage ×" Width="90" Binding="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Header="Stock" Binding="{Binding Stock}" IsReadOnly="True" Width="60" />
+                                <DataGridTextColumn Header="" Binding="{Binding Note}" IsReadOnly="True" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <TextBlock Text="STANCE WEIGHTS" Style="{StaticResource Heading}" />
+                        <TextBlock Style="{StaticResource Help}" Text="How much a weapon's stance counts in its price: the damage is multiplied by this before the price is worked out." />
+                        <DataGrid ItemsSource="{Binding StanceWeights}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                  HeadersVisibility="Column" HorizontalAlignment="Left" MinWidth="520" PreviewMouseWheel="Grid_PreviewMouseWheel">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Stance" Binding="{Binding Name}" IsReadOnly="True" Width="170" />
+                                <DataGridTextColumn Header="Weight" Width="90" Binding="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Header="Stock" Binding="{Binding Stock}" IsReadOnly="True" Width="60" />
+                                <DataGridTextColumn Header="" Binding="{Binding Note}" IsReadOnly="True" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <TextBlock Text="ENCHANT GLOW" Style="{StaticResource Heading}" />
+                        <TextBlock Style="{StaticResource Help}" Text="The glow round a weapon with +N or a modifier (flaming weapons have their own fire), as red, green and blue from 0 to 255. Both layers are added to the scene, so dark colours look faint." />
+                        <ItemsControl ItemsSource="{Binding Glow}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <TextBlock Style="{StaticResource FieldLabel}" Width="170" Text="{Binding Name}" />
+                                        <TextBlock Style="{StaticResource FieldLabel}" Text="R" />
+                                        <TextBox Width="52" Margin="0,0,8,0" Text="{Binding R, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBlock Style="{StaticResource FieldLabel}" Text="G" />
+                                        <TextBox Width="52" Margin="0,0,8,0" Text="{Binding G, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBlock Style="{StaticResource FieldLabel}" Text="B" />
+                                        <TextBox Width="52" Text="{Binding B, UpdateSourceTrigger=PropertyChanged}" />
+                                        <Border Style="{StaticResource Swatch}" Background="{Binding Swatch}" />
+                                        <TextBlock Style="{StaticResource Help}" Margin="12,0,0,0" VerticalAlignment="Center">
+                                            <Run Text="stock" /> <Run Text="{Binding Stock, Mode=OneWay}" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="RANDOM LOOT MODIFIERS" Style="{StaticResource Heading}" />
+                        <TextBlock Style="{StaticResource Help}" Text="When the game makes a random item (drops, chests, Extreme shop stock) it picks entries from one of these lists and adds them: a +N, or one modifier. An entry that appears twice is picked twice as often. On Extreme, the +N is then raised while the item stays within the drop's budget." />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="List" />
+                            <ComboBox Style="{StaticResource Pick}" MinWidth="220" ItemsSource="{x:Static local:ItemEditorModel.LootLists}"
+                                      SelectedValue="{Binding SelectedLootList}" />
+                        </StackPanel>
+                        <DataGrid ItemsSource="{Binding LootRows}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                  HeadersVisibility="Column" HorizontalAlignment="Left" MinWidth="760" PreviewMouseWheel="Grid_PreviewMouseWheel">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="#" Binding="{Binding Position}" IsReadOnly="True" Width="40" />
+                                <DataGridComboBoxColumn Header="Adds" Width="200" ItemsSource="{x:Static local:ItemEditorModel.LootChoices}"
+                                                        DisplayMemberPath="Text" SelectedValuePath="Value"
+                                                        SelectedValueBinding="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Header="What it does" Binding="{Binding Meaning}" IsReadOnly="True" Width="*">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="TextWrapping" Value="Wrap" />
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>
