@@ -1,8 +1,14 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // COMPLETE FILE — replace WorldExplorer/WorldExplorer/ExecutableEditorWindow.xaml.cs
 //
-// Tabs: XP per Level, Starting Stats, Feats & Spells, Monster HP, Three Players.
+// Tabs: XP per Level, Starting Stats, Feats & Spells, Items, Monster HP, Three Players.
 // A bad value in ANY tab aborts the save with a message; nothing is written.
+//
+// Items (Views/ItemEditorView, ItemEditorModel): weapons, armour and other items, their models,
+// the shops, materials, stance weights, the enchant glow and the random-loot lists, written all
+// together (BgdaExecutable.ApplyItemEdits). The names the game shows are in GTEXT.LMP, found next
+// to the executable or in the data folder of the settings; changed names are saved to it after
+// the executable.
 //
 // Three Players: switches the tested three-player patch (ADRIANNA22) on or off,
 // updates an older three-player build (ADRIANNA21 / 20 / 19) to ADRIANNA22 on
@@ -13,14 +19,17 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using JetBlackEngineLib.Data.Executable;
+using JetBlackEngineLib.Data.Text;
 using Microsoft.Win32;
 using WorldExplorer.Themes;
+using WorldExplorer.Views;
 
 namespace WorldExplorer;
 
@@ -200,6 +209,7 @@ public partial class ExecutableEditorWindow : Window
     private readonly DifficultyModel _difficultyModel = new();
     private readonly List<DifficultyRow> _difficultyRows;
     private readonly bool _difficultyEditable;
+    private readonly ItemEditorModel _items;
 
     public ExecutableEditorWindow(BgdaExecutable exe)
     {
@@ -247,6 +257,18 @@ public partial class ExecutableEditorWindow : Window
             Coefficient = FormatEnergy(f.Coefficient)
         }).ToList();
         featGrid.ItemsSource = _featRows;
+
+        // ── Items tab: the names and model files come from the game's data folder when they can be found ──
+        _items = new ItemEditorModel(_exe);
+        itemsView.DataContext = _items;
+        if (_items.IsSupported)
+        {
+            var folders = new[] { System.IO.Path.GetDirectoryName(_exe.FilePath), App.Settings.Get("Files.DataPath", "") };
+            if (ItemEditorModel.FindGameFile("GTEXT.LMP", folders) is { } gtext)
+                ItemEditorView.TryLoadNames(_items, gtext, this, quiet: true);
+            if (ItemEditorModel.FindGameFile("EQUIPMNT.LMP", folders) is { } equipment)
+                ItemEditorView.TryLoadEquipment(_items, equipment, this, quiet: true);
+        }
 
         _monsters = BgdaMonsters.Open(exe.FilePath);
         _monsterRows = _monsters.GetMonsters().Select(mon => new MonsterRow
@@ -335,8 +357,9 @@ public partial class ExecutableEditorWindow : Window
             ApplyStatEdits();
             ApplyFeatEdits();
             ApplyMonsterEdits();
+            _items.Apply(); // checks every item box, then writes them all or none
         }
-        catch (ArgumentException ex)
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
             MessageBox.Show(this, ex.Message, "Invalid value",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -366,10 +389,42 @@ public partial class ExecutableEditorWindow : Window
         WriteMonsterEdits(dialog.FileName);
         UpdateThreePlayerStatus();
         UpdateDifficultyStatus();
+        var namesSaved = _items.NamesNeedSaving && SaveNames();
         MessageBox.Show(this,
             "Saved. Replace the executable in your game image with this file " +
-            "(keep your original as a backup). Changes affect new characters and future level-ups.",
+            (namesSaved ? "and GTEXT.LMP with the one you saved " : "") +
+            "(keep your originals as a backup). Stats and XP affect new characters and future level-ups; " +
+            "items, shops and loot every game.",
             "Executable Tuning", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    /// <summary>Puts the changed item names in GTEXT.LMP and saves it where the user says; false when not saved.</summary>
+    private bool SaveNames()
+    {
+        try
+        {
+            _items.ApplyNames();
+        }
+        catch (ArgumentException ex)
+        {
+            MessageBox.Show(this, ex.Message + " The names weren't saved.", "Invalid value", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            Title = "Save the item names (GTEXT.LMP)",
+            Filter = "Game text|GTEXT.LMP|All Files|*.*",
+            FileName = "GTEXT.LMP"
+        };
+        if (_items.NamesPath is { } loaded && System.IO.Path.GetDirectoryName(loaded) is { } folder && Directory.Exists(folder))
+            dialog.InitialDirectory = folder;
+        if (dialog.ShowDialog(this) != true) return false;
+
+        var bytes = _items.Names!.ToArray();
+        File.WriteAllBytes(dialog.FileName, bytes);
+        _items.NamesSaved(GameText.Read(bytes), dialog.FileName);
+        return true;
     }
 
     private static void CommitGrid(DataGrid grid)

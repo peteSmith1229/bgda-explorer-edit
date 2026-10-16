@@ -1,7 +1,9 @@
 ﻿using HelixToolkit.Wpf;
+using JetBlackEngineLib;
 using JetBlackEngineLib.Data.DataContainers;
 using JetBlackEngineLib.Data.Models;
 using JetBlackEngineLib.Data.Textures;
+using JetBlackEngineLib.Data.World;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -67,6 +69,9 @@ public class ObjectDefinitions
         AddDef("ShopKeep", ParseShopKeepObject);
         AddDef("Lecher", ParseLecherObject);
 
+        // A model from any archive (Dark Alliance: lump=, model=, texture=)
+        AddDef(LevelObjects.ModelPropClass, ParseUserParamPropObject);
+
         // == RTA Objects
         // Characters
         AddDef("NPC", ParseObjectWithLumpProp("name"));
@@ -108,8 +113,8 @@ public class ObjectDefinitions
             }
         }
 
-        // Didn't match anything
-        return ParseBaseObject(obj);
+        // Didn't match anything: a Dark Alliance class whose archive is in the GOB shows its model
+        return ParseClassObject(obj) ?? ParseBaseObject(obj);
     }
 
     private VisualObjectData ParseBaseObject(VisualObjectData obj)
@@ -209,59 +214,97 @@ public class ObjectDefinitions
 
     private Visual3D LoadModelFromOtherLmp(string lmpName, string file, string textureFile)
     {
-        var par = _manager.LevelViewModel.WorldNode?.Parent?.Parent;
-
-        if (par is GobTreeViewModel gob)
+        var archive = FindLevelArchive(lmpName);
+        if (archive == null)
         {
-            foreach (var child in gob.Children.OfType<LmpTreeViewModel>())
-            {
-                if (string.Compare(child.Label, lmpName, StringComparison.InvariantCultureIgnoreCase) != 0)
-                {
-                    continue;
-                }
-
-                var world = _manager.LevelViewModel.MainViewModel.World;
-                if (world != null) EnsureCacheMatchesWorld(world);
-
-                var key = (child.LmpFileProperty, file, textureFile);
-                if (!_archiveModelCache.TryGetValue(key, out var model))
-                {
-                    model = DecodeModelFromLmpChild(file, textureFile, child);
-                    _archiveModelCache[key] = model;
-                }
-
-                return InstantiateObjectModel(model);
-            }
+            return CreateBox(5, Color.FromRgb(255, 0, 0));
         }
 
-        return CreateBox(5, Color.FromRgb(255, 0, 0));
+        var world = _manager.LevelViewModel.MainViewModel.World;
+        if (world != null) EnsureCacheMatchesWorld(world);
+        var key = (archive, file, textureFile);
+        if (!_archiveModelCache.TryGetValue(key, out var model))
+        {
+            model = DecodeModelFromArchive(archive, file, textureFile);
+            _archiveModelCache[key] = model;
+        }
+
+        return InstantiateObjectModel(model);
     }
 
-    private static Model3D? DecodeModelFromLmpChild(string file, string textureFile, LmpTreeViewModel child)
+    /// <summary>The GOB's archive called <paramref name="name"/> (added ones too), or null.</summary>
+    private LmpFile? FindLevelArchive(string name)
     {
-        child.ForceLoadChildren();
-        var entry = child.LmpFileProperty.FindFile(file);
-        var texEntry = child.LmpFileProperty.FindFile(textureFile);
+        var gob = _manager.LevelViewModel.MainViewModel.World?.WorldGob;
+        if (gob == null) return null;
+        foreach (var (key, lmp) in gob.Directory)
+        {
+            if (string.Equals(key, name, StringComparison.OrdinalIgnoreCase)) return lmp;
+        }
 
-        if (entry == null || texEntry == null)
+        return null;
+    }
+
+    /// <summary>The entry's bytes as they would be saved, its name matched without regard to case.</summary>
+    private static byte[]? FindEntryBytes(LmpFile archive, string name)
+    {
+        var actual = archive.EffectiveEntryNames()
+            .FirstOrDefault(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
+        return actual == null ? null : archive.GetEntryBytes(actual);
+    }
+
+    private static Model3D? DecodeModelFromArchive(LmpFile archive, string file, string textureFile)
+    {
+        var vif = FindEntryBytes(archive, file);
+        var texBytes = FindEntryBytes(archive, textureFile);
+        if (vif == null || texBytes == null)
         {
             return null;
         }
 
-        var tex = TexDecoder.Decode(child.LmpFileProperty.FileData.AsSpan()
-            .Slice(texEntry.StartOffset, texEntry.Length));
+        var tex = TexDecoder.Decode(texBytes);
         tex?.Freeze();
 
         StringLogger logger = new();
-        var vifModel = VifDecoder.Decode(
-            logger,
-            child.LmpFileProperty.FileData.AsSpan().Slice(entry.StartOffset, entry.Length),
-            tex?.PixelWidth ?? 0,
-            tex?.PixelHeight ?? 0);
-
+        var vifModel = VifDecoder.Decode(logger, vif, tex?.PixelWidth ?? 0, tex?.PixelHeight ?? 0);
         var model = Conversions.CreateModel3D(vifModel, tex);
         if (model.CanFreeze) model.Freeze();
         return model;
+    }
+
+    /// <summary>
+    /// A Dark Alliance object whose class takes its model from an archive in
+    /// the GOB, drawn with that model when the archive has one obvious model:
+    /// its only one, or the one named after the archive. Null otherwise.
+    /// </summary>
+    private VisualObjectData? ParseClassObject(VisualObjectData obj)
+    {
+        if (obj.ObjectData == null || _manager.LevelViewModel.MainViewModel.EngineVersion != EngineVersion.DarkAlliance)
+        {
+            return null;
+        }
+
+        var archiveName = BgdaObjectClasses.Find(obj.ObjectData.Name)?.Archive;
+        var archive = archiveName == null ? null : FindLevelArchive(archiveName);
+        if (archive == null) return null;
+
+        var names = archive.EffectiveEntryNames();
+        string? Pick(string extension)
+        {
+            var candidates = names.Where(n => n.EndsWith(extension, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (candidates.Count == 1) return candidates[0];
+            var named = Path.GetFileNameWithoutExtension(archiveName) + extension;
+            return candidates.FirstOrDefault(n => string.Equals(n, named, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var vif = Pick(".vif");
+        var tex = vif == null ? null : names.FirstOrDefault(n =>
+            string.Equals(n, Path.GetFileNameWithoutExtension(vif) + ".tex", StringComparison.OrdinalIgnoreCase)) ?? Pick(".tex");
+        if (vif == null || tex == null) return null;
+
+        obj.Model = new ModelVisual3D();
+        obj.Model.Children.Add(LoadModelFromOtherLmp(archive.Name, vif, tex));
+        return obj;
     }
 
     // Static Utility Methods
@@ -471,6 +514,32 @@ public class ObjectDefinitions
     {
         obj.Model = new ModelVisual3D();
         obj.Model.Children.Add(LoadModelFromOtherLmp("nebbish.lmp", "nebbish.vif", "nebbish.tex"));
+        return obj;
+    }
+
+    /// <summary>Dark Alliance's UserParamProp: the model and texture its lump= archive holds.</summary>
+    private VisualObjectData ParseUserParamPropObject(VisualObjectData obj)
+    {
+        var data = obj.ObjectData;
+        var lump = data?.GetProperty("lump")?.Trim();
+        var model = data?.GetProperty("model")?.Trim();
+        var texture = data?.GetProperty("texture")?.Trim();
+
+        obj.Model = new ModelVisual3D();
+        if (string.IsNullOrEmpty(lump) || string.IsNullOrEmpty(model) || string.IsNullOrEmpty(texture))
+        {
+            obj.Model.Children.Add(CreateBox(5, Color.FromRgb(255, 0, 0)));
+        }
+        else if (FindLevelArchive(lump) != null)
+        {
+            obj.Model.Children.Add(LoadModelFromOtherLmp(lump, model, texture));
+        }
+        else
+        {
+            // Not in the GOB: the game loads it from the disc, as this looks for it in the data folder.
+            obj.Model.Children.Add(LoadModelFromExternalLmp(lump, model, texture));
+        }
+
         return obj;
     }
 

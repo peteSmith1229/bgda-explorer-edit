@@ -79,8 +79,7 @@ public static class LmpWriter
         // Defensive: the directory is lazily loaded by the tree view; make sure
         // it is populated before building the effective entry list, otherwise
         // the original entries would be silently dropped.
-        if (lmpFile.Directory.Count == 0)
-            lmpFile.ReadDirectory();
+        lmpFile.EnsureDirectory();
  
         var entries = BuildEffectiveEntries(lmpFile);
         return PackEntries(lmpFile.EngineVersion, entries);
@@ -104,39 +103,17 @@ public static class LmpWriter
 
     /// <summary>
     /// Merges the original archive directory with pending edits/deletions/
-    /// additions into a flat ordered list of (name, bytes) pairs.
+    /// additions into a flat ordered list of (name, bytes) pairs. The game finds
+    /// an entry by binary search, so an archive in name order stays in name
+    /// order: a new entry goes where its name sorts, not at the end.
     /// </summary>
     private static List<(string Name, byte[] Data)> BuildEffectiveEntries(LmpFile src)
     {
-        var result = new List<(string Name, byte[] Data)>(src.Directory.Count);
-
-        foreach (var (name, info) in src.Directory)
+        var names = src.EffectiveEntryNames();
+        var result = new List<(string Name, byte[] Data)>(names.Count);
+        foreach (var name in names)
         {
-            // Skip entries the user has scheduled for deletion.
-            if (src.PendingDeletions.Contains(name))
-                continue;
-
-            byte[] data;
-            if (src.PendingEdits.TryGetValue(name, out var replaced))
-            {
-                // Use the replacement bytes queued by the user.
-                data = replaced;
-            }
-            else
-            {
-                // Slice the original bytes out of FileData.
-                data = new byte[info.Length];
-                Buffer.BlockCopy(src.FileData, info.StartOffset, data, 0, info.Length);
-            }
-
-            result.Add((name, data));
-        }
-
-        // Append brand-new entries that don't exist in the original Directory.
-        foreach (var (name, data) in src.PendingAdditions)
-        {
-            if (!src.PendingDeletions.Contains(name))
-                result.Add((name, data));
+            result.Add((name, src.GetEntryBytes(name)!));
         }
 
         return result;

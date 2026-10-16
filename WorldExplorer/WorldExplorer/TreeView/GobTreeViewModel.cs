@@ -14,6 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using JetBlackEngineLib.Data.DataContainers;
+using System;
+using System.Linq;
 using WorldExplorer.Infrastructure;
 
 namespace WorldExplorer.TreeView;
@@ -48,5 +51,30 @@ public class GobTreeViewModel : TreeViewItemViewModel
         {
             Children.Add(new LmpTreeViewModel(_world, this, entry.Value));
         }
+    }
+
+    /// <summary>Lists an archive just added to the GOB, where it will be saved, and returns its node.</summary>
+    public LmpTreeViewModel? ShowAddedArchive(LmpFile lmp)
+    {
+        if (HasDummyChild)
+        {
+            ForceLoadChildren(); // lists every archive, the new one included
+        }
+        else if (_world.WorldGob != null)
+        {
+            var index = _world.WorldGob.Directory.Keys.ToList().IndexOf(lmp.Name);
+            Children.Insert(Math.Clamp(index, 0, Children.Count), new LmpTreeViewModel(_world, this, lmp));
+        }
+
+        RaiseDetailChanged();
+        return Children.OfType<LmpTreeViewModel>().FirstOrDefault(n => ReferenceEquals(n.LmpFileProperty, lmp));
+    }
+
+    /// <summary>Stops listing an archive taken back out of the GOB.</summary>
+    public void RemoveArchiveNode(LmpFile lmp)
+    {
+        var node = Children.OfType<LmpTreeViewModel>().FirstOrDefault(n => ReferenceEquals(n.LmpFileProperty, lmp));
+        if (node != null) Children.Remove(node);
+        RaiseDetailChanged();
     }
 }

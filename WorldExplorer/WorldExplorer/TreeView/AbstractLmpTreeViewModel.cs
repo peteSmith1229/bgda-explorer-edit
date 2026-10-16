@@ -41,6 +41,7 @@ public abstract class AbstractLmpTreeViewModel : TreeViewItemViewModel
         get
         {
             if (_lmpFile.PendingEdits.TryGetValue(Label, out var pending)) return pending.Length;
+            if (_lmpFile.IsAdded(Label)) return _lmpFile.GetEntryBytes(Label)?.Length;
             return _lmpFile.Directory.TryGetValue(Label, out var entry) ? entry.Length : null;
         }
     }

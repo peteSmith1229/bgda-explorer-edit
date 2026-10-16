@@ -1255,7 +1255,16 @@ public class MainWindowViewModel : ObservableObject
     private void OnLmpEntrySelected(LmpEntryTreeViewModel lmpEntry)
     {
         var lmpFile = lmpEntry.LmpFileProperty;
-        if (!lmpFile.Directory.TryGetValue(lmpEntry.Label, out var entry))
+        EntryData data;
+        if (lmpFile.Directory.TryGetValue(lmpEntry.Label, out var entry))
+        {
+            data = GetEntryData(lmpFile, lmpEntry.Label, entry);
+        }
+        else if (lmpFile.IsAdded(lmpEntry.Label) && lmpFile.GetEntryBytes(lmpEntry.Label) is { } added)
+        {
+            data = new EntryData(added, 0, added.Length); // added since the file was opened
+        }
+        else
         {
             ShowDetails($"{lmpEntry.Label}\n\nThis entry is no longer in the archive directory.", "Missing entry");
             ShowViews(ContentView.Details, ContentView.Details);
@@ -1275,7 +1284,6 @@ public class MainWindowViewModel : ObservableObject
             OnDdfEntitySelected(entityNode, showViews: false);
         }
 
-        var data = GetEntryData(lmpFile, lmpEntry.Label, entry);
         try
         {
             DispatchLmpEntry(lmpFile, data, lmpEntry, ext);

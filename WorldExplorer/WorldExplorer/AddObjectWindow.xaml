@@ -1,0 +1,120 @@
+<Window x:Class="WorldExplorer.AddObjectWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:WorldExplorer.Controls"
+        Style="{StaticResource Window.Dialog}" WindowStartupLocation="CenterOwner"
+        Title="Add Object" Width="640" Height="720" MinWidth="560" MinHeight="600">
+    <Window.Resources>
+        <Style x:Key="Heading" TargetType="TextBlock" BasedOn="{StaticResource Text.Section}">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Margin" Value="0,16,0,8" />
+        </Style>
+        <Style x:Key="Hint" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,6,0,0" />
+        </Style>
+        <Style x:Key="Label" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,10,0" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        </Style>
+    </Window.Resources>
+
+    <DockPanel Margin="24,8,24,18">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button x:Name="AddButton" Content="Add" IsDefault="True" MinWidth="90"
+                    Style="{StaticResource Button.Accent}" Click="Add_Click" />
+            <Button Content="Cancel" IsCancel="True" MinWidth="90" Margin="8,0,0,0" />
+        </StackPanel>
+        <TextBlock x:Name="ProblemText" DockPanel.Dock="Bottom" Style="{StaticResource Hint}"
+                   Foreground="{DynamicResource Brush.Danger}" Visibility="Collapsed" />
+
+        <!-- ── Where it goes and its properties ── -->
+        <StackPanel DockPanel.Dock="Bottom">
+            <TextBlock Text="PLACEMENT" Style="{StaticResource Heading}" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="100" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="X" Style="{StaticResource Label}" />
+                <TextBox Grid.Column="1" x:Name="XBox" Margin="0,0,14,0" TextAlignment="Right" />
+                <TextBlock Grid.Column="2" Text="Y" Style="{StaticResource Label}" />
+                <TextBox Grid.Column="3" x:Name="YBox" Margin="0,0,14,0" TextAlignment="Right" />
+                <TextBlock Grid.Column="4" Text="Z" Style="{StaticResource Label}" />
+                <TextBox Grid.Column="5" x:Name="ZBox" Margin="0,0,14,0" TextAlignment="Right" />
+                <TextBlock Grid.Column="6" Text="Facing" Style="{StaticResource Label}" />
+                <ComboBox Grid.Column="7" x:Name="FacingBox" />
+            </Grid>
+            <TextBlock x:Name="PlacementHint" Style="{StaticResource Hint}" />
+
+            <TextBlock Text="PROPERTIES" Style="{StaticResource Heading}" />
+            <TextBox x:Name="PropertiesBox" AcceptsReturn="True" Height="74" VerticalContentAlignment="Top"
+                     VerticalScrollBarVisibility="Auto" FontFamily="{StaticResource Font.Mono}" FontSize="12"
+                     controls:ControlAssist.Placeholder="name=value, one a line" />
+            <TextBlock x:Name="PropertiesHint" Style="{StaticResource Hint}"
+                       Text="One name=value a line, e.g. callName=Patron1. The game reads the ones the class knows." />
+        </StackPanel>
+
+        <!-- ── What to add ── -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,14,0,0">
+            <RadioButton x:Name="ClassMode" Content="A character or object" GroupName="Mode" Margin="0,0,22,0"
+                         Checked="Mode_Checked" />
+            <RadioButton x:Name="ModelMode" Content="A model from an archive" GroupName="Mode"
+                         Checked="Mode_Checked" />
+        </StackPanel>
+
+        <Grid Margin="0,12,0,0">
+            <DockPanel x:Name="ClassPanel">
+                <TextBox x:Name="ClassFilter" DockPanel.Dock="Top"
+                         controls:ControlAssist.Placeholder="Filter, e.g. chest, guard, monster or tman1.lmp"
+                         TextChanged="ClassFilter_TextChanged" />
+                <TextBlock x:Name="ClassInfo" DockPanel.Dock="Bottom" Style="{StaticResource Hint}" />
+                <ListBox x:Name="ClassList" Margin="0,8,0,0" SelectionChanged="ClassList_SelectionChanged"
+                         MouseDoubleClick="ClassList_MouseDoubleClick">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="2,2">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Detail}" Style="{StaticResource Text.Caption}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+
+            <StackPanel x:Name="ModelPanel" Visibility="Collapsed">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="90" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Archive" Style="{StaticResource Label}" />
+                    <ComboBox Grid.Row="0" Grid.Column="1" x:Name="ArchiveBox" Margin="0,0,0,8"
+                              DisplayMemberPath="Display" SelectionChanged="ArchiveBox_SelectionChanged" />
+                    <TextBlock Grid.Row="1" Text="Model" Style="{StaticResource Label}" />
+                    <ComboBox Grid.Row="1" Grid.Column="1" x:Name="ModelBox" Margin="0,0,0,8"
+                              SelectionChanged="ModelBox_SelectionChanged" />
+                    <TextBlock Grid.Row="2" Text="Texture" Style="{StaticResource Label}" />
+                    <ComboBox Grid.Row="2" Grid.Column="1" x:Name="TextureBox" Margin="0,0,0,8" />
+                    <TextBlock Grid.Row="3" Text="Animation" Style="{StaticResource Label}" />
+                    <ComboBox Grid.Row="3" Grid.Column="1" x:Name="AnimationBox" />
+                </Grid>
+                <CheckBox x:Name="NoCollideBox" Content="Characters can walk through it" Margin="0,12,0,0" />
+                <TextBlock x:Name="ModelInfo" Style="{StaticResource Hint}" Margin="0,10,0,0" />
+            </StackPanel>
+        </Grid>
+    </DockPanel>
+</Window>

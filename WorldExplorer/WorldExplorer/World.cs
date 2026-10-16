@@ -38,6 +38,9 @@ public class World
     /// </summary>
     private readonly Dictionary<LmpFile, SavedState> _savedStates = new();
 
+    /// <summary>The archives added to the GOB when it was last saved.</summary>
+    private LmpFile[] _savedAddedArchives = Array.Empty<LmpFile>();
+
     public readonly string DataPath;
     public readonly EngineVersion EngineVersion;
     public readonly string Name;
@@ -103,9 +106,24 @@ public class World
         {
             _savedStates[lmp] = SavedState.Capture(lmp);
         }
+
+        if (WorldGob != null) _savedAddedArchives = AddedArchives().ToArray();
     }
 
-    public bool HasUnsavedChanges() => EditableArchives.Any(HasUnsavedChanges);
+    public bool HasUnsavedChanges() => IsArchiveListUnsaved() || EditableArchives.Any(HasUnsavedChanges);
+
+    /// <summary>The archives added to the GOB since it was opened.</summary>
+    private IEnumerable<LmpFile> AddedArchives()
+    {
+        var gob = WorldGob;
+        return gob == null ? Enumerable.Empty<LmpFile>() : gob.AddedArchives.Select(name => gob.Directory[name]);
+    }
+
+    /// <summary>True when archives were added to (or taken back from) the GOB since the last save.</summary>
+    public bool IsArchiveListUnsaved() => !AddedArchives().SequenceEqual(_savedAddedArchives);
+
+    /// <summary>True when <paramref name="lmp"/> was added to the GOB and the GOB hasn't been saved since.</summary>
+    public bool IsArchiveUnsaved(LmpFile lmp) => AddedArchives().Contains(lmp) && !_savedAddedArchives.Contains(lmp);
 
     public bool HasUnsavedChanges(LmpFile lmp)
         => _savedStates.TryGetValue(lmp, out var saved) ? !saved.Matches(lmp) : lmp.IsDirty;
@@ -113,7 +131,7 @@ public class World
     /// <summary>Number of entries (across all archives) changed since the last save.</summary>
     public int CountUnsavedEntries()
     {
-        var count = 0;
+        var count = AddedArchives().Count(lmp => !_savedAddedArchives.Contains(lmp));
         foreach (var lmp in EditableArchives)
         {
             if (!HasUnsavedChanges(lmp)) continue;
@@ -140,6 +158,12 @@ public class World
     public bool IsEntryUnsaved(LmpFile lmp, string entryName)
     {
         _savedStates.TryGetValue(lmp, out var saved);
+        if (lmp.IsAdded(entryName))
+        {
+            var added = lmp.GetEntryBytes(entryName);
+            return saved == null || !saved.Additions.Any(a =>
+                string.Equals(a.Name, entryName, StringComparison.OrdinalIgnoreCase) && ReferenceEquals(a.Data, added));
+        }
 
         if (lmp.PendingEdits.TryGetValue(entryName, out var data))
         {
