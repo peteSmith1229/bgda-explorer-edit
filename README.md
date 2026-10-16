@@ -67,9 +67,10 @@ Alliance II files are read with the Dark Alliance formats for now.
 - **Edit items** in Executable Tuning's Items tab: every weapon, armour piece, potion, ring and amulet (damage,
   armour, price, weight, slot, stance, models and the 64 property bits, with the game's own damage and price
   formulas previewed), the item models, what each shop sells, material multipliers, the enchant glow and the
-  random-loot lists. The eight spell-scroll records the game never uses can become new items. The names the game
-  shows come from `GTEXT.LMP` (found next to the executable or in the data folder of Settings) and are saved to it
-  after the executable.
+  random-loot lists. The eight spell-scroll records the game never uses can become new items, and on a
+  three-player executable Add item puts about 90 more after the game's 81 (the three-player patch frees the room
+  after the item table). The names the game shows come from `GTEXT.LMP` (found next to the executable or in the
+  data folder of Settings) and are saved to it after the executable.
 - **Save** with Ctrl+S. Edited items are marked with a dot in the explorer and the title bar shows `●` until
   the file is saved; you are asked before unsaved changes would be lost.
 - Level textures for a GOB come from the `.TEX` file with the same name next to it (e.g. `TAVERN.TEX`). They

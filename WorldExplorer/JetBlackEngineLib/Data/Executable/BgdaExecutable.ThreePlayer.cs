@@ -13,6 +13,8 @@
 // checks the patch is intact and writes the stock bytes back, so a stock file
 // round-trips exactly. Edits made by the other tabs (XP, stats, feats, monster HP,
 // difficulty scaling) are in places the patch never touches and survive both ways.
+// Items added after the game's own (Items tab) live in the room the patch frees by moving
+// the HUD's data, so three players can't be turned off while there are any.
 //
 // OLDER BUILDS: an executable that holds an earlier tested three-player build
 // (ADRIANNA21 or ADRIANNA19, which this tab used to write, or ADRIANNA20) is
@@ -432,12 +434,20 @@ public partial class BgdaExecutable
     /// <summary>
     /// Removes the three-player patch (state must be On or Outdated): the stock bytes are
     /// written back and the file returns to its stock length. Three-player settings are lost.
+    /// Refused while items are added after the game's own: they use the room the patch frees.
     /// </summary>
     public void DisableThreePlayers()
     {
         var state = GetThreePlayerState(out var detail);
         if (state is not (ThreePlayerState.On or ThreePlayerState.Outdated))
             throw new InvalidOperationException("Three players cannot be turned off: " + detail);
+        if (AddedItemCount is var added and > 0)
+        {
+            throw new InvalidOperationException(
+                $"Three players cannot be turned off while the item table has {added} added item{(added == 1 ? "" : "s")}: " +
+                "they are kept where the stock game keeps the HUD's data. Remove them on the Items tab first.");
+        }
+
         if (state == ThreePlayerState.Outdated) UpgradeThreePlayers();
 
         var (runs, _, _) = Patch.Value;

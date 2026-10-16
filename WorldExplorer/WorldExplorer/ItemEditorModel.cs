@@ -6,6 +6,8 @@
 // random-loot modifiers, with the names the game shows from GTEXT.LMP. Every box is text so a
 // half-typed value never throws; Problem says what is wrong, and BuildEdits gathers the changes
 // for BgdaExecutable.ApplyItemEdits (all or nothing). No WPF types, so it runs in tests.
+// On a three-player executable items can be added after the game's 81 (AddItem copies the
+// selected one) and removed again; the added items are written all together.
 // ═══════════════════════════════════════════════════════════════════════════════
 using System;
 using System.Collections.Generic;
@@ -63,7 +65,10 @@ public sealed class ItemEditorModel : ObservableObject
     public ItemRow? SelectedItem
     {
         get => _selectedItem;
-        set => SetProperty(ref _selectedItem, value);
+        set
+        {
+            if (SetProperty(ref _selectedItem, value)) OnPropertyChanged(nameof(CanRemoveSelected));
+        }
     }
 
     private void Load()
@@ -184,6 +189,137 @@ public sealed class ItemEditorModel : ObservableObject
         OnPropertyChanged(nameof(NamesChanged));
         RefreshShops();
         foreach (var m in Models) m.Refresh();
+        RefreshRoom();
+    }
+
+    // ═══════════════════════════════ added items ═══════════════════════════════
+
+    private string? _addProblem;
+    private bool _addProblemKnown;
+
+    /// <summary>Why items can't be added to this executable (the stock one has no room), or null.</summary>
+    public string? AddProblem
+    {
+        get
+        {
+            if (!_addProblemKnown) (_addProblem, _addProblemKnown) = (IsSupported ? _exe.ItemRoomProblem() : ItemsProblem, true);
+            return _addProblem;
+        }
+    }
+
+    /// <summary>The items after the game's 81, as listed now.</summary>
+    public int AddedCount => Items.Count(r => r.IsAdded);
+
+    /// <summary>The bytes of the room after the item table the listed added items leave (negative: they don't fit).</summary>
+    public int RoomLeft => BgdaExecutable.AddedItemsRoom - BgdaExecutable.AddedItemsSize(Items.Where(r => r.IsAdded).Select(r => r.Name.Trim()));
+
+    /// <summary>What an item with a name of up to 15 letters takes: its record and 16 bytes of name.</summary>
+    private const int TypicalItemSize = BgdaExecutable.ItemRecordSize + 16;
+
+    public bool CanAddItems => AddProblem == null && RoomLeft >= TypicalItemSize;
+
+    public bool CanRemoveSelected => SelectedItem?.IsAdded == true;
+
+    /// <summary>How many items there are and how many more fit, or why none can be added.</summary>
+    public string CapacityText
+    {
+        get
+        {
+            if (AddProblem is { } problem) return problem;
+            var added = AddedCount;
+            var first = BgdaExecutable.StockItemCount;
+            var head = added switch
+            {
+                0 => $"The game's {first} items and none added.",
+                1 => $"The game's {first} items and 1 added (number {first}).",
+                _ => $"The game's {first} items and {added} added (numbers {first}–{first + added - 1})."
+            };
+            var left = RoomLeft;
+            if (left < 0)
+                return head + $" They take {-left:N0} bytes more than the {BgdaExecutable.AddedItemsRoom:N0} after the table: remove some or shorten their names.";
+            if (left < TypicalItemSize)
+                return head + $" No room for more: {left:N0} bytes left, and an item takes {BgdaExecutable.ItemRecordSize} and its name.";
+            return head + $" Room for about {left / TypicalItemSize} more ({left:N0} bytes left; an item takes {BgdaExecutable.ItemRecordSize} and its name).";
+        }
+    }
+
+    private int _shownAddedCount = -1;
+
+    private void RefreshRoom()
+    {
+        if (AddedCount != _shownAddedCount)
+        {
+            _shownAddedCount = AddedCount;
+            OnPropertyChanged(nameof(AddedCount));
+        }
+
+        OnPropertyChanged(nameof(RoomLeft));
+        OnPropertyChanged(nameof(CanAddItems));
+        OnPropertyChanged(nameof(CapacityText));
+        OnPropertyChanged(nameof(CanRemoveSelected));
+    }
+
+    /// <summary>Called after the executable changed under the tab (three players turned on or off by Save As).</summary>
+    public void RoomChanged()
+    {
+        _addProblemKnown = false;
+        OnPropertyChanged(nameof(AddProblem));
+        RefreshRoom();
+    }
+
+    /// <summary>
+    /// Adds a copy of the selected item after the last one, under a name no item has ("longsword2"), shown as
+    /// the original's name and the same number; selects it and returns it (null when no item can be added).
+    /// </summary>
+    public ItemRow? AddItem()
+    {
+        if (!CanAddItems || Items.Count == 0) return null;
+        var from = SelectedItem ?? Items[^1];
+        var copy = (from.TryBuild(out _) ?? from.Source).AsAdded(Items.Count);
+        var (name, number) = UniqueName(from.Name.Trim());
+        copy.Name = name;
+        var row = new ItemRow(this, copy, isNew: true);
+        if (NamesLoaded) row.SetAutoShownName(NumberedName(from.DisplayName, number));
+        Items.Add(row);
+        SelectedItem = row;
+        NameEdited();
+        return row;
+    }
+
+    /// <summary>Removes an added item; the ones after it move down a place (a save that holds them gets other items).</summary>
+    public void RemoveItem(ItemRow row)
+    {
+        var at = Items.IndexOf(row);
+        if (at < 0 || !row.IsAdded) return;
+        Items.RemoveAt(at);
+        for (var i = at; i < Items.Count; i++) Items[i].Renumber(i);
+        SelectedItem = Items[Math.Min(at, Items.Count - 1)];
+        NameEdited();
+    }
+
+    /// <summary>"longsword" gives "longsword2" (or 3, 4 ... until no item has it), within 31 characters.</summary>
+    private (string Name, int Number) UniqueName(string from)
+    {
+        var stem = from.TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
+        if (stem.Length == 0) stem = "item";
+        var used = new HashSet<string>(Items.Select(r => r.Name.Trim()), StringComparer.Ordinal);
+        for (var n = 2; ; n++)
+        {
+            var suffix = n.ToString(CultureInfo.InvariantCulture);
+            var name = (stem.Length + suffix.Length > BgdaExecutable.MaxAddedItemName
+                ? stem[..(BgdaExecutable.MaxAddedItemName - suffix.Length)]
+                : stem) + suffix;
+            if (!used.Contains(name)) return (name, n);
+        }
+    }
+
+    /// <summary>"Long Sword" and 2 give "Long Sword 2", shortened to fit the game's 31 characters.</summary>
+    private static string NumberedName(string shown, int number)
+    {
+        var suffix = " " + number.ToString(CultureInfo.InvariantCulture);
+        var stem = shown.Trim();
+        if (stem.Length + suffix.Length > GameText.MaxItemNameLength) stem = stem[..(GameText.MaxItemNameLength - suffix.Length)].TrimEnd();
+        return stem + suffix;
     }
 
     // ═══════════════════════════════ shared state for the rows ═══════════════════════════════
@@ -366,11 +502,31 @@ public sealed class ItemEditorModel : ObservableObject
         var edits = new ItemEdits();
         if (!IsSupported) return edits;
 
+        // the game's items are written one by one; the added ones all together when any of them changed
+        var added = new List<GameItem>();
+        var addedChanged = false;
         foreach (var row in Items)
         {
             var item = row.TryBuild(out _);
             if (item == null || row.Problem is { }) throw new ArgumentException($"Item {row.Index} ({row.Source.Name}): {row.Problem}");
-            if (row.IsChanged(item)) edits.Items.Add(item);
+            if (row.IsAdded)
+            {
+                added.Add(item);
+                addedChanged |= row.IsNew || row.Index != row.Source.Index || row.IsChanged(item);
+            }
+            else if (row.IsChanged(item))
+            {
+                edits.Items.Add(item);
+            }
+        }
+
+        if (addedChanged || added.Count != _exe.AddedItemCount)
+        {
+            if (added.Count > 0 && AddProblem is { } problem) throw new InvalidOperationException(problem);
+            if (RoomLeft < 0)
+                throw new ArgumentException($"The added items take {-RoomLeft:N0} bytes more than the {BgdaExecutable.AddedItemsRoom:N0} " +
+                                            "after the item table: remove some or shorten their names.");
+            edits.AddedItems = added;
         }
 
         foreach (var row in Models)
@@ -382,7 +538,13 @@ public sealed class ItemEditorModel : ObservableObject
 
         foreach (var row in _allShops)
         {
-            if (!row.IsChanged) continue;
+            if (!row.IsChanged)
+            {
+                // an entry left as it was can lose its item when items are renamed, removed or changed
+                if (row.LostItem is { } lost) throw new ArgumentException($"{BgdaExecutable.ShopStockName(row.Stock)}, entry {row.Position}: {lost}");
+                continue;
+            }
+
             if (row.Problem is { } problem) throw new ArgumentException($"{BgdaExecutable.ShopStockName(row.Stock)}, entry {row.Position}: {problem}");
             edits.ShopTexts[row.Number] = row.Text.Trim();
         }
@@ -406,8 +568,9 @@ public sealed class ItemEditorModel : ObservableObject
         _exe.ApplyItemEdits(edits);
         var names = Items.ToDictionary(r => r.Index, r => r.ShownName);
         Load();
-        foreach (var row in Items) row.SetShownNameQuietly(names[row.Index]);
+        foreach (var row in Items) row.SetShownNameQuietly(names.TryGetValue(row.Index, out var name) ? name : row.ShownName);
         OnPropertyChanged(nameof(NamesChanged));
+        RoomChanged();
     }
 
     /// <summary>Called after GTEXT.LMP was saved: what was written is the new starting point.</summary>
@@ -498,11 +661,15 @@ public sealed class ItemRow : ObservableObject
     private ItemSlot _slot;
     private ItemStance _stance;
     private int _damageType;
+    private int _index;
+    private string? _autoShownName, _newShownName;
 
-    internal ItemRow(ItemEditorModel owner, GameItem source)
+    internal ItemRow(ItemEditorModel owner, GameItem source, bool isNew = false)
     {
         _owner = owner;
         Source = source;
+        IsNew = isNew;
+        _index = source.Index;
         _name = source.Name;
         _weight = ItemEditorModel.Format(source.Weight);
         _stack = Text(source.StackSize);
@@ -529,14 +696,33 @@ public sealed class ItemRow : ObservableObject
 
     private static string Text(int value) => value.ToString(CultureInfo.InvariantCulture);
 
-    /// <summary>The record as it is in the executable.</summary>
+    /// <summary>The record as it is in the executable (for an item added here: as it was copied).</summary>
     public GameItem Source { get; }
 
-    public int Index => Source.Index;
+    /// <summary>Its place in the table: an added item moves down when one before it is removed.</summary>
+    public int Index => _index;
+
     public bool IsSpare => Source.IsSpare;
-    public bool CanRename => Source.IsSpare && Source.NameCapacity > 0;
-    public bool CanChangeCategory => Source.IsSpare;
-    public bool CanChangeSlot => Source.IsSpare || Category == ItemCategory.Weapon;
+
+    /// <summary>An item after the game's 81.</summary>
+    public bool IsAdded => Source.IsAdded;
+
+    /// <summary>Added on this tab and not saved yet.</summary>
+    public bool IsNew { get; }
+
+    public bool CanRename => Source.IsSpare && Source.NameCapacity > 0 || Source.IsAdded;
+    public bool CanChangeCategory => Source.IsSpare || Source.IsAdded;
+    public bool CanChangeSlot => Source.IsSpare || Source.IsAdded || Category == ItemCategory.Weapon;
+    public bool HasNameHint => Source.IsSpare || Source.IsAdded;
+
+    internal void Renumber(int index)
+    {
+        if (_index == index) return;
+        _index = index;
+        OnPropertyChanged(nameof(Index));
+        OnPropertyChanged(nameof(NameHint));
+        RefreshDerived();
+    }
     public bool IsWeapon => Category == ItemCategory.Weapon;
     public bool NamesLoaded => _owner.NamesLoaded;
 
@@ -546,7 +732,7 @@ public sealed class ItemRow : ObservableObject
 
     // ── the boxes ──
 
-    /// <summary>The name item text uses ("longsword"): only the unused records can be renamed.</summary>
+    /// <summary>The name item text uses ("longsword"): only the unused records and added items can be renamed.</summary>
     public string Name
     {
         get => _name;
@@ -555,9 +741,10 @@ public sealed class ItemRow : ObservableObject
             var old = _name;
             if (!Set(ref _name, value)) return;
             // a renamed record takes the name GTEXT.LMP has for its new name, unless one was typed
-            if (_owner.NamesLoaded && (_shownName.Length == 0 || _shownName == (_owner.GameName(old) ?? "")))
+            if (_owner.NamesLoaded && (_shownName.Length == 0 || _shownName == (_owner.GameName(old) ?? "") || _shownName == _autoShownName))
             {
                 _shownName = _owner.GameName(value.Trim()) ?? "";
+                _autoShownName = null;
                 OnPropertyChanged(nameof(ShownName));
                 OnPropertyChanged(nameof(DisplayName));
             }
@@ -591,6 +778,13 @@ public sealed class ItemRow : ObservableObject
         OnPropertyChanged(nameof(DisplayName));
         OnPropertyChanged(nameof(ShownNameChanged));
         OnPropertyChanged(nameof(Problem));
+    }
+
+    /// <summary>A shown name made up for a new item ("Long Sword 2"): renaming the item replaces it like GTEXT.LMP's.</summary>
+    internal void SetAutoShownName(string name)
+    {
+        SetShownNameQuietly(name);
+        _autoShownName = _newShownName = name;
     }
 
     internal void ResetShownName()
@@ -700,7 +894,7 @@ public sealed class ItemRow : ObservableObject
     internal GameItem? TryBuild(out string? problem)
     {
         problem = null;
-        var item = Source.Clone();
+        var item = Source.WithIndex(_index);
         item.Name = _name.Trim();
         if (_weight.Trim() == ItemEditorModel.Format(Source.Weight)) item.Weight = Source.Weight;
         else if (NumberText.TryParseDecimal(_weight, out var w)) item.Weight = (float)w;
@@ -766,7 +960,7 @@ public sealed class ItemRow : ObservableObject
             if (TryBuild(out var problem) == null) return problem;
             if (_owner.NamesLoaded && ShownNameChanged && GameText.CheckItemName(_shownName) is { } nameProblem)
                 return "Shown name: " + nameProblem;
-            if (_owner.NamesLoaded && _shownName.Length == 0 && _name.Trim() != Source.Name)
+            if (_owner.NamesLoaded && _shownName.Length == 0 && (_name.Trim() != Source.Name || IsNew))
                 return "Shown name: GTEXT.LMP has no name for \"" + _name.Trim() + "\"; enter the name the game shows.";
             return null;
         }
@@ -778,13 +972,13 @@ public sealed class ItemRow : ObservableObject
         get
         {
             var name = _name.Trim();
-            if (name == Source.Name || _owner.NamesLoaded || GameText.ReadyMadeItemNames.Contains(name)) return null;
+            if (name == Source.Name && !IsNew || _owner.NamesLoaded || GameText.ReadyMadeItemNames.Contains(name)) return null;
             return $"Open GTEXT.LMP to give \"{name}\" a name: without one the game shows NF:{(name + "_name")[..Math.Min(16, name.Length + 5)]}.";
         }
     }
 
-    /// <summary>True when any box differs from the executable (or the shown name from GTEXT.LMP).</summary>
-    public bool IsEdited => (TryBuild(out _) is not { } item || IsChanged(item)) || ShownNameChanged;
+    /// <summary>True when any box differs from the executable (or the shown name from GTEXT.LMP), or the item is new or moved.</summary>
+    public bool IsEdited => IsNew || _index != Source.Index || (TryBuild(out _) is not { } item || IsChanged(item)) || ShownNameChanged;
 
     // ── what the grid and the panel show ──
 
@@ -904,17 +1098,22 @@ public sealed class ItemRow : ObservableObject
         }
     }
 
-    /// <summary>For an unused record: what renaming it does, and the names GTEXT.LMP already has.</summary>
+    /// <summary>For an unused record or an added item: what renaming it does, and the names GTEXT.LMP already has.</summary>
     public string NameHint
     {
         get
         {
-            if (!IsSpare) return "";
+            if (!HasNameHint) return "";
             var ready = GameText.ReadyMadeItemNames
                 .Where(n => n.Length <= Source.NameCapacity && _owner.Items.All(r => r._name.Trim() != n))
-                .Select(n => _owner.GameName(n) is { } shown ? $"{n} ({shown})" : n);
-            return $"An unused spell-scroll record: rename it (up to {Source.NameCapacity} letters) and set it up to make a new item. " +
-                   "Names the game already has in all five languages: " + string.Join(", ", ready) + ". " +
+                .Select(n => _owner.GameName(n) is { } shown ? $"{n} ({shown})" : n)
+                .ToList();
+            var start = IsAdded
+                ? $"An item added after the game's own (number {_index}, three-player executables only): rename it (up to {Source.NameCapacity} " +
+                  "letters, digits and _) and set it up as any item; put its name in a shop list to sell it. "
+                : $"An unused spell-scroll record: rename it (up to {Source.NameCapacity} letters) and set it up to make a new item. ";
+            return start +
+                   (ready.Count > 0 ? "Names the game already has in all five languages: " + string.Join(", ", ready) + ". " : "") +
                    "Under Kind, tick what it is like (Metal for Mithral and Adamantine rather than Darkwood and Oak; Bladed or Blunt " +
                    "for the random modifiers that suit it) and untick Never random loot to let it drop.";
         }
@@ -939,7 +1138,8 @@ public sealed class ItemRow : ObservableObject
         _stance = Source.Stance;
         _damageType = Source.DamageType;
         _otherFlags = Source.Flags & ~(ItemBits.EnchantmentMask | ItemBits.LooksMask);
-        _shownName = _owner.GameName(Source.Name) ?? "";
+        _shownName = _owner.GameName(Source.Name) ?? _newShownName ?? "";
+        _autoShownName = _newShownName;
         OnPropertyChanged(string.Empty);
         foreach (var b in Bits) b.Refresh();
         _owner.ShownNameEdited(this);
@@ -1116,6 +1316,21 @@ public sealed class ShopRow : ObservableObject
             if (!Source.AnyText && text != Source.Text && !_owner.NearbyShopTexts.Contains(text))
                 return "This entry can only sell text the game has nearby: " + string.Join(", ", _owner.NearbyShopTexts) + ".";
             return null;
+        }
+    }
+
+    /// <summary>Why the item this entry sells is gone (renamed, removed or made another kind), or null.</summary>
+    internal string? LostItem
+    {
+        get
+        {
+            var text = _text.Trim();
+            var items = _owner.CurrentItems();
+            var parsed = ItemText.Parse(text, items);
+            if (parsed.ItemIndex < 0) return parsed.Problems[^1] + " Sell something else here, or keep the item.";
+            return items[parsed.ItemIndex].Category != Source.List
+                ? $"This is the {ListText.ToLowerInvariant()} list; {text} isn't one of those any more."
+                : null;
         }
     }
 

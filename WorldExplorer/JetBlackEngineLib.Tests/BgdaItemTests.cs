@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace JetBlackEngineLib.Tests;
 
@@ -308,6 +309,238 @@ public class BgdaItemTests
         Assert.That(File.ReadAllBytes(path), Is.EqualTo(_stockBytes));
         Assert.That(stock.GetItems()[12].DamageMax, Is.EqualTo(8));
         Assert.That(stock.GetShopEntries()[17].Text, Is.EqualTo("longsword+1+fire"));
+    }
+
+    // ── items added after the game's 81 (three-player executables) ──
+
+    /// <summary>The stock executable with three players on (the Three Players tab's patch), saved and opened again.</summary>
+    private (BgdaExecutable Exe, byte[] Bytes) ThreePlayers(string name)
+    {
+        var exe = Stock();
+        exe.EnableThreePlayers();
+        return SaveAndReopen(exe, name);
+    }
+
+    /// <summary>A copy of item <paramref name="from"/> under another name.</summary>
+    private static GameItem Copy(IReadOnlyList<GameItem> items, int from, string name, Action<GameItem>? edit = null)
+    {
+        var item = items[from].Clone();
+        item.Name = name;
+        edit?.Invoke(item);
+        return item;
+    }
+
+    private const int VaToFile = 0xFF000;
+
+    [Test]
+    public void StockExecutable_HasNoRoomForMoreItems()
+    {
+        var exe = Stock();
+        Assert.That((exe.ItemCount, exe.AddedItemCount), Is.EqualTo((81, 0)));
+        Assert.That(exe.ItemRoomProblem(), Does.Contain("Turn on three players"));
+        var items = exe.GetItems();
+        Assert.Throws<InvalidOperationException>(() => exe.AddItem(Copy(items, 12, "orcbane")));
+        exe.SetAddedItems(Array.Empty<GameItem>());
+        var path = Path.Combine(_workDir, "stock-room.elf");
+        exe.Save(path);
+        Assert.That(File.ReadAllBytes(path), Is.EqualTo(_stockBytes));
+    }
+
+    [Test]
+    public void ThreePlayerExecutable_TakesItemsAfterTheGamesOwn()
+    {
+        var (exe, threeBytes) = ThreePlayers("three-room.elf");
+        Assert.That(exe.ItemRoomProblem(), Is.Null);
+        Assert.That(BgdaExecutable.AddedItemsVa, Is.EqualTo(0x002A8FC8));
+        Assert.That(BgdaExecutable.AddedItemsRoom, Is.EqualTo(5944));
+        var items = exe.GetItems();
+        var platehelmet = items.Single(i => i.Name == "platehelmet").Index;
+        var ring = items.First(i => i.Name == "ring").Index;
+        var orcbane = Copy(items, 12, "orcbane", i =>
+        {
+            i.DamageMax = 14;
+            i.Flags = ItemBits.WithEnchantment(i.Flags, 2) & ~(1UL << ItemBits.NoRandomLoot);
+        });
+        var wizardry = Copy(items, ring, "ringofwizardry", i => i.Flags |= 1UL << ItemBits.Intelligence);
+        var helm = Copy(items, platehelmet, "dragonhelm", i => i.Armour = 9);
+        exe.SetAddedItems(new[] { orcbane, wizardry, helm });
+
+        var (back, bytes) = SaveAndReopen(exe, "added.elf");
+        Assert.That(back.ItemsProblem(), Is.Null);
+        Assert.That(back.GetThreePlayerState(), Is.EqualTo(ThreePlayerState.On), "the three-player patch is untouched");
+        var after = back.GetItems();
+        Assert.That((after.Count, back.AddedItemCount), Is.EqualTo((84, 3)));
+        Assert.That(after.Take(81).Select(i => i.Name), Is.EqualTo(items.Select(i => i.Name)));
+        Assert.That(after.Skip(81).Select(i => i.Name), Is.EqualTo(new[] { "orcbane", "ringofwizardry", "dragonhelm" }));
+        Assert.That(after.Skip(81).All(i => i.IsAdded && !i.IsSpare && i.NameCapacity == 31), Is.True);
+        Assert.That(after.Take(81).Any(i => i.IsAdded), Is.False);
+        Assert.That((after[81].DamageMin, after[81].DamageMax, after[81].Flags), Is.EqualTo((2, 14, orcbane.Flags)));
+        Assert.That((after[82].Slot, after[82].Flags), Is.EqualTo((ItemSlot.Ring, wizardry.Flags)));
+        Assert.That((after[83].Armour, after[83].Model, after[83].Category), Is.EqualTo((9, items[platehelmet].Model, ItemCategory.Armour)));
+        Assert.That(ItemText.Parse("orcbane+1+fire", after).ItemIndex, Is.EqualTo(81));
+        Assert.That(after.All(i => BgdaExecutable.CheckItem(i, i, after) == null), Is.True);
+
+        // the records follow the game's, then a zero record ends the table, then the names, 8-aligned
+        int Word(int va) => BitConverter.ToInt32(bytes, va - VaToFile);
+        Assert.That(new[] { Word(0x2A8FC8), Word(0x2A8FF8), Word(0x2A9028) }, Is.EqualTo(new[] { 0x2A9088, 0x2A9090, 0x2A90A0 }));
+        Assert.That(bytes.Skip(0x2A9058 - VaToFile).Take(0x30).All(b => b == 0), Is.True, "the zero record");
+        Assert.That(Encoding.ASCII.GetString(bytes, 0x2A9088 - VaToFile, 0x28),
+            Is.EqualTo("orcbane\0ringofwizardry\0\0dragonhelm\0\0\0\0\0\0"));
+        Assert.That(Differences(threeBytes, bytes).All(o => o + VaToFile is >= 0x2A8FC8 and < 0x2A90AB), Is.True, "nothing else changes");
+
+        // shops sell them (their names are copied into the shops' text area)
+        back.SetShopTexts(new Dictionary<int, string> { [5] = "orcbane+1", [25] = "dragonhelm", [41] = "ringofwizardry+2" });
+        var (sold, _) = SaveAndReopen(back, "added-sold.elf");
+        var shops = sold.GetShopEntries();
+        Assert.That(new[] { shops[5].Text, shops[25].Text, shops[41].Text }, Is.EqualTo(new[] { "orcbane+1", "dragonhelm", "ringofwizardry+2" }));
+        Assert.That(sold.GetItems().Skip(81).Select(i => i.Name), Is.EqualTo(new[] { "orcbane", "ringofwizardry", "dragonhelm" }));
+        Assert.That(sold.GetThreePlayerState(), Is.EqualTo(ThreePlayerState.On));
+
+        // removing an item a shop sells is refused: the game would sell a shortbow there
+        var e = Assert.Throws<ArgumentException>(() => sold.ApplyItemEdits(new ItemEdits { AddedItems = new List<GameItem>() }));
+        Assert.That(e!.Message, Does.Contain("no item is called \"orcbane\""));
+        Assert.That(sold.ItemCount, Is.EqualTo(84), "nothing changed");
+    }
+
+    [Test]
+    public void AddedItems_AreRenamedAndRemovedInPlace()
+    {
+        var (exe, threeBytes) = ThreePlayers("three-remove.elf");
+        var items = exe.GetItems();
+        var greatsword = items.Single(i => i.Name == "greatsword").Index;
+        Assert.That(exe.AddItem(Copy(items, 12, "orcbane")), Is.EqualTo(81));
+        Assert.That(exe.AddItem(Copy(items, greatsword, "giantslayer")), Is.EqualTo(82));
+        Assert.That(exe.AddItem(Copy(items, 12, "elfblade")), Is.EqualTo(83));
+
+        var renamed = exe.GetItems()[81];
+        renamed.Name = "orcbanethegreater";
+        renamed.DamageMax = 30;
+        exe.SetItem(renamed);
+        Assert.That(exe.GetItems().Skip(81).Select(i => i.Name), Is.EqualTo(new[] { "orcbanethegreater", "giantslayer", "elfblade" }));
+        Assert.That(exe.GetItems()[81].DamageMax, Is.EqualTo(30));
+
+        exe.RemoveAddedItem(82);
+        var left = exe.GetItems();
+        Assert.That(left.Skip(81).Select(i => (i.Index, i.Name)), Is.EqualTo(new[] { (81, "orcbanethegreater"), (82, "elfblade") }));
+        Assert.That(left[82].DamageMax, Is.EqualTo(items[12].DamageMax));
+        Assert.That(exe.ItemsProblem(), Is.Null);
+        Assert.Throws<ArgumentOutOfRangeException>(() => exe.RemoveAddedItem(80));
+        Assert.Throws<ArgumentOutOfRangeException>(() => exe.RemoveAddedItem(83));
+
+        exe.SetAddedItems(Array.Empty<GameItem>());
+        var (back, bytes) = SaveAndReopen(exe, "three-removed.elf");
+        Assert.That(bytes, Is.EqualTo(threeBytes), "with them all removed the file is as it was");
+        Assert.That(back.ItemCount, Is.EqualTo(81));
+    }
+
+    [Test]
+    public void AddedItems_FillTheRoomAndNoMore()
+    {
+        var (exe, _) = ThreePlayers("three-full.elf");
+        var items = exe.GetItems();
+        // a 12-letter name takes 16 bytes: 64 an item, and 48 end the table
+        var many = Enumerable.Range(0, 92).Select(k => Copy(items, 12, $"testsword{k:D3}")).ToList();
+        Assert.That(BgdaExecutable.AddedItemsSize(many.Select(i => i.Name)), Is.EqualTo(93 * 48 + 92 * 16));
+        exe.SetAddedItems(many);
+        Assert.That((exe.ItemCount, exe.ItemsProblem()), Is.EqualTo((173, (string?)null)));
+
+        many.Add(Copy(items, 12, "onetoomany"));
+        var e = Assert.Throws<ArgumentException>(() => exe.SetAddedItems(many));
+        Assert.That(e!.Message, Does.Contain("don't fit"));
+        Assert.That(exe.ItemCount, Is.EqualTo(173), "nothing changed");
+
+        var (back, bytes) = SaveAndReopen(exe, "full.elf");
+        Assert.That(back.GetItems()[172].Name, Is.EqualTo("testsword091"));
+        Assert.That(ItemText.Parse("testsword091+3", back.GetItems()).ItemIndex, Is.EqualTo(172));
+        Assert.That(back.GetThreePlayerState(), Is.EqualTo(ThreePlayerState.On), "the three-player menu text after the room is untouched");
+        Assert.That(Encoding.ASCII.GetString(bytes, 0x2AA6E8 - VaToFile, 16), Is.EqualTo("testsword091\0\0\0\0"), "the last name ends the room");
+    }
+
+    [Test]
+    public void BadAddedItems_AreRefusedAndChangeNothing()
+    {
+        var (exe, threeBytes) = ThreePlayers("three-bad.elf");
+        var items = exe.GetItems();
+        void Refused(GameItem item, string expected, int index = 82)
+        {
+            var e = Assert.Throws<ArgumentException>(() => exe.SetAddedItems(new[] { Copy(items, 12, "first"), item }));
+            Assert.That(e!.Message, Does.Contain(expected));
+            Assert.That(e.Message, Does.Contain($"Added item {index}"));
+        }
+
+        Refused(Copy(items, 12, "longsword"), "already");
+        Refused(Copy(items, 12, "first"), "already", 81);
+        Refused(Copy(items, 12, "orc bane"), "letters");
+        Refused(Copy(items, 12, ""), "1 to 31");
+        Refused(Copy(items, 12, new string('x', 32)), "1 to 31");
+        Refused(Copy(items, 12, "orcbane", i => i.DamageMin = 99), "minimum");
+        Refused(Copy(items, 12, "orcbow"), "bow");
+        Refused(Copy(items, 12, "orcbane", i => i.Model = 105), "look");
+
+        // an added item can become any kind of item
+        var ring = Copy(items, 12, "plainring", i =>
+        {
+            (i.Category, i.Slot, i.DamageType) = (ItemCategory.Other, ItemSlot.Ring, 0);
+            i.Model = i.PickupModel = items.First(r => r.Name == "ring").Model;
+            i.Flags = 0;
+        });
+        var added = ring.WithIndex(81);
+        Assert.That(BgdaExecutable.CheckItem(added, new GameItem { Index = 81, Name = "plainring", IsAdded = true, NameCapacity = 31 },
+            items.Append(added).ToList()), Is.Null);
+
+        // all or nothing with the other edits
+        var edits = new ItemEdits { AddedItems = new List<GameItem> { Copy(items, 12, "orcbane") } };
+        edits.ShopTexts[5] = "orcbane+mithral";
+        Assert.Throws<ArgumentException>(() => exe.ApplyItemEdits(edits));
+        var path = Path.Combine(_workDir, "three-bad-after.elf");
+        exe.Save(path);
+        Assert.That(File.ReadAllBytes(path), Is.EqualTo(threeBytes));
+        Assert.That(exe.ItemCount, Is.EqualTo(81));
+    }
+
+    [Test]
+    public void ThreePlayers_StayOnWhileItemsAreAdded()
+    {
+        var exe = Stock();
+        exe.EnableThreePlayers();
+        exe.AddItem(Copy(exe.GetItems(), 12, "orcbane"));
+        var e = Assert.Throws<InvalidOperationException>(() => exe.DisableThreePlayers());
+        Assert.That(e!.Message, Does.Contain("Items tab"));
+        Assert.That((exe.GetThreePlayerState(), exe.ItemCount), Is.EqualTo((ThreePlayerState.On, 82)));
+
+        exe.RemoveAddedItem(81);
+        exe.DisableThreePlayers();
+        var (_, bytes) = SaveAndReopen(exe, "three-off-again.elf");
+        Assert.That(bytes, Is.EqualTo(_stockBytes));
+    }
+
+    [Test]
+    public void BrokenAddedItems_AreNoticed()
+    {
+        var exe = Stock();
+        exe.EnableThreePlayers();
+        exe.AddItem(Copy(exe.GetItems(), 12, "orcbane"));
+        var (_, bytes) = SaveAndReopen(exe, "broken-source.elf");
+        string? ProblemWith(Action<byte[]> damage)
+        {
+            var broken = (byte[])bytes.Clone();
+            damage(broken);
+            var path = Path.Combine(_workDir, "broken.elf");
+            File.WriteAllBytes(path, broken);
+            return BgdaExecutable.Open(path).ItemsProblem();
+        }
+
+        Assert.That(ProblemWith(_ => { }), Is.Null);
+        Assert.That(ProblemWith(b => BitConverter.GetBytes(0x0030B1C0).CopyTo(b, 0x2A8FC8 - VaToFile)), Does.Contain("Added item 81"),
+            "a name outside the room");
+        Assert.That(ProblemWith(b => b[0x2AA6F0 - VaToFile] = 1), Does.Contain("isn't empty"));
+        Assert.That(ProblemWith(b => BitConverter.GetBytes(0x002A9000).CopyTo(b, 0x2A8098 + 0x10 - VaToFile)), Does.Contain("refers to it"),
+            "the shortbow's price holding an address in the room");
+        Assert.That(ProblemWith(b =>
+        {
+            foreach (var va in new[] { 0x0016F4C4, 0x00175C94, 0x00175CC0, 0x00178D74, 0x00178E44, 0x00179214, 0x0017B094, 0x0017B150, 0x0017B154, 0x0017B160 })
+                b[va - VaToFile] = 0x2B;
+        }), Does.Contain("HUD"), "the HUD's data back after the table");
     }
 
     // ── shops ──
