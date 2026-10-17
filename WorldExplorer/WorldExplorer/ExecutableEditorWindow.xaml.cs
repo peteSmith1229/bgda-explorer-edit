@@ -8,7 +8,8 @@
 // the shops, materials, stance weights, the enchant glow and the random-loot lists, written all
 // together (BgdaExecutable.ApplyItemEdits). The names the game shows are in GTEXT.LMP, found next
 // to the executable or in the data folder of the settings; changed names are saved to it after
-// the executable.
+// the executable. Items can be added after the game's own on three-player executables (the patch
+// frees the room), so three players can't be turned off while there are any.
 //
 // Three Players: switches the tested three-player patch (ADRIANNA22) on or off,
 // updates an older three-player build (ADRIANNA21 / 20 / 19) to ADRIANNA22 on
@@ -261,6 +262,11 @@ public partial class ExecutableEditorWindow : Window
         // ── Items tab: the names and model files come from the game's data folder when they can be found ──
         _items = new ItemEditorModel(_exe);
         itemsView.DataContext = _items;
+        _items.PropertyChanged += (_, e) =>
+        {
+            // added items keep three players on: the Three Players tab says so as soon as there are any
+            if (e.PropertyName == nameof(ItemEditorModel.AddedCount) && threePlayerStatus is not null) UpdateThreePlayerStatus();
+        };
         if (_items.IsSupported)
         {
             var folders = new[] { System.IO.Path.GetDirectoryName(_exe.FilePath), App.Settings.Get("Files.DataPath", "") };
@@ -387,6 +393,7 @@ public partial class ExecutableEditorWindow : Window
 
         _exe.Save(dialog.FileName);
         WriteMonsterEdits(dialog.FileName);
+        _items.RoomChanged(); // three players turned on make room for added items
         UpdateThreePlayerStatus();
         UpdateDifficultyStatus();
         var namesSaved = _items.NamesNeedSaving && SaveNames();
@@ -590,6 +597,9 @@ public partial class ExecutableEditorWindow : Window
             ThreePlayerState.Off when want =>
                 "Three players will be turned on when you save. The file grows from " +
                 $"{MegaBytes(BgdaExecutable.StockFileLength)} to {MegaBytes(BgdaExecutable.ThreePlayerFileLength)}.",
+            ThreePlayerState.On or ThreePlayerState.Outdated when !want && _items.AddedCount > 0 =>
+                $"Three players can't be turned off while the Items tab has {_items.AddedCount} added item" +
+                $"{(_items.AddedCount == 1 ? "" : "s")}: they use the room the three-player patch frees. Remove them there first.",
             ThreePlayerState.On or ThreePlayerState.Outdated when !want =>
                 "Three players will be turned off when you save: the original code is restored and the " +
                 "three-player settings below are discarded.",

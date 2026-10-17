@@ -13,7 +13,7 @@ namespace WorldExplorer.Views;
 
 /// <summary>
 /// The Items tab of Executable Tuning: items, models, shops, loot and effects (DataContext: ItemEditorModel).
-/// Everything is edited in the model; this only opens GTEXT.LMP and EQUIPMNT.LMP.
+/// Everything is edited in the model; this only opens GTEXT.LMP and EQUIPMNT.LMP and asks before an added item is removed.
 /// </summary>
 public partial class ItemEditorView : UserControl
 {
@@ -102,6 +102,29 @@ public partial class ItemEditorView : UserControl
     }
 
     private void RevertItem_Click(object sender, RoutedEventArgs e) => Model?.SelectedItem?.Revert();
+
+    private void AddItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (Model?.AddItem() is { } row) itemGrid.ScrollIntoView(row);
+    }
+
+    /// <summary>Removes the selected added item; asks first when items already in the executable (which saves may hold) are affected.</summary>
+    private void RemoveItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (Model is not { } model || model.SelectedItem is not { IsAdded: true } row) return;
+        var saved = model.Items.Count(r => r.Index >= row.Index && !r.IsNew);
+        if (saved > 0)
+        {
+            var later = model.Items.Count - 1 - row.Index;
+            var message = $"Remove {row.DisplayName} (item {row.Index})? " +
+                          (later > 0 ? $"The {later} item{(later == 1 ? "" : "s")} after it move down a place. " : "") +
+                          "Saves keep items by their number, so a save that holds " + (later > 0 ? "any of them" : "it") +
+                          " won't load " + (later > 0 ? "them" : "it") + " properly with the executable you save.";
+            if (!Ask(Window.GetWindow(this), message)) return;
+        }
+
+        model.RemoveItem(row);
+    }
 
     /// <summary>
     /// A grid inside the page's ScrollViewer would swallow the mouse wheel with its own scroll viewer, so the

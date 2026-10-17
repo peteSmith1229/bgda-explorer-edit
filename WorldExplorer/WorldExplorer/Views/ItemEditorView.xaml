@@ -79,33 +79,43 @@
                             <ColumnDefinition Width="470" />
                         </Grid.ColumnDefinitions>
 
-                        <DataGrid Grid.Column="0" x:Name="itemGrid" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
-                                  AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="True"
-                                  SelectionMode="Single" HeadersVisibility="Column">
-                            <DataGrid.Columns>
-                                <DataGridTemplateColumn Header="" Width="22">
-                                    <DataGridTemplateColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <Grid>
-                                                <TextBlock Text="●" Foreground="{DynamicResource Brush.Modified}" HorizontalAlignment="Center"
-                                                           ToolTip="Edited" Visibility="{Binding IsEdited, Converter={StaticResource BoolToVisibility}}" />
-                                                <TextBlock Text="!" FontWeight="Bold" Foreground="{DynamicResource Brush.Danger}" HorizontalAlignment="Center"
-                                                           ToolTip="{Binding Problem}" Visibility="{Binding Problem, Converter={StaticResource NullToVisibility}}" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="34" />
-                                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="120" />
-                                <DataGridTextColumn Header="Shown as" Binding="{Binding ShownName}" Width="150" />
-                                <DataGridTextColumn Header="Kind" Binding="{Binding KindText}" Width="120" />
-                                <DataGridTextColumn Header="Damage" Binding="{Binding DamageText}" Width="64" />
-                                <DataGridTextColumn Header="Armour" Binding="{Binding ArmourText}" Width="60" />
-                                <DataGridTextColumn Header="Shop price" Binding="{Binding ValueText}" Width="80" />
-                                <DataGridTextColumn Header="Weight" Binding="{Binding WeightText}" Width="58" />
-                                <DataGridTextColumn Header="Modifiers" Binding="{Binding ModifiersText}" Width="*" />
-                            </DataGrid.Columns>
-                        </DataGrid>
+                        <DockPanel Grid.Column="0">
+                            <!-- added items: after the game's 81, in the room the three-player patch frees -->
+                            <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                                <Button DockPanel.Dock="Left" Content="Add item" Click="AddItem_Click" IsEnabled="{Binding CanAddItems}"
+                                        ToolTip="Adds a copy of the selected item after the last one, under a new name: set it up, then put its name in a shop list to sell it. Three-player executables only: the room is the space the three-player patch frees after the item table." />
+                                <Button DockPanel.Dock="Left" Content="Remove item" Margin="6,0,0,0" Click="RemoveItem_Click" IsEnabled="{Binding CanRemoveSelected}"
+                                        ToolTip="Removes the selected added item. The added items after it move down a place, and saves keep items by their number." />
+                                <TextBlock Style="{StaticResource Help}" Margin="10,0,0,0" VerticalAlignment="Center" Text="{Binding CapacityText}" />
+                            </DockPanel>
+                            <DataGrid x:Name="itemGrid" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                                      AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="True"
+                                      SelectionMode="Single" HeadersVisibility="Column">
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="" Width="22">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Grid>
+                                                    <TextBlock Text="●" Foreground="{DynamicResource Brush.Modified}" HorizontalAlignment="Center"
+                                                               ToolTip="Edited" Visibility="{Binding IsEdited, Converter={StaticResource BoolToVisibility}}" />
+                                                    <TextBlock Text="!" FontWeight="Bold" Foreground="{DynamicResource Brush.Danger}" HorizontalAlignment="Center"
+                                                               ToolTip="{Binding Problem}" Visibility="{Binding Problem, Converter={StaticResource NullToVisibility}}" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="34" />
+                                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="120" />
+                                    <DataGridTextColumn Header="Shown as" Binding="{Binding ShownName}" Width="150" />
+                                    <DataGridTextColumn Header="Kind" Binding="{Binding KindText}" Width="120" />
+                                    <DataGridTextColumn Header="Damage" Binding="{Binding DamageText}" Width="64" />
+                                    <DataGridTextColumn Header="Armour" Binding="{Binding ArmourText}" Width="60" />
+                                    <DataGridTextColumn Header="Shop price" Binding="{Binding ValueText}" Width="80" />
+                                    <DataGridTextColumn Header="Weight" Binding="{Binding WeightText}" Width="58" />
+                                    <DataGridTextColumn Header="Modifiers" Binding="{Binding ModifiersText}" Width="*" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
 
                         <Border Grid.Column="2" Style="{StaticResource Card}" Padding="14,10"
                                 Visibility="{Binding SelectedItem, Converter={StaticResource NullToVisibility}}">
@@ -120,7 +130,7 @@
                                         </TextBlock>
                                     </DockPanel>
                                     <TextBlock Style="{StaticResource Help}" Margin="0,6,0,0" Text="{Binding NameHint}"
-                                               Visibility="{Binding IsSpare, Converter={StaticResource BoolToVisibility}}" />
+                                               Visibility="{Binding HasNameHint, Converter={StaticResource BoolToVisibility}}" />
 
                                     <Grid Margin="0,6,0,0">
                                         <Grid.ColumnDefinitions>
@@ -143,7 +153,7 @@
                                         <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Item name" />
                                         <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource Field}" IsEnabled="{Binding CanRename}"
                                                  Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
-                                                 ToolTip="The name item text uses (shops, levels, scripts): longsword+1+fire. Only the unused scroll records can be renamed." />
+                                                 ToolTip="The name item text uses (shops, levels, scripts): longsword+1+fire. Only the unused scroll records and added items can be renamed." />
                                         <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Shown as" />
                                         <TextBox Grid.Row="0" Grid.Column="3" Style="{StaticResource Field}" Margin="0,3,0,3" IsEnabled="{Binding NamesLoaded}"
                                                  Text="{Binding ShownName, UpdateSourceTrigger=PropertyChanged}"
@@ -152,7 +162,7 @@
                                         <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Category" />
                                         <ComboBox Grid.Row="1" Grid.Column="1" Style="{StaticResource Pick}" IsEnabled="{Binding CanChangeCategory}"
                                                   ItemsSource="{x:Static local:ItemRow.CategoryChoices}" SelectedValue="{Binding Category}"
-                                                  ToolTip="Which inventory list it goes in. Only the unused scroll records can change." />
+                                                  ToolTip="Which inventory list it goes in. Only the unused scroll records and added items can change." />
                                         <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Slot" />
                                         <ComboBox Grid.Row="1" Grid.Column="3" Style="{StaticResource Pick}" Margin="0,3,0,3" IsEnabled="{Binding CanChangeSlot}"
                                                   ItemsSource="{Binding SlotChoices}" SelectedValue="{Binding Slot}"
@@ -258,7 +268,7 @@
                     <TextBlock Style="{StaticResource Help}" Margin="0,8,0,0" Text="{Binding ShopsProblem}"
                                Visibility="{Binding ShopsSupported, Converter={StaticResource InverseBoolToVisibility}}" />
                     <DockPanel Margin="0,4,0,0" Visibility="{Binding ShopsSupported, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Help}" Text="What each shop sells, as item text: an item name, then +N and modifier words joined by '+' (longsword+masterwork+2+fire). Bartley's list is used in the tavern, Branoch's in the mine camp and Sleyvas's everywhere else; on Extreme every shop sells the Extreme list and random items instead. Item names cost nothing; other new text has to fit in the shops' text area (about 400 bytes more than the game uses)." />
+                        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Help}" Text="What each shop sells, as item text: an item name, then +N and modifier words joined by '+' (longsword+masterwork+2+fire). Bartley's list is used in the tavern, Branoch's in the mine camp and Sleyvas's everywhere else; on Extreme every shop sells the Extreme list and random items instead. The game's own item names cost nothing; other new text, added items' names among it, has to fit in the shops' text area (about 400 bytes more than the game uses)." />
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="Shop" />
                             <ComboBox Style="{StaticResource Pick}" MinWidth="320" ItemsSource="{x:Static local:ItemEditorModel.ShopStocks}"

@@ -6,7 +6,8 @@
 // writing the tables is in BgdaExecutable.Items.cs and BgdaExecutable.Shops.cs.
 //
 // HOW THE GAME DESCRIBES AN ITEM
-//   Item table (VA 0x002A8098, 81 records of 0x30 bytes, a zero record ends it):
+//   Item table (VA 0x002A8098, 81 records of 0x30 bytes, a zero record ends it; on a
+//   three-player executable more can be added after them, see BgdaExecutable.Items.cs):
 //     +0x00 name pointer ("longsword")    +0x04 f32 weight (pounds)
 //     +0x08 u16 stack size (arrows: 20)   +0x0A s16 damage min   +0x0C s16 damage max
 //     +0x10 s32 price                     +0x14 s16 armour
@@ -260,6 +261,12 @@ public sealed class GameItem
     /// </summary>
     public bool IsSpare { get; init; }
 
+    /// <summary>
+    /// True for a record added after the game's own 81 (index 81 and up, three-player executables only):
+    /// it can be renamed and turned into any kind of item.
+    /// </summary>
+    public bool IsAdded { get; init; }
+
     /// <summary>The longest name that fits where this record's name is stored (0 when it can't be renamed).</summary>
     public int NameCapacity { get; init; }
 
@@ -293,6 +300,34 @@ public sealed class GameItem
     public bool WornFromArmorYak => Category == ItemCategory.Armour && Slot != ItemSlot.Shield;
 
     public GameItem Clone() => (GameItem)MemberwiseClone();
+
+    /// <summary>A copy at another place in the table (an added item that moves up when one before it is removed).</summary>
+    public GameItem WithIndex(int index) => CopyAt(index, IsSpare, IsAdded, NameCapacity);
+
+    /// <summary>A copy as an item added after the game's own, at <paramref name="index"/>.</summary>
+    public GameItem AsAdded(int index) => CopyAt(index, false, true, BgdaExecutable.MaxAddedItemName);
+
+    private GameItem CopyAt(int index, bool spare, bool added, int nameCapacity) => new()
+    {
+        Index = index,
+        Name = Name,
+        IsSpare = spare,
+        IsAdded = added,
+        NameCapacity = nameCapacity,
+        Weight = Weight,
+        StackSize = StackSize,
+        DamageMin = DamageMin,
+        DamageMax = DamageMax,
+        Price = Price,
+        Armour = Armour,
+        Slot = Slot,
+        Category = Category,
+        Stance = Stance,
+        DamageType = DamageType,
+        Flags = Flags,
+        Model = Model,
+        PickupModel = PickupModel
+    };
 }
 
 /// <summary>One record of the model table: a .vif model and a .tex texture in EQUIPMNT.LMP.</summary>
