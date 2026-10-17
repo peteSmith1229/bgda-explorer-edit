@@ -284,9 +284,10 @@ public sealed class CutsceneActor
 
     /// <summary>
     /// True when the scene creates the character when it starts ("Player" and "Player2" are stand-ins
-    /// for players 1 and 2, "Player3" for player 3 with ADRIANNA23; other names are object classes such
-    /// as Karne). False when the scene takes an object already in the level near the start position
-    /// (any character within 12 units, or an object with this name).
+    /// for players 1 and 2, "Player3" for player 3 with ADRIANNA23 or later; other names are object classes
+    /// such as Karne). False when the scene takes an object already in the level: the nearest one within
+    /// 12 units (x and y) of the start position that isn't in a scene already (in level sewer1, only a
+    /// character or an object with this name; FUN_00158848 at 0x00158E94).
     /// </summary>
     public bool IsCreated => _data[_offset + CreatedOffset] != 0;
 

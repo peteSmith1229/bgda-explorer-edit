@@ -145,6 +145,22 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
         : $"{Plural.Of(_cutscene.Keyframes.Count, "keyframe")} · {_cutscene.Cast.Count:N0} in the cast · " +
           $"{NumberText.Format(_cutscene.Duration, 1)} s";
 
+    /// <summary>
+    /// "1 Face or Look at keyframe aims at a player who isn't in every game" when keyframes aim at Player2 or Player3
+    /// (they are marked with a warning sign); otherwise null.
+    /// </summary>
+    public string? TargetWarningSummary
+    {
+        get
+        {
+            if (_cutscene == null) return null;
+            var count = _cutscene.Keyframes.Count(k => _cutscene.TargetWarning(k) != null);
+            return count == 0
+                ? null
+                : $"{count:N0} Face or Look at keyframe{(count == 1 ? " aims" : "s aim")} at a player who isn't in every game";
+        }
+    }
+
     /// <summary>Shown when no keyframes are listed.</summary>
     public string EmptyText
     {
@@ -366,7 +382,7 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
             new CutsceneChoice("Player", "Player 1's stand-in: the character player 1 chose."),
             new CutsceneChoice("Player2", "Player 2's stand-in (only in games with 2 or more players)."),
             new CutsceneChoice("Player3",
-                "Player 3's stand-in (only in three-player games, with the ADRIANNA23 executable or later).")
+                "Player 3's stand-in (only in three-player games, with ADRIANNA23 or later: the Three Players tab writes one).")
         }
         .Concat(BgdaObjectClasses.All
             .Where(c => c.Kind is BgdaObjectKind.Npc or BgdaObjectKind.Ambient or BgdaObjectKind.Monster)
@@ -449,6 +465,7 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
         Apply(CastFocus, edit);
         foreach (var keyframe in Keyframes) keyframe.RefreshWho();
         UpdateSections();
+        OnPropertyChanged(nameof(TargetWarningSummary));
     }
 
     internal void ApplyKeyframe(CutsceneKeyframeViewModel row, Action edit) =>
@@ -551,6 +568,7 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
         RefreshAnimationLists();
         UpdateSections();
         OnPropertyChanged(nameof(Summary));
+        OnPropertyChanged(nameof(TargetWarningSummary));
     }
 
     /// <summary>One row per cast member after a member was copied or removed; true when the number changed.</summary>
@@ -628,6 +646,7 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
             ReadOnlyReason = $"This cutscene can't be edited: {error} Its contents are in Details.";
             RefreshView();
             OnPropertyChanged(nameof(Summary));
+            OnPropertyChanged(nameof(TargetWarningSummary));
             return;
         }
 
@@ -665,6 +684,7 @@ public sealed class CutsceneEditorViewModel : EntryEditorViewModel
         OnPropertyChanged(nameof(IsReadOnly));
         OnPropertyChanged(nameof(OtherInfo));
         OnPropertyChanged(nameof(Summary));
+        OnPropertyChanged(nameof(TargetWarningSummary));
         RefreshView();
     }
 
@@ -951,10 +971,11 @@ public sealed class CutsceneActorViewModel : ObservableObject
         ? ""
         : _owner.Cutscene.Cast[Index].IsCreated
             ? "The scene creates this character when it starts. Player and Player2 are stand-ins for players 1 and 2 " +
-              "(Player3 for player 3 with the ADRIANNA23 executable, and only in three-player games); other names are " +
+              "(Player3 for player 3, only in three-player games with ADRIANNA23 or later); other names are " +
               "object classes, such as Karne or Thief1. A name the game doesn't know creates nothing, and its keyframes are skipped."
-            : "The scene uses an object that is already in the level, near this start position: any character within " +
-              "12 units, or another object with this name.";
+            : "The scene uses an object that is already in the level: the nearest one within 12 units of this start " +
+              "position that isn't in a scene already (in level sewer1, only a character or an object with this name). " +
+              "If there is none, its keyframes are skipped.";
 
     /// <summary>Added since the last save (shown with a marker).</summary>
     public bool IsAdded
@@ -1074,6 +1095,12 @@ public sealed class CutsceneKeyframeViewModel : ObservableObject
 
     public bool HasRawText => RawText.Length > 0;
 
+    /// <summary>
+    /// For a "Face" or "Look at" aimed at Player2 or Player3: what happens in the games without that player
+    /// (shown with a warning sign); otherwise null.
+    /// </summary>
+    public string? TargetWarning => _owner.Cutscene?.TargetWarning(Keyframe);
+
     public string ToolTip => (Keyframe.ActorKind, Keyframe.Action) switch
     {
         (CutsceneActorKind.Camera, 0) => "Moves the camera to a point in the level (world units).",
@@ -1135,7 +1162,14 @@ public sealed class CutsceneKeyframeViewModel : ObservableObject
         OnPropertyChanged(nameof(ToolTip));
     }
 
-    internal void RefreshWho() => OnPropertyChanged(nameof(Who));
+    /// <summary>Re-reads what depends on cast names: who, the member a Face or Look at aims at, and its warning.</summary>
+    internal void RefreshWho()
+    {
+        OnPropertyChanged(nameof(Who));
+        OnPropertyChanged(nameof(RawText));
+        OnPropertyChanged(nameof(HasRawText));
+        OnPropertyChanged(nameof(TargetWarning));
+    }
 
     /// <summary>Re-reads the lists of the row's boxes (the cast member's animations may have changed).</summary>
     internal void RefreshChoices()

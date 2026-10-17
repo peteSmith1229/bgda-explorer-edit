@@ -168,6 +168,15 @@
                                  Margin="0,0,6,0" />
                         <TextBlock Text="{Binding ChangeSummary}" Style="{StaticResource Text.Caption}" />
                     </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center"
+                                Background="Transparent"
+                                Visibility="{Binding TargetWarningSummary, Converter={StaticResource NullToVisibility}}"
+                                ToolTip="Player2 is only in games with two or three players, and Player3 only in three-player games (with ADRIANNA23 or later), each while that player is alive. Without them, ADRIANNA26 and later skip a Face aimed at them and keep the camera's own turn and tilt for a Look at; older executables write into the game's memory (Face) or point the camera at nothing (Look at). The keyframes are marked with the same sign.">
+                        <controls:GeometryIcon Data="{StaticResource Icon.Warning}" Width="14" Height="14"
+                                               Margin="0,0,6,0" Fill="{DynamicResource Brush.Warning}"
+                                               VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding TargetWarningSummary}" Style="{StaticResource Text.Caption}" />
+                    </StackPanel>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -289,7 +298,7 @@
                 <DockPanel Visibility="{Binding ShowCast, Converter={StaticResource BoolToVisibility}}">
                     <TextBlock DockPanel.Dock="Top" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
                                Margin="16,12,16,4" MaxWidth="760" HorizontalAlignment="Left"
-                               Text="Keyframes refer to cast members by their number. A copy goes at the end of the cast, with copies of the member's keyframes, so nothing else changes. Removing a member removes its keyframes and renumbers the members after it. Player and Player2 are players 1 and 2; with the ADRIANNA23 executable, Player3 is player 3. Any other name is a character class: pick one from the name's list to make a copy someone else." />
+                               Text="Keyframes refer to cast members by their number. A copy goes at the end of the cast, with copies of the member's keyframes, so nothing else changes. Removing a member removes its keyframes and renumbers the members after it. Player and Player2 are players 1 and 2, and Player3 is player 3 (three-player games, ADRIANNA23 or later). Any other name is a character class: pick one from the name's list to make a copy someone else." />
                     <ListBox ItemsSource="{Binding Cast}" Padding="6" ItemContainerStyle="{StaticResource RowItem}"
                              KeyboardNavigation.TabNavigation="Continue">
                         <ListBox.ItemTemplate>
@@ -366,13 +375,21 @@
                                     <ItemsControl Grid.Column="3" ItemsSource="{Binding Fields}" Focusable="False"
                                                   ItemTemplate="{StaticResource ValueTemplate}"
                                                   ItemsPanel="{StaticResource WrapPanelTemplate}" VerticalAlignment="Center" />
-                                    <Border Grid.Column="3" Background="{DynamicResource Brush.SurfaceAlt}" CornerRadius="4"
-                                            Padding="7,4" VerticalAlignment="Center" HorizontalAlignment="Left"
-                                            ToolTip="{Binding ToolTip}"
-                                            Visibility="{Binding HasRawText, Converter={StaticResource BoolToVisibility}}">
-                                        <TextBlock Text="{Binding RawText}" FontFamily="{StaticResource Font.Mono}" FontSize="12"
-                                                   Foreground="{DynamicResource Brush.TextSecondary}" />
-                                    </Border>
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center"
+                                                HorizontalAlignment="Left"
+                                                Visibility="{Binding HasRawText, Converter={StaticResource BoolToVisibility}}">
+                                        <Border Background="{DynamicResource Brush.SurfaceAlt}" CornerRadius="4" Padding="7,4"
+                                                VerticalAlignment="Center" ToolTip="{Binding ToolTip}">
+                                            <TextBlock Text="{Binding RawText}" FontFamily="{StaticResource Font.Mono}" FontSize="12"
+                                                       Foreground="{DynamicResource Brush.TextSecondary}" />
+                                        </Border>
+                                        <Border Background="Transparent" Margin="7,0,0,0" VerticalAlignment="Center"
+                                                ToolTip="{Binding TargetWarning}"
+                                                Visibility="{Binding TargetWarning, Converter={StaticResource NullToVisibility}}">
+                                            <controls:GeometryIcon Data="{StaticResource Icon.Warning}" Width="15" Height="15"
+                                                                   Fill="{DynamicResource Brush.Warning}" />
+                                        </Border>
+                                    </StackPanel>
                                     <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
                                         <Button Style="{StaticResource Button.Subtle}"
                                                 controls:ControlAssist.Icon="{StaticResource Icon.Duplicate}"

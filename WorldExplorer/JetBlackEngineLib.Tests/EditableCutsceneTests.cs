@@ -541,6 +541,45 @@ public class EditableCutsceneTests
     }
 
     [Test]
+    public void FaceOrLookAt_AtAPlayerWhoIsNotInEveryGame_IsWarnedAbout()
+    {
+        var stock = Stock("intro2p.cut");
+        var scene = EditableCutscene.Load(stock);
+        // intro2p.cut (which the game never plays): the first thief turns towards Player (3), then Player2 (7)
+        var warned = scene.Keyframes.Where(k => scene.TargetWarning(k) != null).ToList();
+        Assert.That(warned.Select(k => k.FaceTarget), Is.EqualTo(new int?[] { 7 }));
+        Assert.That(scene.TargetWarning(warned[0]), Does.Contain("Player2 is there only in games with two or three players"));
+        Assert.That(scene.TargetWarning(warned[0]), Does.Contain("address 0"));
+
+        scene.SetName(scene.Cast[7], "Player3");
+        Assert.That(scene.TargetWarning(warned[0]), Does.Contain("only in three-player games"));
+        scene.SetName(scene.Cast[7], "Karne");
+        Assert.That(scene.TargetWarning(warned[0]), Is.Null, "Karne is made in every game");
+
+        // a camera "Look at" aimed at Player2, made from the first camera keyframe (and its copy at the end)
+        var cut = (byte[])stock.Clone();
+        var count = Field(cut, KeyframeCountField);
+        var camera = Enumerable.Range(0, count).First(i => BitConverter.ToInt16(cut, KeyframeAt(cut, i) + 4) == -100);
+        foreach (var at in camera < CopiedKeyframes
+                     ? new[] { KeyframeAt(cut, camera), KeyframeAt(cut, count + camera) }
+                     : new[] { KeyframeAt(cut, camera) })
+        {
+            BitConverter.GetBytes((short)3).CopyTo(cut, at + 6);
+            BitConverter.GetBytes(7).CopyTo(cut, at + 8);
+        }
+
+        var looking = EditableCutscene.Load(cut);
+        var look = looking.Keyframes.Single(k => k.LookAtTarget != null);
+        Assert.That(looking.TargetWarning(look), Does.Contain("this Look at follows no one"));
+        Assert.That(looking.TargetWarning(look), Does.Contain("turn and tilt"));
+
+        // a member taken from the level (not made by the scene) isn't a player stand-in
+        cut[Field(cut, CastOffsetField) + 7 * CastMemberSize + 0x2B] = 0;
+        var fromLevel = EditableCutscene.Load(cut);
+        Assert.That(fromLevel.TargetWarning(fromLevel.Keyframes.Single(k => k.LookAtTarget != null)), Is.Null);
+    }
+
+    [Test]
     public void CastLimits_AreChecked()
     {
         var intro = EditableCutscene.Load(_intro);

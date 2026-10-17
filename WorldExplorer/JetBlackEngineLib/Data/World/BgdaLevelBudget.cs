@@ -2,7 +2,7 @@
 // NEW FILE: WorldExplorer/JetBlackEngineLib/Data/World/BgdaLevelBudget.cs
 //
 // How much of Baldur's Gate: Dark Alliance's fixed memory a level (GOB) uses, for
-// the PAL SLES_506.72 with three players (ADRIANNA21 and ADRIANNA22: the same
+// the PAL SLES_506.72 with three players (ADRIANNA21 to 26: the same
 // memory). Worked out from the game code and checked against save states of Town,
 // Crypt1, Mine2, towert, burnfrst and cellar1.
 //

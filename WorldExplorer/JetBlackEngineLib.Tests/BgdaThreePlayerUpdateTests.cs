@@ -8,10 +8,10 @@ using System.Text;
 namespace JetBlackEngineLib.Tests;
 
 /// <summary>
-/// Older three-player builds (ADRIANNA21 and ADRIANNA19, which the tab used to write, and
-/// ADRIANNA20) are recognised and updated to the current build. The older files are rebuilt here from the stock
-/// executable in Test_files plus the differences the patch data stores (skipped when the stock
-/// executable is not present).
+/// Older three-player builds (ADRIANNA22, 21 and 19, which the tab used to write, and ADRIANNA25, 24, 23
+/// and 20, which were handed out) are recognised and updated to the current build. The older files are
+/// rebuilt here from the stock executable in Test_files plus the differences the patch data stores
+/// (skipped when the stock executable is not present).
 /// </summary>
 [TestFixture]
 public class BgdaThreePlayerUpdateTests
@@ -102,7 +102,10 @@ public class BgdaThreePlayerUpdateTests
     {
         var current = Current();
         var older = OlderBuilds();
-        Assert.That(older.Select(o => o.Name), Is.EqualTo(new[] { "ADRIANNA21", "ADRIANNA20", "ADRIANNA19" }));
+        Assert.That(older.Select(o => o.Name), Is.EqualTo(new[]
+        {
+            "ADRIANNA25", "ADRIANNA24", "ADRIANNA23", "ADRIANNA22", "ADRIANNA21", "ADRIANNA20", "ADRIANNA19"
+        }));
 
         foreach (var (name, delta) in older)
         {
@@ -129,22 +132,105 @@ public class BgdaThreePlayerUpdateTests
         }
     }
 
+    /// <summary>The older build as a file (the current one with the build's own bytes put back).</summary>
+    private (byte[] Bytes, List<(int Offset, byte[] Old)> Delta) Older(string name)
+    {
+        var (_, delta) = OlderBuilds().First(o => o.Name == name);
+        var bytes = Current();
+        foreach (var (off, old) in delta) old.CopyTo(bytes, off);
+        return (bytes, delta);
+    }
+
+    private static bool Covers(List<(int Offset, byte[] Old)> delta, int fileOffset) =>
+        delta.Any(d => d.Offset <= fileOffset && fileOffset < d.Offset + d.Old.Length);
+
+    private const int VaToFile = 0xFF000;
+    private const int StagedToFile = 0x540000 - VaToFile;   // the code the game copies to low memory at start-up
+
     [Test]
     public void Adrianna21_IsUpdated_ForTheMemoryCountersFix()
     {
-        Assert.That(ThreePlayerPatch.CurrentName, Is.EqualTo("ADRIANNA22"));
-        var current = Current();
-        var (_, delta) = OlderBuilds().First(o => o.Name == "ADRIANNA21");
-        var bytes = (byte[])current.Clone();
-        foreach (var (off, old) in delta) old.CopyTo(bytes, off);
+        Assert.That(ThreePlayerPatch.CurrentName, Is.EqualTo("ADRIANNA26"));
+        var (bytes, delta) = Older("ADRIANNA21");
         var exe = BgdaExecutable.Open(Write("a21.72", bytes));
 
         Assert.That(exe.GetThreePlayerState(out var detail), Is.EqualTo(ThreePlayerState.Outdated), detail);
         Assert.That(detail, Does.Contain("record for each level"), "says what the update changes");
-        // ADRIANNA21 hooked the level load at the texture-cache call (file 0x103A88); ADRIANNA22 has
-        // the stock call there and hooks the level loader call (file 0x103B74) instead
-        Assert.That(delta.Any(d => d.Offset <= 0x103A88 && 0x103A88 < d.Offset + d.Old.Length), Is.True);
-        Assert.That(delta.Any(d => d.Offset <= 0x103B74 && 0x103B74 < d.Offset + d.Old.Length), Is.True);
+        // ADRIANNA21 hooked the level load at the texture-cache call (file 0x103A88); ADRIANNA22 and later have
+        // the stock call there and hook the level loader call (file 0x103B74) instead
+        Assert.That(Covers(delta, 0x103A88), Is.True);
+        Assert.That(Covers(delta, 0x103B74), Is.True);
+    }
+
+    [Test]
+    public void Adrianna22_IsUpdated_ForPlayer3InCutscenes()
+    {
+        var (bytes, delta) = Older("ADRIANNA22");
+        var exe = BgdaExecutable.Open(Write("a22.72", bytes));
+
+        Assert.That(exe.GetThreePlayerState(out var detail), Is.EqualTo(ThreePlayerState.Outdated), detail);
+        Assert.That(detail, Does.Contain("Player3"), "says what the update changes");
+        // the cutscene set-up's factory call and the end-of-scene "Player2" compare (ADRIANNA23), and the
+        // main loop's camera-cut texture wait (ADRIANNA24)
+        Assert.That(Covers(delta, 0x00158E5C - VaToFile), Is.True);
+        Assert.That(Covers(delta, 0x001586B8 - VaToFile), Is.True);
+        Assert.That(Covers(delta, 0x00203150 - VaToFile), Is.True);
+    }
+
+    [Test]
+    public void Adrianna24_IsUpdated_ForTheMemoryCardFix()
+    {
+        var (bytes, delta) = Older("ADRIANNA24");
+        var exe = BgdaExecutable.Open(Write("a24.72", bytes));
+
+        Assert.That(exe.GetThreePlayerState(out var detail), Is.EqualTo(ThreePlayerState.Outdated), detail);
+        Assert.That(detail, Does.Contain("memory card"), "says what the update changes");
+        // ADRIANNA23 and 24 had PE3's first word in the delay slot of the jump at 0x000B9B4C
+        Assert.That(Covers(delta, 0x000B9B50 + StagedToFile), Is.True);
+        Assert.That(Covers(delta, 0x001586B8 - VaToFile), Is.True);
+    }
+
+    [Test]
+    public void Adrianna25_IsUpdated_ForFaceAndLookAt()
+    {
+        var (bytes, delta) = Older("ADRIANNA25");
+        var exe = BgdaExecutable.Open(Write("a25.72", bytes));
+
+        Assert.That(exe.GetThreePlayerState(out var detail), Is.EqualTo(ThreePlayerState.Outdated), detail);
+        Assert.That(detail, Does.Contain("\"Face\" or \"Look at\""), "says what the update changes");
+        Assert.That(Covers(delta, 0x001557B4 - VaToFile), Is.True, "the Face call");
+        Assert.That(Covers(delta, 0x00157974 - VaToFile), Is.True, "the current Look at");
+        Assert.That(Covers(delta, 0x00157A7C - VaToFile), Is.True, "the next Look at");
+        var current = Current();
+        var differing = delta.Sum(d => d.Old.Where((b, i) => b != current[d.Offset + i]).Count());
+        Assert.That(differing, Is.LessThan(100), "only those and the new code");
+    }
+
+    [Test]
+    public void CurrentBuild_LeavesTheMemoryCardHooksDelaySlotEmpty()
+    {
+        var current = Current();
+        uint Word(int fileOffset) => BitConverter.ToUInt32(current, fileOffset);
+        // the players-line hook ends with 'j 0x001361E0' at 0x000B9B4C; the word after it runs too
+        Assert.That(Word(0x000B9B4C + StagedToFile), Is.EqualTo(0x0804D878u));
+        Assert.That(Word(0x000B9B50 + StagedToFile), Is.EqualTo(0u));
+    }
+
+    [Test]
+    public void OutdatedBuild_KeepsItsAddedItemsWhenUpdated()
+    {
+        var (bytes, _) = Older("ADRIANNA25");
+        var exe = BgdaExecutable.Open(Write("a25-items.72", bytes));
+        var items = exe.GetItems();
+        var added = items[12].Clone();
+        added.Name = "orcbane";
+        exe.AddItem(added);
+        Assert.That(exe.GetThreePlayerState(), Is.EqualTo(ThreePlayerState.Outdated), "added items keep the build recognised");
+
+        exe.UpgradeThreePlayers();
+        Assert.That(exe.GetThreePlayerState(), Is.EqualTo(ThreePlayerState.On));
+        Assert.That(exe.ItemCount, Is.EqualTo(82));
+        Assert.That(exe.GetItems()[81].Name, Is.EqualTo("orcbane"));
     }
 
     [Test]
