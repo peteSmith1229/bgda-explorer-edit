@@ -11,8 +11,8 @@
 // the executable. Items can be added after the game's own on three-player executables (the patch
 // frees the room), so three players can't be turned off while there are any.
 //
-// Three Players: switches the tested three-player patch (ADRIANNA22) on or off,
-// updates an older three-player build (ADRIANNA21 / 20 / 19) to ADRIANNA22 on
+// Three Players: switches the tested three-player patch (ADRIANNA26) on or off,
+// updates an older three-player build (ADRIANNA25 to 19) to ADRIANNA26 on
 // save, edits its balance / marker colours / small map, and edits the difficulty
 // scaling for every player count (BgdaExecutable.ThreePlayer.cs / .Difficulty.cs).
 // ═══════════════════════════════════════════════════════════════════════════════

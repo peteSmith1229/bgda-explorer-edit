@@ -91,14 +91,15 @@ public sealed class LevelBudgetModel
         {
             Summary = summary,
             SummaryBrushKey = StatusBrush(worst),
-            Note = $"For three players with ADRIANNA22 (the player characters take {b.Large.Players} of the 1 KB pool). " +
+            Note = $"For three players with the three-player patch (the player characters take {b.Large.Players} of the 1 KB pool). " +
                    "Pool slots are counted from objects.ob as the game places them when the level starts; memory is " +
                    "estimated from the archives in this GOB, those the level needs from the disc, and the buffers the " +
                    $"level asks for, out of the game's {Size(BgdaLevelBudget.HeapBytes)} heap. Checked against save states of " +
                    "Town, Crypt1, Mine2, towert, burnfrst and cellar1 with a pasted SteelGolem (within 2 KB). A disc archive's " +
                    "sound data is only known from a copy (the .LMP, or a GOB holding it, in this folder); without one its " +
                    "whole file is counted. While playing, spells and dropped items take more slots and conversations more " +
-                   "memory: the ADRIANNA22 counters (p2s_memreport.py) show the lowest free values each level really reached."
+                   "memory: the three-player patch's memory counters (p2s_memreport.py) show the lowest free values each level " +
+                   "really reached."
         };
 
         // ---- bars ----

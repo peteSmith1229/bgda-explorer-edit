@@ -16,7 +16,7 @@
 //   materials       the lui immediates of FUN_00178818 (0x00178838 rusty, 0x00178854 fine,
 //                   0x00178868 masterwork, 0x00178884 mithril, 0x001788A0 adamantine)
 //
-// None of these are touched by the three-player patch (checked against ADRIANNA22 and 23).
+// None of these are touched by the three-player patch (checked against ADRIANNA22 to 26).
 // The eight spell-scroll records the game never uses (55-62) can become new items.
 //
 // ADDING ITEMS. The game finds the item table through ten instructions (the parser

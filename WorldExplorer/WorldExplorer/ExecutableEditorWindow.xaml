@@ -173,7 +173,7 @@
             <TabItem Header="Three Players">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="0,2,14,8">
-                        <TextBlock Style="{StaticResource Help}" Text="Three-player co-op: Adrianna the Elven Sorceress joins as player 3 through a new 'Three Player' entry in the main menu. One- and two-player games keep the original code. Nothing is written until you save." />
+                        <TextBlock Style="{StaticResource Help}" Text="Three-player co-op: Adrianna the Elven Sorceress joins as player 3 through a new 'Three Player' entry in the main menu. Cutscenes show her too where the scene has a cast member called Player3 (Cutscene view). One- and two-player games play as before. Nothing is written until you save." />
 
                         <Border Style="{StaticResource Card}" Margin="0,4,0,4" Padding="14,12">
                             <StackPanel>

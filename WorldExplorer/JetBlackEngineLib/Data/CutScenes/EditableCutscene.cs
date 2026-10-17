@@ -158,6 +158,32 @@ public sealed class EditableCutscene
     /// <summary>The time of the last keyframe, in seconds.</summary>
     public float Duration => _keyframes.Count == 0 ? 0 : _keyframes[^1].Time;
 
+    /// <summary>
+    /// For a "Face" or camera "Look at" keyframe aimed at a player stand-in who isn't in every game (Player2,
+    /// Player3), what happens in the games without them; otherwise null. Neither keyframe looks whether its
+    /// target is there: up to ADRIANNA25 a Face then writes to address 0 (FUN_0015B080 links a node into the
+    /// missing object) and a Look at aims the camera at whatever is at address 0x10. ADRIANNA26 skips such a
+    /// Face and keeps the camera's own turn and tilt.
+    /// </summary>
+    public string? TargetWarning(CutsceneKeyframe keyframe)
+    {
+        if (keyframe.CastTarget is not { } target || target < 0 || target >= _cast.Count) return null;
+        var member = _cast[target];
+        if (!member.IsCreated) return null;
+        var there = member.Name switch
+        {
+            "Player2" => "only in games with two or three players, while player 2 is alive",
+            "Player3" => "only in three-player games, while player 3 is alive, and with ADRIANNA23 or later",
+            _ => null
+        };
+        if (there == null) return null;
+        return keyframe.FaceTarget != null
+            ? $"{member.Name} is there {there}. Without {member.Name} this Face turns towards no one: ADRIANNA26 and " +
+              "later skip it, but older executables write into the game's memory at address 0, which can crash it."
+            : $"{member.Name} is there {there}. Without {member.Name} this Look at follows no one: ADRIANNA26 and " +
+              "later keep the camera's own turn and tilt, but older executables point the camera at nothing.";
+    }
+
     /// <summary>Header flags (meaning not known).</summary>
     public int Flags => BitConverter.ToInt32(_prefix, 0);
 
