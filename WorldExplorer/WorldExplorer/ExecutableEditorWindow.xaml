@@ -173,13 +173,18 @@
             <TabItem Header="Three Players">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="0,2,14,8">
-                        <TextBlock Style="{StaticResource Help}" Text="Three-player co-op: Adrianna the Elven Sorceress joins as player 3 through a new 'Three Player' entry in the main menu. Cutscenes show her too where the scene has a cast member called Player3 (Cutscene view). One- and two-player games play as before. Nothing is written until you save." />
+                        <TextBlock Style="{StaticResource Help}" Text="Three-player co-op: Adrianna the Elven Sorceress joins as player 3 through a new 'Three Player' entry in the main menu. Cutscenes show her too where the scene has a cast member called Player3: 'Add player 3 to the game's cutscenes' puts her in the game's own, and the Cutscene view edits any cutscene. One- and two-player games play as before. Nothing is written until you save." />
 
                         <Border Style="{StaticResource Card}" Margin="0,4,0,4" Padding="14,12">
                             <StackPanel>
                                 <CheckBox x:Name="threePlayerCheck" Content="Enable three players" FontWeight="SemiBold"
                                           Checked="ThreePlayerCheck_Changed" Unchecked="ThreePlayerCheck_Changed" />
                                 <TextBlock x:Name="threePlayerStatus" Style="{StaticResource Help}" Margin="24,6,0,0" />
+                                <CheckBox x:Name="threePlayerCutscenesCheck" Content="Add player 3 to the game's cutscenes (GOB files)"
+                                          Margin="24,10,0,0" IsChecked="True" ToolTipService.ShowOnDisabled="True"
+                                          IsEnabled="{Binding IsChecked, ElementName=threePlayerCheck, FallbackValue=False}"
+                                          Checked="ThreePlayerCutscenesCheck_Changed" Unchecked="ThreePlayerCutscenesCheck_Changed" />
+                                <TextBlock x:Name="threePlayerCutscenesStatus" Style="{StaticResource Help}" Margin="48,6,0,0" />
                             </StackPanel>
                         </Border>
 
