@@ -15,6 +15,10 @@
 // updates an older three-player build (ADRIANNA25 to 19) to ADRIANNA26 on
 // save, edits its balance / marker colours / small map, and edits the difficulty
 // scaling for every player count (BgdaExecutable.ThreePlayer.cs / .Difficulty.cs).
+// With three players on, a second box (ticked by default) also puts player 3 in the
+// game's own cutscenes when you save: only those cutscene entries of the game's GOB
+// files change (ThreePlayerCutscenes, found like GTEXT.LMP). Turning three players
+// off offers to put the game's own cutscenes back when one with player 3 needs ADRIANNA26.
 // ═══════════════════════════════════════════════════════════════════════════════
 using System;
 using System.Collections.Generic;
@@ -26,6 +30,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using JetBlackEngineLib.Data.CutScenes;
 using JetBlackEngineLib.Data.Executable;
 using JetBlackEngineLib.Data.Text;
 using Microsoft.Win32;
@@ -212,11 +217,18 @@ public partial class ExecutableEditorWindow : Window
     private readonly bool _difficultyEditable;
     private readonly ItemEditorModel _items;
 
+    /// <summary>Where the game's files are looked for: next to the executable, then the data folder in Settings.</summary>
+    private readonly string?[] _gameFolders;
+
+    /// <summary>What each cutscene with player 3 is in the game's GOB files (Three Players tab).</summary>
+    private List<ThreePlayerCutsceneStatus> _cutscenes = new();
+
     public ExecutableEditorWindow(BgdaExecutable exe)
     {
         InitializeComponent();
         ThemeManager.Attach(this);
         _exe = exe;
+        _gameFolders = new[] { System.IO.Path.GetDirectoryName(_exe.FilePath), App.Settings.Get("Files.DataPath", "") };
 
         var xp = _exe.GetXpTable();
         _xpRows = xp.Select((v, i) => new XpRow { Level = i + 1, Xp = v.ToString() }).ToList();
@@ -269,10 +281,9 @@ public partial class ExecutableEditorWindow : Window
         };
         if (_items.IsSupported)
         {
-            var folders = new[] { System.IO.Path.GetDirectoryName(_exe.FilePath), App.Settings.Get("Files.DataPath", "") };
-            if (ItemEditorModel.FindGameFile("GTEXT.LMP", folders) is { } gtext)
+            if (ItemEditorModel.FindGameFile("GTEXT.LMP", _gameFolders) is { } gtext)
                 ItemEditorView.TryLoadNames(_items, gtext, this, quiet: true);
-            if (ItemEditorModel.FindGameFile("EQUIPMNT.LMP", folders) is { } equipment)
+            if (ItemEditorModel.FindGameFile("EQUIPMNT.LMP", _gameFolders) is { } equipment)
                 ItemEditorView.TryLoadEquipment(_items, equipment, this, quiet: true);
         }
 
@@ -313,6 +324,8 @@ public partial class ExecutableEditorWindow : Window
         ShowThreePlayerSettings(tpOn
             ? _exe.GetThreePlayerSettings()
             : BgdaExecutable.DefaultThreePlayerSettings());
+        threePlayerCutscenesCheck.ToolTip = CutscenesToolTip();
+        RefreshCutscenes();
         UpdateThreePlayerStatus();
 
         var difficultyState = _exe.GetDifficultyState();
@@ -379,6 +392,7 @@ public partial class ExecutableEditorWindow : Window
         };
         if (dialog.ShowDialog(this) != true) return;
 
+        var stateBefore = _exe.GetThreePlayerState();
         try
         {
             ApplyThreePlayers(wantThreePlayers, threePlayerSettings);
@@ -397,11 +411,13 @@ public partial class ExecutableEditorWindow : Window
         UpdateThreePlayerStatus();
         UpdateDifficultyStatus();
         var namesSaved = _items.NamesNeedSaving && SaveNames();
+        var cutscenes = UpdateGameCutscenes(wantThreePlayers, stateBefore);
         MessageBox.Show(this,
             "Saved. Replace the executable in your game image with this file " +
             (namesSaved ? "and GTEXT.LMP with the one you saved " : "") +
             "(keep your originals as a backup). Stats and XP affect new characters and future level-ups; " +
-            "items, shops and loot every game.",
+            "items, shops and loot every game." +
+            (cutscenes is null ? "" : "\n\n" + cutscenes),
             "Executable Tuning", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
@@ -606,12 +622,139 @@ public partial class ExecutableEditorWindow : Window
             _ => detail
         };
         threePlayerSettingsPanel.IsEnabled = want && state != ThreePlayerState.Unrecognized;
+        UpdateCutsceneStatus();
     }
 
     private void ThreePlayerCheck_Changed(object sender, RoutedEventArgs e)
     {
         if (!IsInitialized || threePlayerStatus is null) return;
         UpdateThreePlayerStatus();
+    }
+
+    // ── The game's cutscenes: player 3 in the GOB files (ThreePlayerCutscenes) ──
+
+    private const string WhereGobFilesAreLooked =
+        "The GOB files are looked for next to the executable (and in DATA and BG\\DATA below it), then in the data " +
+        "folder set in Settings.";
+
+    /// <summary>Set when the cutscene data in WorldExplorer can't be used; shown instead of the plan.</summary>
+    private string? _cutsceneProblem;
+
+    private string? FindGob(string name) => ItemEditorModel.FindGameFile(name, _gameFolders);
+
+    /// <summary>Looks again at what the cutscenes with player 3 are in the game's GOB files.</summary>
+    private void RefreshCutscenes()
+    {
+        try
+        {
+            _cutscenes = ThreePlayerCutscenes.Inspect(FindGob);
+        }
+        catch (InvalidDataException ex)
+        {
+            _cutscenes = new List<ThreePlayerCutsceneStatus>();
+            _cutsceneProblem = ex.Message;
+            threePlayerCutscenesCheck.IsChecked = false;
+        }
+    }
+
+    private static string CutscenesToolTip()
+    {
+        try
+        {
+            return "When you save with three players on, these cutscenes get a cast member called Player3, so player 3 " +
+                   "appears in them in three-player games: " +
+                   string.Join(", ", ThreePlayerCutscenes.All.Select(c => c.ToString())) + ". Only those entries of the " +
+                   "GOB files change, and only where a file still has the game's own cutscene: one changed in any other " +
+                   "way is left as it is. " + WhereGobFilesAreLooked;
+        }
+        catch (InvalidDataException ex)
+        {
+            return ex.Message;
+        }
+    }
+
+    /// <summary>The line under the cutscene box: what saving will do to the game's GOB files.</summary>
+    private void UpdateCutsceneStatus()
+    {
+        if (threePlayerCutscenesStatus is null) return; // still loading
+        var state = _exe.GetThreePlayerState();
+        var want = threePlayerCheck.IsChecked == true;
+        string? text;
+        if (_cutsceneProblem is not null)
+        {
+            text = _cutsceneProblem;
+        }
+        else if (want && threePlayerCutscenesCheck.IsChecked == true)
+        {
+            text = ThreePlayerCutscenes.DescribePlan(_cutscenes);
+            if (_cutscenes.All(s => s.Path == null)) text += " " + WhereGobFilesAreLooked;
+        }
+        else if (want)
+        {
+            text = "The cutscenes in the game's GOB files are left as they are.";
+        }
+        else
+        {
+            // three players about to be turned off: say what that means for cutscenes with player 3
+            text = state is ThreePlayerState.On or ThreePlayerState.Outdated ? ThreePlayerCutscenes.DescribeTurnOff(_cutscenes) : null;
+        }
+
+        threePlayerCutscenesStatus.Text = text ?? "";
+        threePlayerCutscenesStatus.Visibility = string.IsNullOrEmpty(text) ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void ThreePlayerCutscenesCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!IsInitialized) return;
+        UpdateCutsceneStatus();
+    }
+
+    /// <summary>
+    /// After the executable is saved: with three players on and the cutscene box ticked, puts player 3 in the game's
+    /// cutscenes. When three players have just been turned off and a cutscene with player 3 in the game's GOB files
+    /// needs ADRIANNA26, asks whether to put the game's own back. Returns what was done for the saved message, or null.
+    /// </summary>
+    private string? UpdateGameCutscenes(bool wantThreePlayers, ThreePlayerState stateBefore)
+    {
+        var addPlayer3 = wantThreePlayers && threePlayerCutscenesCheck.IsChecked == true && _cutsceneProblem is null;
+        var turnedOff = !wantThreePlayers && stateBefore is (ThreePlayerState.On or ThreePlayerState.Outdated);
+        if (!addPlayer3 && !turnedOff) return null;
+
+        Mouse.OverrideCursor = Cursors.Wait;
+        try
+        {
+            ThreePlayerCutsceneResult result;
+            if (addPlayer3)
+            {
+                result = ThreePlayerCutscenes.Apply(FindGob, withPlayer3: true);
+            }
+            else
+            {
+                var now = ThreePlayerCutscenes.Inspect(FindGob);
+                if (!ThreePlayerCutscenes.ShouldOfferPuttingBack(now)) return null;
+                Mouse.OverrideCursor = null;
+                if (MessageBox.Show(this, ThreePlayerCutscenes.PuttingBackQuestion(now), "Three Players",
+                        MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.Yes) != MessageBoxResult.Yes)
+                    return "The cutscenes with player 3 were left in the game's GOB files.";
+                Mouse.OverrideCursor = Cursors.Wait;
+                result = ThreePlayerCutscenes.Apply(FindGob, withPlayer3: false);
+            }
+
+            var text = result.Describe();
+            if (result.Changed.Count > 0)
+                text += " If WorldExplorer has one of these GOB files open, open it again before you save it.";
+            return text;
+        }
+        catch (InvalidDataException ex)
+        {
+            return "The cutscenes weren't changed: " + ex.Message;
+        }
+        finally
+        {
+            Mouse.OverrideCursor = null;
+            RefreshCutscenes();
+            UpdateCutsceneStatus();
+        }
     }
 
     private void ThreePlayerDefaults_Click(object sender, RoutedEventArgs e) =>
