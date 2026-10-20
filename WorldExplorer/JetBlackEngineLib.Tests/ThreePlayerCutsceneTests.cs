@@ -259,6 +259,24 @@ public class ThreePlayerCutsceneTests
     }
 
     [Test]
+    public void ADamagedGob_IsReportedAndLeftAsItWas()
+    {
+        // the game's own CUTTOWN.GOB cut short: its directories point past the end
+        var stock = StockCutTown();
+        var damaged = stock.AsSpan(0, stock.Length / 2).ToArray();
+        var (folder, find) = Folder("damaged", ("CUTTOWN.GOB", damaged));
+        var path = Path.Combine(folder, "CUTTOWN.GOB");
+        var intro = ThreePlayerCutscenes.Inspect(find).Single(s => s.Cutscene.Gob == "CUTTOWN.GOB");
+        Assert.That(intro.State, Is.EqualTo(NotFound), "can't be read: as good as not there");
+        Assert.That(intro.Path, Is.EqualTo(path));
+        var result = ThreePlayerCutscenes.Apply(find, withPlayer3: true);
+        Assert.That(result.Failed.Select(f => f.Path).ToArray(), Is.EqualTo(new[] { path }));
+        Assert.That(result.Describe(), Does.Contain("CUTTOWN.GOB couldn't be updated and is unchanged"));
+        Assert.That(File.ReadAllBytes(path), Is.EqualTo(damaged), "not written");
+        Assert.That(Directory.GetFiles(folder).Select(Path.GetFileName).ToArray(), Is.EqualTo(new[] { "CUTTOWN.GOB" }));
+    }
+
+    [Test]
     public void AFileThatCantBeRead_IsReported()
     {
         // a folder where the GOB file should be: it can't be read, and nothing is written

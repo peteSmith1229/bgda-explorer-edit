@@ -199,24 +199,25 @@ public static class ThreePlayerCutscenes
         foreach (var group in All.GroupBy(c => c.Gob, StringComparer.OrdinalIgnoreCase))
         {
             var path = findGob(group.Key);
-            GobFile? gob = null;
+            List<ThreePlayerCutsceneState>? states = null;
             if (path != null)
             {
                 try
                 {
-                    gob = Open(group.Key, File.ReadAllBytes(path));
+                    var gob = Open(group.Key, File.ReadAllBytes(path));
+                    states = group.Select(c => StateIn(gob, c)).ToList();
                 }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException
-                                               or ArgumentException or IndexOutOfRangeException)
+                catch (Exception ex) when (IsFileProblem(ex))
                 {
-                    gob = null; // can't be read: as good as not there
+                    states = null; // can't be read: as good as not there
                 }
             }
 
+            var i = 0;
             foreach (var cutscene in group)
             {
-                result.Add(new ThreePlayerCutsceneStatus(cutscene,
-                    gob == null ? ThreePlayerCutsceneState.NotFound : StateIn(gob, cutscene), path));
+                result.Add(new ThreePlayerCutsceneStatus(cutscene, states?[i] ?? ThreePlayerCutsceneState.NotFound, path));
+                i++;
             }
         }
 
@@ -338,8 +339,7 @@ public static class ThreePlayerCutscenes
                     File.Move(temp, path, overwrite: true);
                 }
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException
-                                           or ArgumentException or IndexOutOfRangeException)
+            catch (Exception ex) when (IsFileProblem(ex))
             {
                 result.Failed.Add((path, ex.Message));
                 continue;
@@ -381,6 +381,12 @@ public static class ThreePlayerCutscenes
 
         return result;
     }
+
+    /// <summary>
+    /// Anything that goes wrong reading, rebuilding or writing one GOB file: a damaged file can fail anywhere in the
+    /// readers. That file is then left as it was and reported; only running out of memory isn't caught.
+    /// </summary>
+    private static bool IsFileProblem(Exception ex) => ex is not OutOfMemoryException;
 
     // ─────────────────────────────────────────────────────────────────────────
     // Texts for the Three Players tab
