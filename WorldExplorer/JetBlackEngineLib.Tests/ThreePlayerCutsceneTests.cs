@@ -118,6 +118,23 @@ public class ThreePlayerCutsceneTests
     }
 
     [Test]
+    public void EveryVoiceLine_PlaysWhenItDoesInTheGamesOwn()
+    {
+        // Each "Next voice line" and each mode-4 "Play animation" plays the next line of the scene's voice list, so the
+        // versions with player 3 must have them in the same frames as the game's own (the scene clock runs at 50 frames
+        // a second), or every later voice comes one speaker late: the intro had lost the second thief's at 48.217 s.
+        static int[] VoiceFrames(byte[] cut) => EditableCutscene.Load(cut).Keyframes
+            .Where(k => (k.ActorKind == CutsceneActorKind.Scene && k.Action == 2) || (k.IsPlayAnimation && k.Parameters[1] == 4))
+            .Select(k => (int)Math.Ceiling(k.Time * 50 - 1e-3)).ToArray();
+        foreach (var cutscene in ThreePlayerCutscenes.All)
+        {
+            Assert.That(VoiceFrames(cutscene.GetWithPlayer3()), Is.EqualTo(VoiceFrames(cutscene.GetOriginal())), cutscene.ToString());
+        }
+
+        Assert.That(VoiceFrames(Intro.GetWithPlayer3()).Length, Is.EqualTo(15), "2 Next voice line keyframes and 13 gestures");
+    }
+
+    [Test]
     public void TheIntro_IsMadeFromTheGamesOwn()
     {
         Assert.That(Intro.GetOriginal(), Is.EqualTo(Entry(StockCutTown(), "cuttown.lmp/intro.cut")));
