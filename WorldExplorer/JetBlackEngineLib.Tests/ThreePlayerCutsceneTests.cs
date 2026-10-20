@@ -166,7 +166,7 @@ public class ThreePlayerCutsceneTests
         var added = now.Keyframes.Select(Describe).ToList();
         foreach (var k in then.Keyframes) Assert.That(added.Remove(Describe(k)), Is.True, Describe(k));
         var restored = now.Keyframes.Single(k => Describe(k) == added.Single());
-        Assert.That(restored.Actor, Is.EqualTo(2), "the second thief");
+        Assert.That(restored.Actor, Is.EqualTo((short)2), "the second thief");
         Assert.That(restored.Time, Is.EqualTo(48.217f).Within(0.0005f));
         Assert.That(restored.IsPlayAnimation && restored.Parameters[1] == 4, Is.True, "a gesture, which plays a voice line");
         Assert.That(VoiceFrames(earlier).Length, Is.EqualTo(14), "one voice line short");

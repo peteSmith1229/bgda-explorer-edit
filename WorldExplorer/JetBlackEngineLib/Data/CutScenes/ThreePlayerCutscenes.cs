@@ -12,6 +12,7 @@
 // A GOB file is rebuilt the way WorldExplorer saves GOB files (GobWriter: in place when the sizes allow, otherwise
 // packed), checked (every other entry byte for byte as it was), written next to itself and only then put in place.
 // ═══════════════════════════════════════════════════════════════════════════════
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using JetBlackEngineLib.Data.DataContainers;
