@@ -16,6 +16,7 @@ public class ThreePlayerCutsceneTests
 {
     private const ThreePlayerCutsceneState Original = ThreePlayerCutsceneState.Original;
     private const ThreePlayerCutsceneState WithPlayer3 = ThreePlayerCutsceneState.WithPlayer3;
+    private const ThreePlayerCutsceneState Earlier = ThreePlayerCutsceneState.EarlierWithPlayer3;
     private const ThreePlayerCutsceneState Changed = ThreePlayerCutsceneState.Changed;
     private const ThreePlayerCutsceneState NotFound = ThreePlayerCutsceneState.NotFound;
 
@@ -76,6 +77,24 @@ public class ThreePlayerCutsceneTests
 
     private static byte[] Entry(byte[] gob, string name) => Entries(gob).Single(e => e.Name == name).Bytes;
 
+    /// <summary>The game's own CUTTOWN.GOB with another intro.cut, saved the way WorldExplorer saves GOB files.</summary>
+    private byte[] CutTownWithIntro(byte[] intro)
+    {
+        var gob = new GobFile(EngineVersion.DarkAlliance, "CUTTOWN.GOB", StockCutTown());
+        var lmp = gob.Directory["cuttown.lmp"];
+        lmp.ReadDirectory();
+        lmp.ReplaceEntry("intro.cut", intro);
+        return GobWriter.TryPatchInPlace(gob) ?? GobWriter.Pack(gob);
+    }
+
+    /// <summary>
+    /// The frames (the scene clock runs at 50 a second) of the keyframes that play a voice line: each "Next voice
+    /// line" and each mode-4 "Play animation" plays the next line of the scene's voice list.
+    /// </summary>
+    private static int[] VoiceFrames(byte[] cut) => EditableCutscene.Load(cut).Keyframes
+        .Where(k => (k.ActorKind == CutsceneActorKind.Scene && k.Action == 2) || (k.IsPlayAnimation && k.Parameters[1] == 4))
+        .Select(k => (int)Math.Ceiling(k.Time * 50 - 1e-3)).ToArray();
+
     /// <summary>A folder holding the given files, and a finder like the Three Players tab's for it.</summary>
     private (string Folder, Func<string, string?> Find) Folder(string name, params (string File, byte[] Bytes)[] files)
     {
@@ -120,18 +139,90 @@ public class ThreePlayerCutsceneTests
     [Test]
     public void EveryVoiceLine_PlaysWhenItDoesInTheGamesOwn()
     {
-        // Each "Next voice line" and each mode-4 "Play animation" plays the next line of the scene's voice list, so the
-        // versions with player 3 must have them in the same frames as the game's own (the scene clock runs at 50 frames
-        // a second), or every later voice comes one speaker late: the intro had lost the second thief's at 48.217 s.
-        static int[] VoiceFrames(byte[] cut) => EditableCutscene.Load(cut).Keyframes
-            .Where(k => (k.ActorKind == CutsceneActorKind.Scene && k.Action == 2) || (k.IsPlayAnimation && k.Parameters[1] == 4))
-            .Select(k => (int)Math.Ceiling(k.Time * 50 - 1e-3)).ToArray();
+        // The versions with player 3 must play their voice lines in the same frames as the game's own, or every later
+        // voice comes one speaker late: the intro had lost the second thief's at 48.217 s.
         foreach (var cutscene in ThreePlayerCutscenes.All)
         {
             Assert.That(VoiceFrames(cutscene.GetWithPlayer3()), Is.EqualTo(VoiceFrames(cutscene.GetOriginal())), cutscene.ToString());
         }
 
         Assert.That(VoiceFrames(Intro.GetWithPlayer3()).Length, Is.EqualTo(15), "2 Next voice line keyframes and 13 gestures");
+    }
+
+    [Test]
+    public void TheIntrosEarlierVersion_IsTheOneWithoutTheVoiceKeyframe()
+    {
+        // Pete's intro as he made it, which an earlier WorldExplorer put in the game: it is brought up to date
+        Assert.That(ThreePlayerCutscenes.All.Where(c => c.GetEarlierVersions().Count > 0).Select(c => c.ToString()).ToArray(),
+            Is.EqualTo(new[] { "intro.cut (CUTTOWN.GOB)" }), "only the intro has an earlier version");
+        var earlier = Intro.GetEarlierVersions().Single();
+        Assert.That(earlier, Is.Not.EqualTo(Intro.GetOriginal()));
+        Assert.That(earlier, Is.Not.EqualTo(Intro.GetWithPlayer3()));
+
+        // the same keyframes apart from the second thief's mode-4 Play animation at 48.217 s
+        static string Describe(CutsceneKeyframe k) => $"{k.Time:R} {k.Actor} {k.Action} {string.Join(",", k.Parameters)}";
+        var then = EditableCutscene.Load(earlier);
+        var now = EditableCutscene.Load(Intro.GetWithPlayer3());
+        var added = now.Keyframes.Select(Describe).ToList();
+        foreach (var k in then.Keyframes) Assert.That(added.Remove(Describe(k)), Is.True, Describe(k));
+        var restored = now.Keyframes.Single(k => Describe(k) == added.Single());
+        Assert.That(restored.Actor, Is.EqualTo(2), "the second thief");
+        Assert.That(restored.Time, Is.EqualTo(48.217f).Within(0.0005f));
+        Assert.That(restored.IsPlayAnimation && restored.Parameters[1] == 4, Is.True, "a gesture, which plays a voice line");
+        Assert.That(VoiceFrames(earlier).Length, Is.EqualTo(14), "one voice line short");
+    }
+
+    [Test]
+    public void AnEarlierVersion_IsBroughtUpToDate_OrPutBack()
+    {
+        var stock = StockCutTown();
+        var old = CutTownWithIntro(Intro.GetEarlierVersions().Single());
+        var (folder, find) = Folder("earlier", ("CUTTOWN.GOB", old));
+        var path = Path.Combine(folder, "CUTTOWN.GOB");
+
+        var plan = ThreePlayerCutscenes.Inspect(find);
+        Assert.That(plan.Single(s => s.Cutscene.Entry == "intro.cut").State, Is.EqualTo(Earlier));
+        Assert.That(ThreePlayerCutscenes.DescribePlan(plan), Is.EqualTo(
+            $"When you save, intro.cut (CUTTOWN.GOB) is brought up to date from an earlier version with player 3 (in {folder}). " +
+            "Only that cutscene changes. Not found: BTHRONE.GOB, CRYPT2.GOB, ICECAVE1.GOB, ICECAVE3.GOB, SEWER1.GOB and TOWERT.GOB."));
+
+        // turning three players off: it has player 3 and the Face and Look at, so putting the game's own back is offered
+        Assert.That(ThreePlayerCutscenes.ShouldOfferPuttingBack(plan), Is.True);
+        Assert.That(ThreePlayerCutscenes.DescribeTurnOff(plan), Is.EqualTo(
+            $"1 cutscene in 1 GOB file has player 3 (in {folder}). intro.cut (CUTTOWN.GOB) has a Face or Look at aimed at " +
+            "Player3, which only ADRIANNA26 and later play safely, so when you save you'll be asked whether to put the " +
+            "game's own cutscenes back."));
+        var question = ThreePlayerCutscenes.PuttingBackQuestion(plan);
+        Assert.That(question, Does.Contain($"but 1 cutscene in 1 GOB file in the game still has player 3 (in {folder})."));
+        Assert.That(question, Does.Contain("intro.cut (CUTTOWN.GOB) has a Face or Look at aimed at Player3."));
+
+        // putting the game's own back replaces it too, and only it
+        var found = new List<ThreePlayerCutsceneStatus>();
+        var back = ThreePlayerCutscenes.Update("CUTTOWN.GOB", old, withPlayer3: false, found);
+        Assert.That(found.Single().State, Is.EqualTo(Earlier));
+        var before = Entries(stock);
+        var restored = Entries(back!);
+        Assert.That(restored.Select(e => e.Name).ToArray(), Is.EqualTo(before.Select(e => e.Name).ToArray()));
+        for (var i = 0; i < before.Count; i++) Assert.That(restored[i].Bytes, Is.EqualTo(before[i].Bytes), before[i].Name);
+
+        // putting player 3 in brings it up to date, and only it
+        var result = ThreePlayerCutscenes.Apply(find, withPlayer3: true);
+        Assert.That(result.Changed.Select(s => (s.Cutscene.Entry, s.State)).ToArray(), Is.EqualTo(new[] { ("intro.cut", Earlier) }));
+        Assert.That(result.Describe(), Is.EqualTo(
+            $"Player 3 is now in 1 cutscene in 1 GOB file: CUTTOWN (in {folder}). intro.cut (CUTTOWN.GOB) was brought up to " +
+            "date from an earlier version with player 3. Not found: BTHRONE.GOB, CRYPT2.GOB, ICECAVE1.GOB, ICECAVE3.GOB, " +
+            "SEWER1.GOB and TOWERT.GOB."));
+        var now = Entries(File.ReadAllBytes(path));
+        var was = Entries(old);
+        Assert.That(now.Select(e => e.Name).ToArray(), Is.EqualTo(was.Select(e => e.Name).ToArray()));
+        for (var i = 0; i < was.Count; i++)
+        {
+            var want = was[i].Name == "cuttown.lmp/intro.cut" ? Intro.GetWithPlayer3() : was[i].Bytes;
+            Assert.That(now[i].Bytes, Is.EqualTo(want), was[i].Name);
+        }
+
+        Assert.That(ThreePlayerCutscenes.Inspect(find).Single(s => s.Cutscene.Entry == "intro.cut").State, Is.EqualTo(WithPlayer3));
+        Assert.That(Directory.GetFiles(folder).Select(Path.GetFileName).ToArray(), Is.EqualTo(new[] { "CUTTOWN.GOB" }));
     }
 
     [Test]
@@ -206,8 +297,8 @@ public class ThreePlayerCutsceneTests
         Assert.That(plan.Single(s => s.Cutscene.Entry == "intro.cut").State, Is.EqualTo(Original));
         Assert.That(plan.Count(s => s.State == NotFound), Is.EqualTo(7));
         Assert.That(ThreePlayerCutscenes.DescribePlan(plan), Is.EqualTo(
-            $"When you save, player 3 is added to 1 cutscene in 1 GOB file: CUTTOWN (in {folder}). Only those cutscenes " +
-            "change. Not found: BTHRONE.GOB, CRYPT2.GOB, ICECAVE1.GOB, ICECAVE3.GOB, SEWER1.GOB and TOWERT.GOB."));
+            $"When you save, player 3 is added to 1 cutscene in 1 GOB file: CUTTOWN (in {folder}). Only that cutscene " +
+            "changes. Not found: BTHRONE.GOB, CRYPT2.GOB, ICECAVE1.GOB, ICECAVE3.GOB, SEWER1.GOB and TOWERT.GOB."));
         Assert.That(ThreePlayerCutscenes.DescribeTurnOff(plan), Is.Null, "nothing with player 3 yet");
 
         var result = ThreePlayerCutscenes.Apply(find, withPlayer3: true);

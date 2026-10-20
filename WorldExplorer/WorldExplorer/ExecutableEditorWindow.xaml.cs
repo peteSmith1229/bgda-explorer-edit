@@ -664,8 +664,9 @@ public partial class ExecutableEditorWindow : Window
             return "When you save with three players on, these cutscenes get a cast member called Player3, so player 3 " +
                    "appears in them in three-player games: " +
                    string.Join(", ", ThreePlayerCutscenes.All.Select(c => c.ToString())) + ". Only those entries of the " +
-                   "GOB files change, and only where a file still has the game's own cutscene: one changed in any other " +
-                   "way is left as it is. " + WhereGobFilesAreLooked;
+                   "GOB files change, and only where a file still has the game's own cutscene or an earlier version with " +
+                   "player 3, which is brought up to date: one changed in any other way is left as it is. " +
+                   WhereGobFilesAreLooked;
         }
         catch (InvalidDataException ex)
         {
