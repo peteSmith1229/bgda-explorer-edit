@@ -396,7 +396,7 @@ public sealed partial class ItemEditorModel
             var items = CurrentItems();
             var names = Items.Where((r, i) => i < items.Count && _selectedGlowGroup.Contains(items[i])).Select(r => r.DisplayName)
                 .Distinct().ToList();
-            return names.Count == 0 ? "No item is in this group." : $"{names.Count} items: " + string.Join(", ", names) + ".";
+            return names.Count == 0 ? "No item is in this group." : $"{Count(names.Count)}: " + string.Join(", ", names) + ".";
         }
     }
 
@@ -415,12 +415,14 @@ public sealed partial class ItemEditorModel
         var items = CurrentItems();
         var changed = 0;
         var members = 0;
+        var member = "";
         Quietly(() =>
         {
             for (var i = 0; i < Items.Count && i < items.Count; i++)
             {
                 if (!_selectedGlowGroup.Contains(items[i])) continue;
                 members++;
+                member = Items[i].DisplayName;
                 if (Items[i].Glow == _groupGlow) continue;
                 Items[i].Glow = _groupGlow;
                 changed++;
@@ -428,9 +430,13 @@ public sealed partial class ItemEditorModel
         });
 
         var what = ItemGlowChoices.FirstOrDefault(c => c.Value == _groupGlow)?.Text ?? _groupGlow.ToString();
-        GroupGlowResult = members == 0 ? "No item is in this group." : $"{changed} of {members} items changed to {what}.";
+        GroupGlowResult = members == 0 ? "No item is in this group."
+            : members == 1 ? (changed == 1 ? $"{member} changed to {what}." : $"{member} is already {what}.")
+            : $"{changed} of {members} items changed to {what}.";
         return changed;
     }
+
+    private static string Count(int items) => items == 1 ? "1 item" : $"{items} items";
 
     // ═══════════════════════════════ what the settings are now ═══════════════════════════════
 
