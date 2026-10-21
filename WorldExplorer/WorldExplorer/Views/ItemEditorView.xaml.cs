@@ -179,8 +179,8 @@ public partial class ItemEditorView : UserControl
     private void SetGroupGlow_Click(object sender, RoutedEventArgs e) => Model?.ApplyGroupGlow();
 
     /// <summary>
-    /// A grid inside the page's ScrollViewer would swallow the mouse wheel with its own scroll viewer, so the
-    /// wheel is handed on to the page.
+    /// A grid inside the page's ScrollViewer, or the Glow page's sideways scroller round the styles, would swallow
+    /// the mouse wheel with its own scroll viewer, so the wheel is handed on to the page.
     /// </summary>
     private void Grid_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {

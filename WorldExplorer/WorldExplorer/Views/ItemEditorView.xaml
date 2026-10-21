@@ -341,7 +341,10 @@
 
             <!-- ═══════════════════════════════ Glow ═══════════════════════════════ -->
             <TabItem Header="Glow">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                <!-- The page doesn't scroll sideways (like Loot & effects): with infinite width the help would never
+                     wrap, and the rules grid couldn't size its columns. Only the styles, which are wider than a narrow
+                     window, have their own sideways scroll bar. -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="0,4,14,8">
                         <TextBlock Text="ENCHANT GLOW" Style="{StaticResource Heading}" Margin="0,4,0,6" />
                         <TextBlock Style="{StaticResource Help}" Text="{Binding GlowStatus}" />
@@ -360,39 +363,44 @@
 
                         <TextBlock Text="STYLES" Style="{StaticResource Heading}" />
                         <TextBlock Style="{StaticResource Help}" Text="A style is two layers drawn round the item: a large faint halo and a small bright core, as red, green and blue from 0 to 255. Both are added to the scene, so dark colours look faint. Strength is how strongly a layer shows at full power (the game's 64 and 72): an item with no power shows 60% of it, and each point of power adds 2.5%, up to all of it at 16 (+2 counts 2 points, +1 counts 8 because the game adds 7 for an odd +N, and modifiers 1 to 8). Without glow styles only style 0, the game's own colours, can be changed." />
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
-                            <TextBlock Style="{StaticResource FieldLabel}" Width="96" Text="Style" />
-                            <TextBlock Style="{StaticResource FieldLabel}" Width="232" Text="Halo: red, green, blue, strength" />
-                            <TextBlock Style="{StaticResource FieldLabel}" Width="232" Text="Core: red, green, blue, strength" />
-                            <TextBlock Style="{StaticResource FieldLabel}" Width="196" Text="Copy colours from" />
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="Used by" />
-                        </StackPanel>
-                        <ItemsControl ItemsSource="{Binding GlowStyles}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" Margin="0,1" IsEnabled="{Binding IsEditable}">
-                                        <TextBlock Style="{StaticResource FieldLabel}" Width="96" Text="{Binding Name}" />
-                                        <TextBox Width="38" Margin="0,0,3,0" Text="{Binding HaloR, UpdateSourceTrigger=PropertyChanged}" ToolTip="Halo red, 0 to 255" />
-                                        <TextBox Width="38" Margin="0,0,3,0" Text="{Binding HaloG, UpdateSourceTrigger=PropertyChanged}" ToolTip="Halo green, 0 to 255" />
-                                        <TextBox Width="38" Margin="0,0,3,0" Text="{Binding HaloB, UpdateSourceTrigger=PropertyChanged}" ToolTip="Halo blue, 0 to 255" />
-                                        <TextBox Width="38" Margin="6,0,0,0" Text="{Binding HaloStrength, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding StrengthEditable}"
-                                                 ToolTip="Halo strength at full power, 0 to 255 (the game's 64)" />
-                                        <Border Style="{StaticResource Swatch}" Background="{Binding HaloSwatch}" Margin="6,3,12,3" />
-                                        <TextBox Width="38" Margin="0,0,3,0" Text="{Binding CoreR, UpdateSourceTrigger=PropertyChanged}" ToolTip="Core red, 0 to 255" />
-                                        <TextBox Width="38" Margin="0,0,3,0" Text="{Binding CoreG, UpdateSourceTrigger=PropertyChanged}" ToolTip="Core green, 0 to 255" />
-                                        <TextBox Width="38" Margin="0,0,3,0" Text="{Binding CoreB, UpdateSourceTrigger=PropertyChanged}" ToolTip="Core blue, 0 to 255" />
-                                        <TextBox Width="38" Margin="6,0,0,0" Text="{Binding CoreStrength, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding StrengthEditable}"
-                                                 ToolTip="Core strength at full power, 0 to 255 (the game's 72)" />
-                                        <Border Style="{StaticResource Swatch}" Background="{Binding CoreSwatch}" Margin="6,3,12,3" />
-                                        <ComboBox Width="186" Margin="0,0,10,0" ItemsSource="{x:Static local:ItemEditorModel.GlowColourPresets}" DisplayMemberPath="Name"
-                                                  SelectedItem="{Binding ColourPreset, Mode=TwoWay}" ToolTip="Copies a ready-made set of colours (and the game's strengths) into this style." />
-                                        <TextBlock Style="{StaticResource Help}" Margin="0" VerticalAlignment="Center" Text="{Binding UsedBy}" />
-                                        <TextBlock Style="{StaticResource Problem}" Margin="12,0,0,0" VerticalAlignment="Center" Text="{Binding Problem}"
-                                                   Visibility="{Binding Problem, Converter={StaticResource NullToVisibility}}" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                                      PreviewMouseWheel="Grid_PreviewMouseWheel">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Width="96" Text="Style" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Width="232" Text="Halo: red, green, blue, strength" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Width="232" Text="Core: red, green, blue, strength" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Width="196" Text="Copy colours from" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Used by" />
+                                </StackPanel>
+                                <ItemsControl ItemsSource="{Binding GlowStyles}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Margin="0,1" IsEnabled="{Binding IsEditable}">
+                                                <TextBlock Style="{StaticResource FieldLabel}" Width="96" Text="{Binding Name}" />
+                                                <TextBox Width="38" Margin="0,0,3,0" Text="{Binding HaloR, UpdateSourceTrigger=PropertyChanged}" ToolTip="Halo red, 0 to 255" />
+                                                <TextBox Width="38" Margin="0,0,3,0" Text="{Binding HaloG, UpdateSourceTrigger=PropertyChanged}" ToolTip="Halo green, 0 to 255" />
+                                                <TextBox Width="38" Margin="0,0,3,0" Text="{Binding HaloB, UpdateSourceTrigger=PropertyChanged}" ToolTip="Halo blue, 0 to 255" />
+                                                <TextBox Width="38" Margin="6,0,0,0" Text="{Binding HaloStrength, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding StrengthEditable}"
+                                                         ToolTip="Halo strength at full power, 0 to 255 (the game's 64)" />
+                                                <Border Style="{StaticResource Swatch}" Background="{Binding HaloSwatch}" Margin="6,3,12,3" />
+                                                <TextBox Width="38" Margin="0,0,3,0" Text="{Binding CoreR, UpdateSourceTrigger=PropertyChanged}" ToolTip="Core red, 0 to 255" />
+                                                <TextBox Width="38" Margin="0,0,3,0" Text="{Binding CoreG, UpdateSourceTrigger=PropertyChanged}" ToolTip="Core green, 0 to 255" />
+                                                <TextBox Width="38" Margin="0,0,3,0" Text="{Binding CoreB, UpdateSourceTrigger=PropertyChanged}" ToolTip="Core blue, 0 to 255" />
+                                                <TextBox Width="38" Margin="6,0,0,0" Text="{Binding CoreStrength, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding StrengthEditable}"
+                                                         ToolTip="Core strength at full power, 0 to 255 (the game's 72)" />
+                                                <Border Style="{StaticResource Swatch}" Background="{Binding CoreSwatch}" Margin="6,3,12,3" />
+                                                <ComboBox Width="186" Margin="0,0,10,0" ItemsSource="{x:Static local:ItemEditorModel.GlowColourPresets}" DisplayMemberPath="Name"
+                                                          SelectedItem="{Binding ColourPreset, Mode=TwoWay}" ToolTip="Copies a ready-made set of colours (and the game's strengths) into this style." />
+                                                <TextBlock Style="{StaticResource Help}" Margin="0" VerticalAlignment="Center" Text="{Binding UsedBy}" />
+                                                <TextBlock Style="{StaticResource Problem}" Margin="12,0,0,0" VerticalAlignment="Center" Text="{Binding Problem}"
+                                                           Visibility="{Binding Problem, Converter={StaticResource NullToVisibility}}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </ScrollViewer>
 
                         <TextBlock Text="RULES" Style="{StaticResource Heading}" />
                         <TextBlock Style="{StaticResource Help}" Text="{Binding GlowRulesText}" />
@@ -406,11 +414,21 @@
                         </StackPanel>
                         <DataGrid x:Name="glowRuleGrid" ItemsSource="{Binding GlowRules}" SelectedItem="{Binding SelectedGlowRule, Mode=TwoWay}"
                                   AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
-                                  SelectionMode="Single" HorizontalAlignment="Left" MinWidth="760" IsEnabled="{Binding GlowStylesOn}"
+                                  SelectionMode="Single" HorizontalAlignment="Left" IsEnabled="{Binding GlowStylesOn}"
                                   PreviewMouseWheel="Grid_PreviewMouseWheel">
+                            <!-- Fixed widths only: a DataGrid sizes a star (*) column from its viewport, and while it has
+                                 no usable width (as when this page scrolled sideways) it squeezes every column to its
+                                 minimum, leaving the cells empty. -->
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="#" Binding="{Binding Position}" IsReadOnly="True" Width="34" />
-                                <DataGridTextColumn Header="Items with any of" Binding="{Binding Summary}" IsReadOnly="True" Width="320" />
+                                <DataGridTextColumn Header="Items with any of" Binding="{Binding Summary}" IsReadOnly="True" Width="320">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                            <Setter Property="ToolTip" Value="{Binding Summary}" />
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
                                 <DataGridTemplateColumn Header="Glow" Width="180">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
@@ -420,7 +438,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="Problem" Binding="{Binding Problem}" IsReadOnly="True" Width="*">
+                                <DataGridTextColumn Header="Problem" Binding="{Binding Problem}" IsReadOnly="True" Width="300">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
