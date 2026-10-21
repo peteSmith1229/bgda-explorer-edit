@@ -14,6 +14,7 @@
 //     +0x18 s8 equipment slot             +0x19 s8 category (weapon / armour / other)
 //     +0x1A s8 fighting stance            +0x1C s32 damage type (1 blunt, 4 ranged, 8 bladed)
 //     +0x20 u64 property bits             +0x28 s16 model   +0x2A s16 pickup model
+//     +0x2C u8 padding: the item's glow setting with glow styles (BgdaExecutable.Glow.cs)
 //   Everything else in the game names items as text: a base name and modifiers,
 //   "longsword+masterwork+1+fireburst" (FUN_00174B48 turns it into an item). Shops,
 //   level objects (item=...), scripts (givePlayerItem) and starting kits all use it.
@@ -297,6 +298,9 @@ public sealed class GameItem
     /// <summary>The model on the ground and in the inventory (model table index).</summary>
     public int PickupModel { get; set; }
 
+    /// <summary>Its own glow setting (+0x2C, used with glow styles): automatic, a style, or never.</summary>
+    public ItemGlow Glow { get; set; }
+
     public bool WornFromArmorYak => Category == ItemCategory.Armour && Slot != ItemSlot.Shield;
 
     public GameItem Clone() => (GameItem)MemberwiseClone();
@@ -326,7 +330,8 @@ public sealed class GameItem
         DamageType = DamageType,
         Flags = Flags,
         Model = Model,
-        PickupModel = PickupModel
+        PickupModel = PickupModel,
+        Glow = Glow
     };
 }
 

@@ -12,8 +12,9 @@ using Microsoft.Win32;
 namespace WorldExplorer.Views;
 
 /// <summary>
-/// The Items tab of Executable Tuning: items, models, shops, loot and effects (DataContext: ItemEditorModel).
-/// Everything is edited in the model; this only opens GTEXT.LMP and EQUIPMNT.LMP and asks before an added item is removed.
+/// The Items tab of Executable Tuning: items, models, shops, glow, loot and effects (DataContext: ItemEditorModel).
+/// Everything is edited in the model; this only opens GTEXT.LMP and EQUIPMNT.LMP, and asks before an added item is
+/// removed or glow settings are replaced.
 /// </summary>
 public partial class ItemEditorView : UserControl
 {
@@ -125,6 +126,57 @@ public partial class ItemEditorView : UserControl
 
         model.RemoveItem(row);
     }
+
+    // ── the Glow tab ──
+
+    private void UseGlowStyles_Click(object sender, RoutedEventArgs e) => Model?.TurnOnGlowStyles();
+
+    /// <summary>Back to the game's own glow; asks first when rules, styles or item settings would go.</summary>
+    private void UseGameGlow_Click(object sender, RoutedEventArgs e)
+    {
+        if (Model is not { } model) return;
+        if (model.GlowSettingsWouldBeLost &&
+            !Ask(Window.GetWindow(this), "Back to the game's own glow? Every item's glow setting goes back to Automatic now, and the " +
+                                         "rules and the styles other than style 0 are taken out of the executable when you save."))
+            return;
+        model.TurnOffGlowStyles();
+    }
+
+    private void GlowPresetGame_Click(object sender, RoutedEventArgs e) => ApplyPreset(GlowPreset.Game, "the game's own glow");
+
+    private void GlowPresetTested_Click(object sender, RoutedEventArgs e) => ApplyPreset(GlowPreset.Tested, "the tested set");
+
+    /// <summary>Applies a ready-made set; asks first when it would replace styles, rules or item settings.</summary>
+    private void ApplyPreset(GlowPreset preset, string name)
+    {
+        if (Model is not { } model) return;
+        if (model.GlowSettingsWouldBeLost &&
+            !Ask(Window.GetWindow(this), $"Replace every glow style, rule and item glow setting with {name}?"))
+            return;
+        model.ApplyGlowPreset(preset);
+    }
+
+    private void AddGlowRule_Click(object sender, RoutedEventArgs e)
+    {
+        if (Model?.AddGlowRule() is { } row) glowRuleGrid.ScrollIntoView(row);
+    }
+
+    private void RemoveGlowRule_Click(object sender, RoutedEventArgs e)
+    {
+        if (Model is { SelectedGlowRule: { } rule } model) model.RemoveGlowRule(rule);
+    }
+
+    private void MoveGlowRuleUp_Click(object sender, RoutedEventArgs e)
+    {
+        if (Model is { SelectedGlowRule: { } rule } model) model.MoveGlowRule(rule, -1);
+    }
+
+    private void MoveGlowRuleDown_Click(object sender, RoutedEventArgs e)
+    {
+        if (Model is { SelectedGlowRule: { } rule } model) model.MoveGlowRule(rule, +1);
+    }
+
+    private void SetGroupGlow_Click(object sender, RoutedEventArgs e) => Model?.ApplyGroupGlow();
 
     /// <summary>
     /// A grid inside the page's ScrollViewer would swallow the mouse wheel with its own scroll viewer, so the
