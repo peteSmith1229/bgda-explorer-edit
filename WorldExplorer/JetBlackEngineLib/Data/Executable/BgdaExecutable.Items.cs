@@ -12,7 +12,9 @@
 //                     weapons 0x2A7700 (Extreme 0x2A77D0), armour 0x2A78C8 (Extreme 0x2A78F8),
 //                     rings and amulets 0x2A7978
 //   enchant glow    VA 0x002A79B8: two {R, G, B, alpha, f32 size} layers drawn round a weapon
-//                   with +N or a modifier (not a flaming one) (FUN_00174A50 sets alpha and size)
+//                   with +N or a modifier (not a flaming one) (FUN_00174A50 sets alpha and size);
+//                   glow styles (BgdaExecutable.Glow.cs) give each item and modifier its own, and
+//                   keep an item's glow setting in the record's padding byte +0x2C
 //   materials       the lui immediates of FUN_00178818 (0x00178838 rusty, 0x00178854 fine,
 //                   0x00178868 masterwork, 0x00178884 mithril, 0x001788A0 adamantine)
 //
@@ -72,11 +74,21 @@ public sealed class ItemEdits
 
     public float[]? MaterialMultipliers { get; set; }
     public float[]? StanceWeights { get; set; }
+
+    /// <summary>The ENCHANT GLOW colours (with glow styles on, style 0's colours).</summary>
     public EnchantGlow? Glow { get; set; }
+
+    /// <summary>Glow styles and rules to write; glow styles are put in first when the executable has none.</summary>
+    public GlowSettings? GlowStyles { get; set; }
+
+    /// <summary>Puts the game's own glow function back (every item's glow setting goes back to automatic).</summary>
+    public bool RemoveGlowStyles { get; set; }
+
     public Dictionary<LootModifierList, ulong[]> Loot { get; } = new();
 
     public bool IsEmpty => Items.Count == 0 && AddedItems == null && Models.Count == 0 && ShopTexts.Count == 0 &&
-                           MaterialMultipliers == null && StanceWeights == null && Glow == null && Loot.Count == 0;
+                           MaterialMultipliers == null && StanceWeights == null && Glow == null && GlowStyles == null &&
+                           !RemoveGlowStyles && Loot.Count == 0;
 }
 
 public partial class BgdaExecutable
@@ -232,18 +244,23 @@ public partial class BgdaExecutable
     // ═══════════════════════════════ all at once ═══════════════════════════════
 
     /// <summary>
-    /// Applies item edits together: the added items and then the other items first (so shops can sell a new
-    /// or renamed record), then models, shops, materials, stance weights, the glow and the loot lists. When
-    /// any of them is refused nothing changes, and the exception (<see cref="ArgumentException"/> for a bad
-    /// value, <see cref="InvalidOperationException"/> when there is no room for added items) says which.
+    /// Applies item edits together: glow styles removed, then the added items and the other items (so shops
+    /// can sell a new or renamed record), then models, shops, materials, stance weights, the glow colours,
+    /// glow styles and the loot lists. When any of them is refused nothing changes, and the exception
+    /// (<see cref="ArgumentException"/> for a bad value, <see cref="InvalidOperationException"/> when there
+    /// is no room for added items or glow styles can't be used) says which. An item can only have a glow
+    /// setting other than automatic when the executable ends up with glow styles.
     /// </summary>
     public void ApplyItemEdits(ItemEdits edits)
     {
         RequireItems();
         if (edits.IsEmpty) return;
+        if (edits.RemoveGlowStyles && edits.GlowStyles != null)
+            throw new ArgumentException("Glow styles can't be removed and written at once.");
         var before = (byte[])_data.Clone();
         try
         {
+            if (edits.RemoveGlowStyles) RemoveGlowStyles();
             if (edits.AddedItems != null) SetAddedItems(edits.AddedItems);
             foreach (var item in edits.Items) SetItem(item);
             foreach (var (index, (vif, tex)) in edits.Models) SetItemModel(index, vif, tex);
@@ -251,8 +268,10 @@ public partial class BgdaExecutable
             if (edits.MaterialMultipliers != null) SetMaterialMultipliers(edits.MaterialMultipliers);
             if (edits.StanceWeights != null) SetStanceWeights(edits.StanceWeights);
             if (edits.Glow is { } glow) SetEnchantGlow(glow);
+            if (edits.GlowStyles != null) SetGlowSettings(edits.GlowStyles);
             foreach (var (list, values) in edits.Loot) SetLootModifiers(list, values);
             CheckShopsSellItems();
+            CheckItemGlows();
         }
         catch
         {
@@ -314,7 +333,8 @@ public partial class BgdaExecutable
                 DamageType = ReadInt(r + ItDamageType),
                 Flags = ReadU64(r + ItFlags),
                 Model = (short)ReadU16(r + ItModel),
-                PickupModel = (short)ReadU16(r + ItPickup)
+                PickupModel = (short)ReadU16(r + ItPickup),
+                Glow = new ItemGlow(_data[r + ItemGlowOffset])
             });
         }
 
@@ -370,6 +390,7 @@ public partial class BgdaExecutable
         BitConverter.GetBytes(item.Flags).CopyTo(_data, r + ItFlags);
         WriteU16(r + ItModel, item.Model);
         WriteU16(r + ItPickup, item.PickupModel);
+        _data[r + ItemGlowOffset] = item.Glow.Value;
     }
 
     /// <summary>Why <paramref name="item"/> can't replace <paramref name="old"/>, or null when it can.</summary>
@@ -384,6 +405,7 @@ public partial class BgdaExecutable
         if (item.Price < 0 || item.Price > MaxItemPrice) return $"Price must be 0 to {MaxItemPrice:N0}.";
         if (item.Armour < 0 || item.Armour > MaxItemArmour) return $"Armour must be 0 to {MaxItemArmour}.";
         if (item.DamageType < 0) return "The damage type can't be negative.";
+        if (!item.Glow.IsValid) return "Glow: automatic, a style from 0 to 15, or never.";
 
         // the unused scroll records and added items can become any item; an added item's name is always checked
         var open = old.IsSpare || old.IsAdded;
@@ -830,6 +852,10 @@ public partial class BgdaExecutable
                                new Rgb(_data[at + 8], _data[at + 9], _data[at + 10]));
     }
 
+    /// <summary>
+    /// Writes the ENCHANT GLOW colours. With glow styles on, these are style 0's colours, and style 0 takes
+    /// them too (its strengths stay).
+    /// </summary>
     public void SetEnchantGlow(EnchantGlow glow)
     {
         RequireItems();
@@ -839,13 +865,16 @@ public partial class BgdaExecutable
                 throw new ArgumentException("Glow colours are 0 to 255 per channel.");
         }
 
-        var at = FileOffset(GlowVa);
-        _data[at] = (byte)glow.Halo.R;
-        _data[at + 1] = (byte)glow.Halo.G;
-        _data[at + 2] = (byte)glow.Halo.B;
-        _data[at + 8] = (byte)glow.Core.R;
-        _data[at + 9] = (byte)glow.Core.G;
-        _data[at + 10] = (byte)glow.Core.B;
+        if (HasGlowStyles)
+        {
+            var settings = GetGlowSettings();
+            var styles = settings.Styles.ToArray();
+            styles[0] = new GlowStyle(styles[0].Halo with { Colour = glow.Halo }, styles[0].Core with { Colour = glow.Core });
+            SetGlowSettings(new GlowSettings(styles, settings.Rules));
+            return;
+        }
+
+        WriteTableColours(glow.Halo, glow.Core);
     }
 
     /// <summary>

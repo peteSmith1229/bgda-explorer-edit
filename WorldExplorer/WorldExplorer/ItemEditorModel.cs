@@ -2,8 +2,9 @@
 // NEW FILE: WorldExplorer/WorldExplorer/ItemEditorModel.cs
 //
 // The Items tab of Executable Tuning (ItemEditorView.xaml): weapons, armour and other items,
-// their models, what the shops sell, materials, stance weights, the enchant glow and the
-// random-loot modifiers, with the names the game shows from GTEXT.LMP. Every box is text so a
+// their models, what the shops sell, materials, stance weights, the enchant glow (and glow
+// styles: ItemEditorModel.Glow.cs) and the random-loot modifiers, with the names the game
+// shows from GTEXT.LMP. Every box is text so a
 // half-typed value never throws; Problem says what is wrong, and BuildEdits gathers the changes
 // for BgdaExecutable.ApplyItemEdits (all or nothing). No WPF types, so it runs in tests.
 // On a three-player executable items can be added after the game's 81 (AddItem copies the
@@ -26,7 +27,7 @@ public sealed record Choice<T>(T Value, string Text)
     public override string ToString() => Text;
 }
 
-public sealed class ItemEditorModel : ObservableObject
+public sealed partial class ItemEditorModel : ObservableObject
 {
     private readonly BgdaExecutable _exe;
     private readonly List<ShopRow> _allShops = new();
@@ -57,7 +58,6 @@ public sealed class ItemEditorModel : ObservableObject
     public ObservableCollection<ItemModelRow> Models { get; } = new();
     public ObservableCollection<TuningRow> Materials { get; } = new();
     public ObservableCollection<TuningRow> StanceWeights { get; } = new();
-    public ObservableCollection<GlowRow> Glow { get; } = new();
 
     private ItemRow? _selectedItem;
 
@@ -94,11 +94,6 @@ public sealed class ItemEditorModel : ObservableObject
             StanceWeights.Add(new TuningRow(this, StanceText((ItemStance)i), weights[i], ItemFormulas.StockStanceWeights[i], false));
         }
 
-        var glow = _exe.GetEnchantGlow();
-        Glow.Clear();
-        Glow.Add(new GlowRow("Halo (large and faint)", glow.Halo, new Rgb(10, 10, 68)));
-        Glow.Add(new GlowRow("Core (small and bright)", glow.Core, new Rgb(60, 60, 68)));
-
         _loot.Clear();
         foreach (var list in Enum.GetValues<LootModifierList>())
         {
@@ -114,6 +109,7 @@ public sealed class ItemEditorModel : ObservableObject
             foreach (var e in _exe.GetShopEntries()) _allShops.Add(new ShopRow(this, e));
         }
 
+        LoadGlow();
         OnPropertyChanged(nameof(ShopRows));
         SelectedItem = Items.FirstOrDefault(i => i.Index == SelectedItem?.Index) ?? Items.FirstOrDefault();
     }
@@ -362,11 +358,12 @@ public sealed class ItemEditorModel : ObservableObject
 
     internal IReadOnlyList<string> NearbyShopTexts => _nearbyShopTexts;
 
-    /// <summary>An item row changed: the shops and the models' "used by" follow.</summary>
+    /// <summary>An item row changed: the shops, the glow styles' "used by" and the models' "used by" follow.</summary>
     internal void ItemEdited()
     {
         Forget();
-        RefreshShops();
+        if (Quiet) return;
+        GlowEdited();
         foreach (var m in Models) m.Refresh();
     }
 
@@ -448,6 +445,7 @@ public sealed class ItemEditorModel : ObservableObject
 
         var value = ItemFormulas.ShopValue(item, parsed.Count, parsed.Flags, CurrentStanceWeights(), CurrentMaterials());
         parts.Add(parsed.Count > 1 ? $"price {value:N0} for {parsed.Count}" : $"price {value:N0}");
+        parts.Add(GlowWords(item.Glow, parsed.Flags));
         return string.Join(" · ", parts);
     }
 
@@ -551,7 +549,7 @@ public sealed class ItemEditorModel : ObservableObject
 
         if (Materials.Any(m => m.IsChanged)) edits.MaterialMultipliers = Materials.Select(m => m.Parse()).ToArray();
         if (StanceWeights.Any(m => m.IsChanged)) edits.StanceWeights = StanceWeights.Select(m => m.Parse()).ToArray();
-        if (Glow.Any(g => g.IsChanged)) edits.Glow = new EnchantGlow(Glow[0].Parse(), Glow[1].Parse());
+        BuildGlowEdits(edits);
         foreach (var (list, rows) in _loot)
         {
             if (rows.Any(r => r.IsChanged)) edits.Loot[list] = rows.Select(r => r.Value).ToArray();
@@ -661,6 +659,7 @@ public sealed class ItemRow : ObservableObject
     private ItemSlot _slot;
     private ItemStance _stance;
     private int _damageType;
+    private ItemGlow _glow;
     private int _index;
     private string? _autoShownName, _newShownName;
 
@@ -685,6 +684,7 @@ public sealed class ItemRow : ObservableObject
         _slot = source.Slot;
         _stance = source.Stance;
         _damageType = source.DamageType;
+        _glow = source.Glow;
         _otherFlags = source.Flags & ~(ItemBits.EnchantmentMask | ItemBits.LooksMask);
         _shownName = owner.GameName(source.Name) ?? "";
         Bits = ItemBits.All
@@ -852,6 +852,20 @@ public sealed class ItemRow : ObservableObject
 
     public int DamageType { get => _damageType; set => Set(ref _damageType, value); }
 
+    /// <summary>Its own glow setting (glow styles, Glow tab): automatic, a style, or never.</summary>
+    public ItemGlow Glow { get => _glow; set => Set(ref _glow, value); }
+
+    public IReadOnlyList<GlowChoice> GlowChoices => _owner.ItemGlowChoices;
+
+    /// <summary>The glow setting needs glow styles.</summary>
+    public bool CanEditGlow => _owner.GlowStylesOn;
+
+    /// <summary>The grid's glow column: nothing without glow styles.</summary>
+    public string GlowText => !_owner.GlowStylesOn ? "" : _glow.IsAutomatic ? "auto" : _glow.IsNever ? "never" : $"style {_glow.Style}";
+
+    public string GlowHaloSwatch => _owner.GlowStylesOn && _glow.Style is { } s && s < _owner.GlowStyles.Count ? _owner.GlowStyles[s].HaloSwatch : "#00000000";
+    public string GlowCoreSwatch => _owner.GlowStylesOn && _glow.Style is { } s && s < _owner.GlowStyles.Count ? _owner.GlowStyles[s].CoreSwatch : "#00000000";
+
     internal bool HasBit(int bit) => ItemBits.Has(_otherFlags, bit);
 
     internal void SetBit(int bit, bool on)
@@ -937,6 +951,7 @@ public sealed class ItemRow : ObservableObject
         item.Slot = _slot;
         item.Stance = _stance;
         item.DamageType = _damageType;
+        item.Glow = _glow;
         var keepLooksBits = looks == ItemBits.Looks(Source.Flags) ? Source.Flags & ItemBits.LooksMask : ItemBits.WithLooks(0, looks);
         item.Flags = _otherFlags | (uint)enchantment | keepLooksBits;
 
@@ -950,7 +965,8 @@ public sealed class ItemRow : ObservableObject
         built.StackSize != Source.StackSize || built.DamageMin != Source.DamageMin || built.DamageMax != Source.DamageMax ||
         built.Price != Source.Price || built.Armour != Source.Armour || built.Slot != Source.Slot ||
         built.Category != Source.Category || built.Stance != Source.Stance || built.DamageType != Source.DamageType ||
-        built.Flags != Source.Flags || built.Model != Source.Model || built.PickupModel != Source.PickupModel;
+        built.Flags != Source.Flags || built.Model != Source.Model || built.PickupModel != Source.PickupModel ||
+        built.Glow != Source.Glow;
 
     /// <summary>What is wrong with the boxes, or null.</summary>
     public string? Problem
@@ -958,6 +974,7 @@ public sealed class ItemRow : ObservableObject
         get
         {
             if (TryBuild(out var problem) == null) return problem;
+            if (!_owner.GlowStylesOn && !_glow.IsAutomatic) return "Glow: glow styles are off (Glow tab), so it has to be Automatic.";
             if (_owner.NamesLoaded && ShownNameChanged && GameText.CheckItemName(_shownName) is { } nameProblem)
                 return "Shown name: " + nameProblem;
             if (_owner.NamesLoaded && _shownName.Length == 0 && (_name.Trim() != Source.Name || IsNew))
@@ -1076,6 +1093,7 @@ public sealed class ItemRow : ObservableObject
             else if (item.Category == ItemCategory.Other && item.Slot is not (ItemSlot.Ring or ItemSlot.Amulet))
                 lines.Add("The game values this kind at a quarter of the price box (it halves it twice).");
 
+            lines.Add(_owner.GlowPreview(item));
             lines.Add(ModelHint);
             return string.Join(Environment.NewLine, lines);
         }
@@ -1137,6 +1155,7 @@ public sealed class ItemRow : ObservableObject
         _slot = Source.Slot;
         _stance = Source.Stance;
         _damageType = Source.DamageType;
+        _glow = Source.Glow;
         _otherFlags = Source.Flags & ~(ItemBits.EnchantmentMask | ItemBits.LooksMask);
         _shownName = _owner.GameName(Source.Name) ?? _newShownName ?? "";
         _autoShownName = _newShownName;
@@ -1160,12 +1179,20 @@ public sealed class ItemRow : ObservableObject
         _owner.ItemEdited();
     }
 
+    /// <summary>A glow style or rule changed, or glow styles were turned on or off.</summary>
+    internal void RefreshGlow()
+    {
+        foreach (var p in new[] { nameof(GlowText), nameof(GlowHaloSwatch), nameof(GlowCoreSwatch), nameof(CanEditGlow), nameof(Preview), nameof(Problem), nameof(IsEdited) })
+            OnPropertyChanged(p);
+    }
+
     internal void RefreshDerived()
     {
         foreach (var p in new[]
                  {
                      nameof(Problem), nameof(Warning), nameof(IsEdited), nameof(KindText), nameof(DamageText), nameof(ArmourText), nameof(ValueText),
-                     nameof(WeightText), nameof(ModifiersText), nameof(Preview), nameof(ModelHint)
+                     nameof(WeightText), nameof(ModifiersText), nameof(Preview), nameof(ModelHint), nameof(GlowText), nameof(GlowHaloSwatch),
+                     nameof(GlowCoreSwatch), nameof(CanEditGlow)
                  })
         {
             OnPropertyChanged(p);
@@ -1418,61 +1445,6 @@ public sealed class TuningRow : ObservableObject
             {
                 return e.Message;
             }
-        }
-    }
-}
-
-/// <summary>One layer of the enchant glow.</summary>
-public sealed class GlowRow : ObservableObject
-{
-    private string _r, _g, _b;
-
-    internal GlowRow(string name, Rgb value, Rgb stock)
-    {
-        Name = name;
-        Source = value;
-        Stock = $"{stock.R}, {stock.G}, {stock.B}";
-        _r = value.R.ToString(CultureInfo.InvariantCulture);
-        _g = value.G.ToString(CultureInfo.InvariantCulture);
-        _b = value.B.ToString(CultureInfo.InvariantCulture);
-    }
-
-    public string Name { get; }
-    public Rgb Source { get; }
-    public string Stock { get; }
-
-    public string R { get => _r; set => SetChannel(ref _r, value); }
-    public string G { get => _g; set => SetChannel(ref _g, value); }
-    public string B { get => _b; set => SetChannel(ref _b, value); }
-
-    private void SetChannel(ref string field, string value, [System.Runtime.CompilerServices.CallerMemberName] string? name = null)
-    {
-        if (!SetProperty(ref field, value, name)) return;
-        OnPropertyChanged(nameof(Swatch));
-    }
-
-    public bool IsChanged => Parse(throwOnError: false) is { } c && c != Source || Parse(throwOnError: false) == null;
-
-    /// <summary>The colour as #RRGGBB for the swatch (transparent while a box isn't 0-255).</summary>
-    public string Swatch => Parse(throwOnError: false) is { } c ? $"#{c.R:X2}{c.G:X2}{c.B:X2}" : "#00000000";
-
-    internal Rgb Parse() => Parse(throwOnError: true)!.Value;
-
-    private Rgb? Parse(bool throwOnError)
-    {
-        int Channel(string text, string what)
-        {
-            if (NumberText.TryParseInteger(text, out var v) && v is >= 0 and <= 255) return v;
-            throw new ArgumentException($"Glow {Name.Split(' ')[0].ToLowerInvariant()} {what}: 0 to 255.");
-        }
-
-        try
-        {
-            return new Rgb(Channel(_r, "red"), Channel(_g, "green"), Channel(_b, "blue"));
-        }
-        catch (ArgumentException) when (!throwOnError)
-        {
-            return null;
         }
     }
 }

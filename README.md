@@ -71,6 +71,12 @@ Alliance II files are read with the Dark Alliance formats for now.
   three-player executable Add item puts about 90 more after the game's 81 (the three-player patch frees the room
   after the item table). The names the game shows come from `GTEXT.LMP` (found next to the executable or in the
   data folder of Settings) and are saved to it after the executable.
+- **Give items their own enchant glow** on the Items tab's Glow tab. Glow styles replace the game's glow
+  function: 16 styles (a halo and a core colour, each with a strength), up to 16 rules that give items with
+  some modifiers a style or no glow (Frost icy blue, Keen silver, of Defence none …), and a setting for each item
+  (automatic, its own style, or never), also for a whole group at once (every axe, every helmet …). The set tried
+  in the game is ready-made, and "Back to the game's own glow" takes them out again. With nothing changed, glow
+  styles glow exactly as the game does; without them the tab edits the game's own glow colours.
 - **Save** with Ctrl+S. Edited items are marked with a dot in the explorer and the title bar shows `●` until
   the file is saved; you are asked before unsaved changes would be lost.
 - Level textures for a GOB come from the `.TEX` file with the same name next to it (e.g. `TAVERN.TEX`). They
