@@ -383,13 +383,15 @@
                                                 <TextBox Width="38" Margin="0,0,3,0" Text="{Binding HaloB, UpdateSourceTrigger=PropertyChanged}" ToolTip="Halo blue, 0 to 255" />
                                                 <TextBox Width="38" Margin="6,0,0,0" Text="{Binding HaloStrength, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding StrengthEditable}"
                                                          ToolTip="Halo strength at full power, 0 to 255 (the game's 64)" />
-                                                <Border Style="{StaticResource Swatch}" Background="{Binding HaloSwatch}" Margin="6,3,12,3" />
+                                                <Button Style="{StaticResource Button.Swatch}" Background="{Binding HaloSwatch}" Margin="6,3,12,3" Tag="Halo"
+                                                        Click="GlowSwatch_Click" ToolTip="Halo colour: click to pick one" />
                                                 <TextBox Width="38" Margin="0,0,3,0" Text="{Binding CoreR, UpdateSourceTrigger=PropertyChanged}" ToolTip="Core red, 0 to 255" />
                                                 <TextBox Width="38" Margin="0,0,3,0" Text="{Binding CoreG, UpdateSourceTrigger=PropertyChanged}" ToolTip="Core green, 0 to 255" />
                                                 <TextBox Width="38" Margin="0,0,3,0" Text="{Binding CoreB, UpdateSourceTrigger=PropertyChanged}" ToolTip="Core blue, 0 to 255" />
                                                 <TextBox Width="38" Margin="6,0,0,0" Text="{Binding CoreStrength, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding StrengthEditable}"
                                                          ToolTip="Core strength at full power, 0 to 255 (the game's 72)" />
-                                                <Border Style="{StaticResource Swatch}" Background="{Binding CoreSwatch}" Margin="6,3,12,3" />
+                                                <Button Style="{StaticResource Button.Swatch}" Background="{Binding CoreSwatch}" Margin="6,3,12,3" Tag="Core"
+                                                        Click="GlowSwatch_Click" ToolTip="Core colour: click to pick one" />
                                                 <ComboBox Width="186" Margin="0,0,10,0" ItemsSource="{x:Static local:ItemEditorModel.GlowColourPresets}" DisplayMemberPath="Name"
                                                           SelectedItem="{Binding ColourPreset, Mode=TwoWay}" ToolTip="Copies a ready-made set of colours (and the game's strengths) into this style." />
                                                 <TextBlock Style="{StaticResource Help}" Margin="0" VerticalAlignment="Center" Text="{Binding UsedBy}" />

@@ -659,6 +659,22 @@ public sealed class GlowStyleRow : ObservableObject
     public string HaloSwatch => Swatch(_hr, _hg, _hb);
     public string CoreSwatch => Swatch(_cr, _cg, _cb);
 
+    /// <summary>The halo or core colour as typed (a box that isn't 0 to 255 counts as 0), for the colour picker.</summary>
+    public (byte R, byte G, byte B) LayerColour(bool core) => core
+        ? ((byte)(Channel(_cr) ?? 0), (byte)(Channel(_cg) ?? 0), (byte)(Channel(_cb) ?? 0))
+        : ((byte)(Channel(_hr) ?? 0), (byte)(Channel(_hg) ?? 0), (byte)(Channel(_hb) ?? 0));
+
+    /// <summary>Puts a picked colour in the halo's or core's red, green and blue boxes (the strength stays).</summary>
+    public void SetLayerColour(bool core, byte r, byte g, byte b)
+    {
+        static string T(byte v) => v.ToString(CultureInfo.InvariantCulture);
+        if (core) (_cr, _cg, _cb) = (T(r), T(g), T(b));
+        else (_hr, _hg, _hb) = (T(r), T(g), T(b));
+        foreach (var p in core ? new[] { nameof(CoreR), nameof(CoreG), nameof(CoreB) } : new[] { nameof(HaloR), nameof(HaloG), nameof(HaloB) })
+            OnPropertyChanged(p);
+        Changed();
+    }
+
     private static string Swatch(string r, string g, string b) =>
         Channel(r) is { } R && Channel(g) is { } G && Channel(b) is { } B ? $"#{R:X2}{G:X2}{B:X2}" : "#00000000";
 

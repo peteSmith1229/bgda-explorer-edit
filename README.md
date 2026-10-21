@@ -77,6 +77,9 @@ Alliance II files are read with the Dark Alliance formats for now.
   (automatic, its own style, or never), also for a whole group at once (every axe, every helmet …). The set tried
   in the game is ready-made, and "Back to the game's own glow" takes them out again. With nothing changed, glow
   styles glow exactly as the game does; without them the tab edits the game's own glow colours.
+- **Pick colours** by clicking a colour box: a glow style's halo or core on the Glow tab, or a player's automap
+  marker on the Three Players tab. Drag in the square and the hue bar, type red, green and blue or a `#RRGGBB`
+  value, or click a ready-made colour; OK puts the colour in the red, green and blue boxes.
 - **Save** with Ctrl+S. Edited items are marked with a dot in the explorer and the title bar shows `●` until
   the file is saved; you are asked before unsaved changes would be lost.
 - Level textures for a GOB come from the `.TEX` file with the same name next to it (e.g. `TAVERN.TEX`). They
