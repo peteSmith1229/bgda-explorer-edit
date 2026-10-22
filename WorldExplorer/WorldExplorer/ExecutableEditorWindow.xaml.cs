@@ -763,6 +763,26 @@ public partial class ExecutableEditorWindow : Window
 
     private void Marker_TextChanged(object sender, TextChangedEventArgs e) => UpdateMarkerSwatches();
 
+    /// <summary>A marker's colour box: picks a colour and puts it in that player's red, green and blue boxes.</summary>
+    private void MarkerSwatch_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string tag } || !int.TryParse(tag, out var player)) return;
+        var boxes = MarkerBoxes.Skip((player - 1) * 3).Take(3).ToArray();
+        if (!boxes[0].IsEnabled || boxes[0].IsReadOnly) return;
+
+        byte Channel(TextBox b) =>
+            int.TryParse(b.Text?.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var v)
+                ? (byte)Math.Clamp(v, 0, 255)
+                : (byte)0;
+        var picked = ColorPickerWindow.Pick(this, Color.FromRgb(Channel(boxes[0]), Channel(boxes[1]), Channel(boxes[2])),
+            $"Player {player}'s Automap Marker");
+        if (picked is not { } c) return;
+
+        boxes[0].Text = c.R.ToString(CultureInfo.InvariantCulture);
+        boxes[1].Text = c.G.ToString(CultureInfo.InvariantCulture);
+        boxes[2].Text = c.B.ToString(CultureInfo.InvariantCulture);
+    }
+
     private void UpdateMarkerSwatches()
     {
         if (m3Swatch is null) return;   // still loading

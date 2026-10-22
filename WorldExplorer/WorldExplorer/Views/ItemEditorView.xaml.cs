@@ -25,6 +25,17 @@ public partial class ItemEditorView : UserControl
 
     private ItemEditorModel? Model => DataContext as ItemEditorModel;
 
+    /// <summary>A glow style's halo or core colour box: picks a colour and puts it in that layer's red, green and blue.</summary>
+    private void GlowSwatch_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: GlowStyleRow row, Tag: string layer } || !row.IsEditable) return;
+        var core = layer == "Core";
+        var (r, g, b) = row.LayerColour(core);
+        var picked = ColorPickerWindow.Pick(Window.GetWindow(this), System.Windows.Media.Color.FromRgb(r, g, b),
+            $"Glow Style {row.Index}: {(core ? "Core" : "Halo")} Colour");
+        if (picked is { } c) row.SetLayerColour(core, c.R, c.G, c.B);
+    }
+
     /// <summary>Reads GTEXT.LMP into <paramref name="model"/>; says why when it can't (unless <paramref name="quiet"/>).</summary>
     public static bool TryLoadNames(ItemEditorModel model, string path, Window? owner, bool quiet = false)
     {

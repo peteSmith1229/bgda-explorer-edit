@@ -248,17 +248,20 @@
                                 <TextBox Grid.Row="1" Grid.Column="1" x:Name="m1RBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
                                 <TextBox Grid.Row="1" Grid.Column="2" x:Name="m1GBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
                                 <TextBox Grid.Row="1" Grid.Column="3" x:Name="m1BBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
-                                <Border Grid.Row="1" Grid.Column="4" x:Name="m1Swatch" Style="{StaticResource Swatch}" />
+                                <Button Grid.Row="1" Grid.Column="4" x:Name="m1Swatch" Style="{StaticResource Button.Swatch}" Margin="6,3,0,3"
+                                        Tag="1" Click="MarkerSwatch_Click" ToolTip="Player 1's marker colour: click to pick one" />
                                 <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Player 2" />
                                 <TextBox Grid.Row="2" Grid.Column="1" x:Name="m2RBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
                                 <TextBox Grid.Row="2" Grid.Column="2" x:Name="m2GBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
                                 <TextBox Grid.Row="2" Grid.Column="3" x:Name="m2BBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
-                                <Border Grid.Row="2" Grid.Column="4" x:Name="m2Swatch" Style="{StaticResource Swatch}" />
+                                <Button Grid.Row="2" Grid.Column="4" x:Name="m2Swatch" Style="{StaticResource Button.Swatch}" Margin="6,3,0,3"
+                                        Tag="2" Click="MarkerSwatch_Click" ToolTip="Player 2's marker colour: click to pick one" />
                                 <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Player 3" />
                                 <TextBox Grid.Row="3" Grid.Column="1" x:Name="m3RBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
                                 <TextBox Grid.Row="3" Grid.Column="2" x:Name="m3GBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
                                 <TextBox Grid.Row="3" Grid.Column="3" x:Name="m3BBox" Style="{StaticResource Channel}" TextChanged="Marker_TextChanged" />
-                                <Border Grid.Row="3" Grid.Column="4" x:Name="m3Swatch" Style="{StaticResource Swatch}" />
+                                <Button Grid.Row="3" Grid.Column="4" x:Name="m3Swatch" Style="{StaticResource Button.Swatch}" Margin="6,3,0,3"
+                                        Tag="3" Click="MarkerSwatch_Click" ToolTip="Player 3's marker colour: click to pick one" />
                             </Grid>
 
                             <TextBlock Text="SMALL MAP (THREE PLAYERS)" Style="{StaticResource Heading}" />
