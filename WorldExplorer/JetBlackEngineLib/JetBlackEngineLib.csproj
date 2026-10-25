@@ -14,6 +14,7 @@
 	<ItemGroup>
 		<EmbeddedResource Include="Data/DataContainers/bos_name_table.txt" />
 		<EmbeddedResource Include="Data/DataContainers/bos_entity_names.txt" />
+		<EmbeddedResource Include="Data/Executable/Da2/da2_3p_build51.pnach" LogicalName="JetBlackEngineLib.Data.Executable.Da2.da2_3p_build51.pnach" />
 	</ItemGroup>
 
 	<ItemGroup>

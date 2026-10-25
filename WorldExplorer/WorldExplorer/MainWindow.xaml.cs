@@ -1535,7 +1535,48 @@ public partial class MainWindow : Window
             case GameTools.InsertReward when SelectedEditableScript() is { } script:
                 _contextManager.InsertReward(script);
                 break;
+            case GameTools.Da2ExecutableTuning:
+                OpenDa2Tuning();
+                break;
+            case GameTools.Da2BuildIso:
+                new Da2IsoWindow { Owner = this }.ShowDialog();
+                break;
         }
+    }
+
+    private void OpenDa2Tuning()
+    {
+        const string executableSetting = "Da2.Executable";
+        var open = new OpenFileDialog
+        {
+            Title = "Open the Dark Alliance II executable (SLUS_206.75) or the game's disc image",
+            Filter = "PS2 Executable or disc image|SLUS_206.75;*.iso|All Files|*.*",
+            Multiselect = false
+        };
+        var last = App.Settings.Get(executableSetting, "") ?? "";
+        if (last.Length > 0 && Path.GetDirectoryName(last) is { } folder && Directory.Exists(folder))
+        {
+            open.InitialDirectory = folder;
+            open.FileName = Path.GetFileName(last);
+        }
+
+        if (open.ShowDialog(this) != true) return;
+
+        JetBlackEngineLib.Data.Executable.Da2Executable exe;
+        try
+        {
+            exe = JetBlackEngineLib.Data.Executable.Da2Executable.Open(open.FileName);
+        }
+        catch (Exception ex) when (ex is NotSupportedException or IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, ex.Message, ex is NotSupportedException ? "Unsupported file" : "Couldn't open the file",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        App.Settings[executableSetting] = open.FileName;
+        App.SaveSettings();
+        new Da2TuningWindow(exe) { Owner = this }.ShowDialog();
     }
 
     private void OpenExecutableTuning()

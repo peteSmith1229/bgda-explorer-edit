@@ -1,0 +1,480 @@
+<Window x:Class="WorldExplorer.Da2TuningWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:WorldExplorer.Controls"
+        Style="{StaticResource Window.Dialog}" WindowStartupLocation="CenterOwner"
+        Title="Executable Tuning — Dark Alliance II" Height="720" Width="1180" MinHeight="480" MinWidth="780">
+    <Window.Resources>
+        <Style x:Key="Help" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        </Style>
+        <Style x:Key="Heading" TargetType="TextBlock" BasedOn="{StaticResource Text.Section}">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Margin" Value="0,16,0,6" />
+        </Style>
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,10,0" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        </Style>
+        <Style x:Key="Field" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Width" Value="90" />
+            <Setter Property="Margin" Value="0,3,28,3" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+        <Style x:Key="Option" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+            <Setter Property="Margin" Value="0,8,0,0" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style x:Key="OptionHelp" TargetType="TextBlock" BasedOn="{StaticResource Help}">
+            <Setter Property="Margin" Value="24,2,0,4" />
+        </Style>
+        <Style x:Key="GridButtons" TargetType="StackPanel">
+            <Setter Property="Orientation" Value="Horizontal" />
+            <Setter Property="Margin" Value="0,8,0,0" />
+        </Style>
+        <Style x:Key="GridButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="MinWidth" Value="90" />
+        </Style>
+    </Window.Resources>
+
+    <DockPanel Margin="20,14,20,16">
+        <Border DockPanel.Dock="Top" Style="{StaticResource Callout}" Margin="0,0,0,6">
+            <DockPanel>
+                <controls:GeometryIcon Data="{StaticResource Icon.Info}" Margin="0,1,10,0" VerticalAlignment="Top"
+                                       Fill="{DynamicResource Brush.Accent}" />
+                <TextBlock TextWrapping="Wrap" FontSize="12">
+                    <Run Text="Makes the PCSX2 cheat file of Dark Alliance II (USA, SLUS_206.75 v1.03) with the three-player mod:" />
+                    <Run Text="SLUS-20675_B0859096.pnach in PCSX2's cheats folder. The executable is never changed (PCSX2 finds the cheat file by the executable's CRC):" />
+                    <Run Text="every edit on the table tabs becomes the group [WorldExplorer - executable tuning] of the cheat file, written once when the game boots." />
+                    <Run Text="Tick the groups you want in PCSX2's cheat list, then restart the game. Groups that aren't the mod's are kept as they are." />
+                </TextBlock>
+            </DockPanel>
+        </Border>
+
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,14,0,0">
+            <TextBlock x:Name="changesText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                       Style="{StaticResource Help}" Margin="0,0,16,0" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
+                <Button Content="Save" MinWidth="100" Style="{StaticResource Button.Accent}"
+                        controls:ControlAssist.Icon="{StaticResource Icon.Save}" Click="Save_Click"
+                        ToolTip="Write the cheat file it was opened from (a .bak copy of the old one is kept)" />
+                <Button Content="Save As…" MinWidth="100" Margin="8,0,0,0" Click="SaveAs_Click" />
+                <Button Content="Close" MinWidth="90" Margin="8,0,0,0" IsCancel="True" />
+            </StackPanel>
+        </DockPanel>
+
+        <TabControl x:Name="tabs">
+            <!-- ═════════════════════════════ Three Players ═════════════════════════════ -->
+            <TabItem Header="Three Players">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,2,14,8">
+                        <Border Style="{StaticResource Card}" Margin="0,4,0,4" Padding="14,12">
+                            <StackPanel>
+                                <DockPanel>
+                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Top">
+                                        <Button Content="Open…" MinWidth="90" controls:ControlAssist.Icon="{StaticResource Icon.Open}"
+                                                Click="OpenCheatFile_Click" ToolTip="Read a cheat file: the mod's settings, the executable edits and your own groups" />
+                                        <Button Content="Start again from build 51" Margin="8,0,0,0" Click="Build51_Click"
+                                                ToolTip="The mod's tested build 51 and the game's own tables; your own groups stay" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,16,0">
+                                        <TextBlock Text="CHEAT FILE" Style="{StaticResource Text.Section}" FontSize="11" />
+                                        <TextBlock x:Name="cheatPathText" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <TextBlock x:Name="mainStatusText" Style="{StaticResource Help}" Margin="0,8,0,0" />
+                                <ItemsControl x:Name="notesList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding StringFormat='• {0}'}" Style="{StaticResource Help}" Margin="8,0,0,2" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock x:Name="otherGroupsText" Style="{StaticResource Help}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="THE MOD" Style="{StaticResource Heading}" />
+                        <CheckBox Content="[3 Player mod]" IsChecked="{Binding IncludeMain}" Style="{StaticResource Option}" />
+                        <TextBlock Style="{StaticResource OptionHelp}" Text="The mod itself (about 21,500 words of new code, moved tables and hooks). Play with the multitap on port 1, a third pad bound to [Pad3] and the [3P] disc (Tools ▸ Build Three-Player ISO); 'Three Player' in the main menu starts a three-player game. The other groups need it." />
+
+                        <TextBlock Text="HUD SIZES" Style="{StaticResource Heading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Sizes (%)" />
+                            <TextBox Width="220" Margin="0,3,0,3" Text="{Binding HudSizes, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource Help}" Margin="0,4,0,0" Text="One [HUD size N%] group per size, from 25 to 100 % (up to 12; leave the box empty for none). Tick one in PCSX2; with none ticked the HUD is 70 %. Build 51 has 100, 85, 60 and 50." />
+
+                        <TextBlock Text="PLAYER 3 AND THE DA1 HEROES" Style="{StaticResource Heading}" />
+                        <CheckBox Content="[P3 character - …] groups" IsChecked="{Binding IncludePlayerThree}" Style="{StaticResource Option}" />
+                        <TextBlock Style="{StaticResource OptionHelp}" Text="Ten groups that choose player 3's class: Dorn, Vhaidra, Ysuran, Borador, Allessia, Drizzt and Artemis (when player 3 joins a loaded game without one), and the DA1 heroes Vahn, Adrianna and Kromlech (forced). Without one ticked, a 'Three Player' new game lets player 3 pick on the game's character screen." />
+                        <CheckBox Content="[DA1 heroes - shouts kept in sound memory]" IsChecked="{Binding IncludeShouts}" Style="{StaticResource Option}" />
+                        <TextBlock Style="{StaticResource OptionHelp}" Text="The DA1 heroes' voices stay in sound memory instead of being streamed from the disc." />
+
+                        <TextBlock Text="TEST HELPERS" Style="{StaticResource Heading}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <CheckBox Content="All players always have" IsChecked="{Binding IncludeFeatPoints}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <TextBox Style="{StaticResource Field}" Margin="0,3,8,3" Text="{Binding FeatPoints, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="feat points (1–9,999)" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="The party always has" IsChecked="{Binding IncludeGold}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <TextBox Style="{StaticResource Field}" Margin="0,3,8,3" Text="{Binding Gold, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="gold (1–99,999,999)" />
+                        </StackPanel>
+                        <CheckBox Content="[TEST - Trade Way goblins with player spells]" IsChecked="{Binding IncludeTradeWay}" Style="{StaticResource Option}" FontWeight="Normal" />
+                        <TextBlock Style="{StaticResource OptionHelp}" Text="Three goblins after the caravan guard on the Trade Way use Shock Arrow, Repulsion and Ball Lightning." />
+                        <TextBlock Style="{StaticResource Help}" Margin="0,10,0,0" Text="Creatures placed in levels (the DA1 bosses in Trollbark Forest), the shops and the feat prices have tabs of their own." />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ═════════════════════════════ Creatures ═════════════════════════════ -->
+            <TabItem Header="Creatures">
+                <DockPanel Margin="0,2,0,0">
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Help}" Text="Creatures placed in a level the first time it loads, one cheat group each (tick it in PCSX2). Build 51 places the three DA1 bosses in Trollbark Forest (level trollb). Position x, y, z is in the level's units; facing is 65,536 to a full turn (16,384 = a quarter). Properties are placement properties, separated by spaces: hpscale and damagescale multiply HP and damage, armorscale armour, scale the size; attackscale and xpscale are added." />
+                    <Expander DockPanel.Dock="Top" Header="Details: the spawn table, DA1 creatures and what is tested" Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Help}" Text="With build 51's three bosses (any of them left out, renamed or not) the groups are written exactly as build 51 has them — tested in the game. Any other set of creatures moves the spawn table to 0xAE200 (up to 24 creatures, one enable word each): the moved table is checked by running the mod's spawn code in an emulator, not yet in the game." />
+                            <TextBlock Style="{StaticResource Help}" Text="Lilivarra and the Minotaur are DA1 creatures: their models are LILVARRA.LMP and MINOTAUR.LMP on the [3P] disc (Tools ▸ Build Three-Player ISO). Lilivarra's group also makes her hostile." />
+                            <TextBlock Style="{StaticResource Help}" Text="Fixed-HP bosses ignore hpscale (of the DA1 bosses it works on the Minotaur only); GelCube, OchreJelly and GhostMale ignore every property, and orcs apply them twice. HP above 32,767 wraps to 1." />
+                        </StackPanel>
+                    </Expander>
+                    <StackPanel DockPanel.Dock="Bottom" Style="{StaticResource GridButtons}">
+                        <Button Content="Add" Style="{StaticResource GridButton}" controls:ControlAssist.Icon="{StaticResource Icon.Add}" Click="AddPlacement_Click" />
+                        <Button Content="Duplicate" Style="{StaticResource GridButton}" controls:ControlAssist.Icon="{StaticResource Icon.Duplicate}" Click="DuplicatePlacement_Click" />
+                        <Button Content="Remove" Style="{StaticResource GridButton}" controls:ControlAssist.Icon="{StaticResource Icon.Delete}" Click="RemovePlacement_Click" />
+                        <Button Content="Back to build 51's bosses" Style="{StaticResource GridButton}" Click="StockPlacements_Click" />
+                    </StackPanel>
+                    <DataGrid x:Name="placementGrid" ItemsSource="{Binding Placements}" AutoGenerateColumns="False"
+                              CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" SelectionMode="Single">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="In file" Width="60"
+                                                    Binding="{Binding Include, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Group name" Width="2*"
+                                                Binding="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTemplateColumn Header="Level" Width="100" SortMemberPath="Level">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Level}" VerticalAlignment="Center" Margin="4,0" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <ComboBox IsEditable="True" Text="{Binding Level, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                  ItemsSource="{Binding DataContext.LevelNames, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Creature" Width="130" SortMemberPath="Type">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Type}" VerticalAlignment="Center" Margin="4,0" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <ComboBox IsEditable="True" Text="{Binding Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                  ItemsSource="{Binding DataContext.CreatureTypes, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="X" Width="70" Binding="{Binding X, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Y" Width="70" Binding="{Binding Y, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Z" Width="60" Binding="{Binding Z, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Facing" Width="70" Binding="{Binding Facing, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Properties" Width="*" Binding="{Binding Properties, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Needs on the disc" Width="120" Binding="{Binding Needs}" IsReadOnly="True" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ═════════════════════════════ Shops ═════════════════════════════ -->
+            <TabItem Header="Shops">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,2,14,8">
+                        <CheckBox Content="[Shops - fresh random stock every visit, more items]" IsChecked="{Binding IncludeShops}" Style="{StaticResource Option}" Margin="0,2,0,0" />
+                        <TextBlock Style="{StaticResource OptionHelp}" Text="Shops roll their stock afresh each time they open: the weapons and armour tabs are all random items, the other tab keeps its potions and gems and adds random ones. (The game only had random stock on Extreme, 17 / 17 / 8 items that came out the same every visit.) Takes effect at the next shop visit." />
+
+                        <TextBlock Text="GOLD VALUE OF A RANDOM ITEM, PER ACT" Style="{StaticResource Heading}" />
+                        <TextBlock Style="{StaticResource Help}" Text="Each random item is priced between the lowest and the highest value of its kind for the act the level is in (1 to 5,000,000 gold)." />
+                        <DataGrid x:Name="shopActGrid" ItemsSource="{Binding ShopActs}" AutoGenerateColumns="False" CanUserAddRows="False"
+                                  HeadersVisibility="Column" HorizontalAlignment="Left" MinWidth="720" PreviewMouseWheel="NestedGrid_PreviewMouseWheel">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Act" Binding="{Binding Name}" IsReadOnly="True" Width="80" />
+                                <DataGridTextColumn Header="Weapons from" Width="*" Binding="{Binding WeaponsLow, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Header="to" Width="*" Binding="{Binding WeaponsHigh, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Header="Armour from" Width="*" Binding="{Binding ArmourLow, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Header="to" Width="*" Binding="{Binding ArmourHigh, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Header="Other from" Width="*" Binding="{Binding OtherLow, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Header="to" Width="*" Binding="{Binding OtherHigh, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <TextBlock Text="ITEMS PER TAB AND EXTREME" Style="{StaticResource Heading}" />
+                        <TextBlock Style="{StaticResource Help}" Text="How many random items each tab gets (0–64), and on Extreme the lowest value a random item can have from act 2 on (potions and gems keep their prices)." />
+                        <DataGrid x:Name="shopKindGrid" ItemsSource="{Binding ShopKinds}" AutoGenerateColumns="False" CanUserAddRows="False"
+                                  HeadersVisibility="Column" HorizontalAlignment="Left" MinWidth="460" PreviewMouseWheel="NestedGrid_PreviewMouseWheel">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Tab" Binding="{Binding Name}" IsReadOnly="True" Width="100" />
+                                <DataGridTextColumn Header="Random items" Width="*" Binding="{Binding Count, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Header="Extreme: at least (gold)" Width="*" Binding="{Binding ExtremeFloor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <Button Content="Restore build 51's shops" HorizontalAlignment="Left" Margin="0,10,0,0" Click="StockShops_Click" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ═════════════════════════════ Feat Prices ═════════════════════════════ -->
+            <TabItem Header="Feat Prices">
+                <DockPanel Margin="0,2,0,0">
+                    <StackPanel DockPanel.Dock="Top">
+                        <CheckBox Content="[Feats - new rank costs, Vahn + Borador + Kromlech extras]" IsChecked="{Binding IncludeFeatPrices}" Style="{StaticResource Option}" Margin="0,2,0,0" />
+                        <TextBlock Style="{StaticResource OptionHelp}" Text="The feat points each rank costs (1–255) for the feats listed here; feats not listed keep the game's prices (Class Feats tab). A price is per feat, so a feat several characters have changes for all of them. The group also gives Vahn the five-rank Accuracy and Precise Shot (usable with bows), Borador Exploding Arrows (usable with crossbows) and Enchant Arrows, and Kromlech Power Attack, Sunder and Cleave. Leave later ranks empty for a feat with fewer ranks." />
+                    </StackPanel>
+                    <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Feat" />
+                        <ComboBox x:Name="featPriceCombo" Width="220" DisplayMemberPath="Name" Margin="0,0,8,0" />
+                        <Button Content="Add" Style="{StaticResource GridButton}" controls:ControlAssist.Icon="{StaticResource Icon.Add}" Click="AddFeatPrice_Click" />
+                        <Button Content="Remove" Style="{StaticResource GridButton}" controls:ControlAssist.Icon="{StaticResource Icon.Delete}" Click="RemoveFeatPrice_Click" />
+                        <Button Content="Restore H's prices (build 51)" Style="{StaticResource GridButton}" HorizontalAlignment="Left" Click="StockFeatPrices_Click" />
+                    </DockPanel>
+                    <DataGrid x:Name="featPriceGrid" ItemsSource="{Binding FeatPrices}" AutoGenerateColumns="False" CanUserAddRows="False"
+                              CanUserDeleteRows="False" HeadersVisibility="Column" SelectionMode="Single">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Feat" Binding="{Binding Name}" IsReadOnly="True" Width="170" />
+                            <DataGridTextColumn Header="Id" Binding="{Binding FeatId}" IsReadOnly="True" Width="40" />
+                            <DataGridTextColumn Header="Rank 1" Width="60" Binding="{Binding R1, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Rank 2" Width="60" Binding="{Binding R2, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Rank 3" Width="60" Binding="{Binding R3, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Rank 4" Width="60" Binding="{Binding R4, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Rank 5" Width="60" Binding="{Binding R5, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Game's prices" Binding="{Binding GamePrices}" IsReadOnly="True" Width="130" />
+                            <DataGridTextColumn Header="Characters with the feat" Binding="{Binding UsedBy}" IsReadOnly="True" Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ═════════════════════════════ XP per Level ═════════════════════════════ -->
+            <TabItem Header="XP per Level">
+                <DockPanel Margin="0,2,0,0">
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Help}" Text="Total XP needed to reach each level (the game stops at level 40). Level 1 is 0 and each level must need more than the one before (up to 99,999,998). Lower values = faster levelling; applies to future level-ups." />
+                    <DataGrid ItemsSource="{Binding Xp}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Level" Binding="{Binding Level}" IsReadOnly="True" Width="80" />
+                            <DataGridTextColumn Header="XP required" Width="*" Binding="{Binding Xp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ═════════════════════════════ Starting Stats ═════════════════════════════ -->
+            <TabItem Header="Starting Stats">
+                <DockPanel Margin="0,2,0,0">
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Help}" Text="Starting ability scores per class (1–30), given to a NEW character of that class. Vahn, Adrianna and Kromlech are the DA1 heroes' rows of the game's table, which the mod uses for them." />
+                    <DataGrid ItemsSource="{Binding Stats}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Class" Binding="{Binding ClassName}" IsReadOnly="True" Width="260" />
+                            <DataGridTextColumn Header="STR" Width="*" Binding="{Binding STR, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="DEX" Width="*" Binding="{Binding DEX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="CON" Width="*" Binding="{Binding CON, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="INT" Width="*" Binding="{Binding INT, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="WIS" Width="*" Binding="{Binding WIS, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="CHA" Width="*" Binding="{Binding CHA, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ═════════════════════════════ Feats & Spells ═════════════════════════════ -->
+            <TabItem Header="Feats &amp; Spells">
+                <DockPanel Margin="0,2,0,0">
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Help}" Text="The ability templates: energy cost (and the extra per rank), damage range, the glow over the caster's hands (0–255) and the light the effect casts (0–65,535), and a per-level coefficient. Types marked 'per frame' bill their energy every frame while held (60 a second)." />
+                    <DataGrid ItemsSource="{Binding Abilities}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Ability" Binding="{Binding Name}" IsReadOnly="True" Width="170" />
+                            <DataGridTextColumn Header="Feat" Binding="{Binding Feat}" IsReadOnly="True" Width="140" />
+                            <DataGridTextColumn Header="Type" Binding="{Binding Type}" IsReadOnly="True" Width="90" />
+                            <DataGridTextColumn Header="Energy" Width="65" Binding="{Binding Energy, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="+ per rank" Width="70" Binding="{Binding PerRank, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Dmg min" Width="65" Binding="{Binding DamageMin, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Dmg max" Width="65" Binding="{Binding DamageMax, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Glow R" Width="55" Binding="{Binding GlowR, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Glow G" Width="55" Binding="{Binding GlowG, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Glow B" Width="55" Binding="{Binding GlowB, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Light R" Width="60" Binding="{Binding LightR, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Light G" Width="60" Binding="{Binding LightG, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Light B" Width="60" Binding="{Binding LightB, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Coef." Width="*" Binding="{Binding Coefficient, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ═════════════════════════════ Class Feats ═════════════════════════════ -->
+            <TabItem Header="Class Feats">
+                <Grid Margin="0,2,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Style="{StaticResource Help}" Text="The feat tables of the seven DA2 classes: how many ranks a feat has (1–5) and its base cost (1–127). A rank costs base × rank when the base is 1–4, otherwise base + (rank − 1)^1.6 rounded down; the four DA1 spells below have price tables of their own. The feat prices group (Feat Prices tab) replaces the prices of the feats on its list. The DA1 heroes' tables are the mod's own." />
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding ClassFeats}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Class" Binding="{Binding ClassName}" IsReadOnly="True" Width="100" />
+                            <DataGridTextColumn Header="Feat" Binding="{Binding Feat}" IsReadOnly="True" Width="180" />
+                            <DataGridTextColumn Header="Ranks" Width="60" Binding="{Binding MaxRank, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Base cost" Width="75" Binding="{Binding BaseCost, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Game's price per rank" Binding="{Binding Prices}" IsReadOnly="True" Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock Grid.Row="2" Text="DA1 SPELLS' PRICE TABLES" Style="{StaticResource Heading}" />
+                    <TextBlock Grid.Row="3" Style="{StaticResource Help}" Text="The price of each rank (1–255) of the four DA1 spells that don't use the formula." />
+                    <DataGrid Grid.Row="4" x:Name="specialPriceGrid" ItemsSource="{Binding SpecialPrices}" AutoGenerateColumns="False" CanUserAddRows="False"
+                              HeadersVisibility="Column" HorizontalAlignment="Left" MinWidth="560" CellEditEnding="SpecialPrices_CellEditEnding">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Spell" Binding="{Binding Name}" IsReadOnly="True" Width="190" />
+                            <DataGridTextColumn Header="Rank 1" Width="*" Binding="{Binding R1, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Rank 2" Width="*" Binding="{Binding R2, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Rank 3" Width="*" Binding="{Binding R3, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Rank 4" Width="*" Binding="{Binding R4, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Rank 5" Width="*" Binding="{Binding R5, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- ═════════════════════════════ Items ═════════════════════════════ -->
+            <TabItem Header="Items">
+                <DockPanel Margin="0,2,0,0">
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Help}" Text="The game's base items: weight (0–1,000), gold value (1–10,000,000) and armour (0–255)." />
+                    <DataGrid ItemsSource="{Binding Items}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Item" Binding="{Binding Name}" IsReadOnly="True" Width="220" />
+                            <DataGridTextColumn Header="Kind" Binding="{Binding Kind}" IsReadOnly="True" Width="140" />
+                            <DataGridTextColumn Header="List" Binding="{Binding List}" IsReadOnly="True" Width="80" />
+                            <DataGridTextColumn Header="Weight" Width="80" Binding="{Binding Weight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Value" Width="100" Binding="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Armour" Width="*" Binding="{Binding Armour, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ═════════════════════════════ Levels ═════════════════════════════ -->
+            <TabItem Header="Levels">
+                <DockPanel Margin="0,2,0,0">
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Help}" Text="The monster level of every level of the game (0–100): creatures' HP, damage, armour, attack and XP grow with it, with the act's formula (Monsters tab). Raising it makes a level harder and worth more XP." />
+                    <DataGrid ItemsSource="{Binding Levels}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Level" Binding="{Binding Name}" IsReadOnly="True" Width="140" />
+                            <DataGridTextColumn Header="Act" Binding="{Binding Act}" IsReadOnly="True" Width="60" />
+                            <DataGridTextColumn Header="Formula" Binding="{Binding FormulaSet}" IsReadOnly="True" Width="70" />
+                            <DataGridTextColumn Header="Basic items only" Binding="{Binding BasicItems}" IsReadOnly="True" Width="120" />
+                            <DataGridTextColumn Header="Monster level" Width="*" Binding="{Binding MonsterLevel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ═════════════════════════════ Monsters ═════════════════════════════ -->
+            <TabItem Header="Monsters">
+                <Grid Margin="0,2,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="2*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" MinHeight="120" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Style="{StaticResource Help}" Text="Each creature's five multipliers for HP, armour, damage, attack and XP, used with the level's monster level and the difficulty. Grey cells can't be changed: they are computed, or shared with another value, in the game's code. Changing a shared cell (variants that use one value) changes all of its rows." />
+                    <Expander Grid.Row="1" Header="Details: precision, the predictions and three players" Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Help}" Text="Most multipliers are the upper half of a float in the code (lui only), so they are rounded to the nearest value that fits (1.5, 2, 2.5, 3, 4, 5 … are exact)." />
+                            <TextBlock Style="{StaticResource Help}" Text="The predicted columns are the stats the game's formula gives in the level, difficulty and player count chosen below (placement properties such as hpscale come on top). With three players the mod keeps the game's own player count at 2, so a three-player game uses the two-player factors (Difficulty tab)." />
+                        </StackPanel>
+                    </Expander>
+                    <WrapPanel Grid.Row="2" Margin="0,0,0,8">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Predict for level" />
+                        <ComboBox x:Name="predictionLevelCombo" Width="190" Margin="0,0,16,0" ItemsSource="{Binding Levels}"
+                                  SelectedItem="{Binding PredictionLevel}" />
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="on" />
+                        <ComboBox x:Name="predictionDifficultyCombo" Width="110" Margin="0,0,16,0" SelectedIndex="{Binding PredictionDifficulty}">
+                            <ComboBoxItem Content="Easy" />
+                            <ComboBoxItem Content="Normal" />
+                            <ComboBoxItem Content="Hard" />
+                            <ComboBoxItem Content="Extreme" />
+                        </ComboBox>
+                        <CheckBox Content="Two or three players" IsChecked="{Binding PredictionTwoPlayers}" VerticalAlignment="Center" />
+                    </WrapPanel>
+                    <DataGrid Grid.Row="3" x:Name="creatureGrid" ItemsSource="{Binding Creatures}" AutoGenerateColumns="False"
+                              CanUserAddRows="False" HeadersVisibility="Column" FrozenColumnCount="1">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Creature" Binding="{Binding Name}" IsReadOnly="True" Width="150" />
+                            <DataGridTextColumn Header="Variant" Binding="{Binding Variant}" IsReadOnly="True" Width="65" />
+                            <!-- the five multiplier columns are added by the code-behind (editable cell by cell) -->
+                            <DataGridTextColumn Header="HP" Binding="{Binding PredictedHp}" IsReadOnly="True" Width="80" />
+                            <DataGridTextColumn Header="Damage" Binding="{Binding PredictedDamage}" IsReadOnly="True" Width="70" />
+                            <DataGridTextColumn Header="XP" Binding="{Binding PredictedXp}" IsReadOnly="True" Width="65" />
+                            <DataGridTextColumn Header="Factory names" Binding="{Binding Names}" IsReadOnly="True" Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock Grid.Row="4" Text="BOSSES WITH FIXED HIT POINTS" Style="{StaticResource Heading}" />
+                    <DataGrid Grid.Row="5" ItemsSource="{Binding Bosses}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Boss" Binding="{Binding Name}" IsReadOnly="True" Width="260" />
+                            <DataGridTextColumn Header="Hit points" Width="90" Binding="{Binding Hp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="Easy" Binding="{Binding Easy}" IsReadOnly="True" Width="80" />
+                            <DataGridTextColumn Header="Normal" Binding="{Binding Normal}" IsReadOnly="True" Width="80" />
+                            <DataGridTextColumn Header="Hard" Binding="{Binding Hard}" IsReadOnly="True" Width="80" />
+                            <DataGridTextColumn Header="Extreme" Binding="{Binding Extreme}" IsReadOnly="True" Width="80" />
+                            <DataGridCheckBoxColumn Header="Exact" Binding="{Binding FullPrecision, Mode=OneWay}" IsReadOnly="True" Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- ═════════════════════════════ Difficulty ═════════════════════════════ -->
+            <TabItem Header="Difficulty">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,2,14,8">
+                        <TextBlock Style="{StaticResource Help}" Text="How each difficulty scales creatures (setStats) and the fixed-HP bosses. The level bonus is added to the monster level on Extreme, which raises HP, damage and XP together. Grey cells are fixed in the game's code. Factors are 0.01–100, the level bonus 0–200." />
+                        <DataGrid x:Name="difficultyGrid" ItemsSource="{Binding Difficulty}" AutoGenerateColumns="False" CanUserAddRows="False"
+                                  HeadersVisibility="Column" HorizontalAlignment="Left" MinWidth="600" PreviewMouseWheel="NestedGrid_PreviewMouseWheel">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Difficulty" Binding="{Binding Name}" IsReadOnly="True" Width="110" />
+                                <!-- HP, damage, level and boss columns are added by the code-behind -->
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock Style="{StaticResource Help}" Margin="0,6,0,0" Text="Easy uses one value for HP and damage. The Normal boss factor and the Extreme level bonus are the upper half of a float (rounded to the nearest value that fits)." />
+
+                        <TextBlock Text="TWO AND THREE PLAYERS" Style="{StaticResource Heading}" />
+                        <TextBlock Style="{StaticResource Help}" Text="On top of the difficulty when more than one player is in the game. With three players the mod keeps the game's player count at 2 (and a second count for the AI), so these apply to three-player games too." />
+                        <DataGrid x:Name="twoPlayerGrid" ItemsSource="{Binding TwoPlayer}" AutoGenerateColumns="False" CanUserAddRows="False"
+                                  HeadersVisibility="Column" HorizontalAlignment="Left" MinWidth="600" PreviewMouseWheel="NestedGrid_PreviewMouseWheel">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Factor" Binding="{Binding Name}" IsReadOnly="True" Width="200" />
+                                <!-- the value column is added by the code-behind -->
+                                <DataGridTextColumn Header="Game's value" Binding="{Binding Stock}" IsReadOnly="True" Width="100" />
+                                <DataGridTextColumn Header="Note" Binding="{Binding Precision}" IsReadOnly="True" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <Button Content="Restore the game's difficulty" HorizontalAlignment="Left" Margin="0,10,0,0" Click="StockDifficulty_Click" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

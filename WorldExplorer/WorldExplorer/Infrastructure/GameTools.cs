@@ -41,8 +41,11 @@ public static class GameTools
     public const string SaveGameEditor = "SaveGameEditor";
     public const string ScriptRewards = "ScriptRewards";
     public const string InsertReward = "InsertReward";
+    public const string Da2ExecutableTuning = "Da2ExecutableTuning";
+    public const string Da2BuildIso = "Da2BuildIso";
 
-    // Reverse-engineered against Baldur's Gate: Dark Alliance (PAL SLES-506.72) only.
+    // Reverse-engineered against Baldur's Gate: Dark Alliance (PAL SLES-506.72) and
+    // Dark Alliance II (USA SLUS-206.75 v1.03, with its three-player mod).
     public static IReadOnlyList<GameTool> All { get; } = new[]
     {
         new GameTool(ExecutableTuning, "Executable Tuning",
@@ -59,6 +62,15 @@ public static class GameTools
             "Add gold, XP or item rewards just before a call in a level script. Works on the .scr selected " +
             "in the explorer.",
             "Icon.Add", needsScript: true, GameOption.DarkAlliance),
+        new GameTool(Da2ExecutableTuning, "Executable Tuning",
+            "The three-player mod and its options, creatures placed in levels, shops, feat prices, XP per level, " +
+            "starting stats, feats and spells, items, levels, monsters and difficulty, saved as the PCSX2 cheat " +
+            "file of the game (SLUS-20675_B0859096.pnach).",
+            "Icon.Tools", needsScript: false, GameOption.DarkAlliance2),
+        new GameTool(Da2BuildIso, "Build Three-Player ISO",
+            "Make or update the [3P] copy of the disc image the three-player mod plays from: the multitap driver " +
+            "and the Dark Alliance 1 files of the DA1 heroes and bosses added.",
+            "Icon.Kind.Archive", needsScript: false, GameOption.DarkAlliance2),
     };
 
     public static IReadOnlyList<GameTool> For(GameOption game) =>
