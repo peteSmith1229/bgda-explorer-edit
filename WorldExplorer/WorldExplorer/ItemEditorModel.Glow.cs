@@ -469,6 +469,7 @@ public sealed partial class ItemEditorModel
         OnPropertyChanged(nameof(GlowTryResult));
         OnPropertyChanged(nameof(GlowGroupMembers));
         OnPropertyChanged(nameof(GlowChanged));
+        OnPropertyChanged(nameof(CanAddAcidGlow));
         RefreshShops();
     }
 
