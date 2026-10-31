@@ -22,9 +22,11 @@ Alliance II files are read with the Dark Alliance formats for now.
   right-click an added archive and choose Remove Added Archive.
 - **Add entries to an archive**: right-click the archive and choose Add Entry…, or use File › Import › Add New
   Entry to Archive…. The entry appears in the explorer straight away. It is saved in name order, because the
-  game looks entries up by name. An archive whose entries are out of order (such as `shop.lmp` in
-  `TAVERN.GOB`) keeps its order and gets the new entry at the end. The game never looks for an archive inside
-  another archive, so adding a `.lmp` file to an archive in a GOB offers to add it to the GOB instead.
+  game looks entries up by name: the order the game uses, in which a region's pictures (`ntsc_back.tex`,
+  `pal_back.tex` in `shop.lmp`, the columns in `INVENTRY.LMP`) sort without their `ntsc_` or `pal_`. An archive
+  whose entries are out of that order keeps its order and gets the new entry at the end. The game never looks
+  for an archive inside another archive, so adding a `.lmp` file to an archive in a GOB offers to add it to the
+  GOB instead.
 - **Add objects to a level** (Dark Alliance): in the Level view, click + on its toolbar or right-click and
   choose Add Object…. You can also right-click an archive in the GOB and choose Place in Level…. There are two
   kinds of object:
@@ -77,6 +79,13 @@ Alliance II files are read with the Dark Alliance formats for now.
   (automatic, its own style, or never), also for a whole group at once (every axe, every helmet …). The set tried
   in the game is ready-made, and "Back to the game's own glow" takes them out again. With nothing changed, glow
   styles glow exactly as the game does; without them the tab edits the game's own glow colours.
+- **Make Corrosive weapons** on the Items tab's Corrosive tab: two weapon modifiers with acid damage, on
+  property bits the game leaves unused. Corrosive (item text `+acid`) adds acid to every hit, as Flaming adds
+  fire; Corrosive Burst (`+acidburst`) also does more acid, a splash and poison on a critical hit, as Flaming
+  Burst sets the target alight. Tick them on an item, sell them in a shop or put them in a random-loot list, and
+  the Corrosive patch goes in the executable when it is saved (its dice and poison can be set); their names
+  (in all five languages) go in `GTEXT.LMP` and the item card's acid drop in `INVENTRY.LMP`, each saved after the
+  executable. "Take Corrosive out" takes all three out again, and the acid glow is one click away.
 - **Pick colours** by clicking a colour box: a glow style's halo or core on the Glow tab, or a player's automap
   marker on the Three Players tab. Drag in the square and the hue bar, type red, green and blue or a `#RRGGBB`
   value, or click a ready-made colour; OK puts the colour in the red, green and blue boxes.
@@ -96,7 +105,7 @@ Requires Windows and the .NET 10 SDK. Open `WorldExplorer/WorldExplorer.sln` in 
 
 `dotnet test WorldExplorer/WorldExplorer.sln` runs the library tests. The executable, item, script, cutscene,
 archive and text tests use the game files in `Test_files` (`SLES_506.72`, `TAVERN.GOB`, `TEST.GOB`,
-`CUTTOWN.GOB`, `GTEXT.LMP`, `TMAN2.LMP`) and are skipped if those are missing.
+`CUTTOWN.GOB`, `GTEXT.LMP`, `TMAN2.LMP`, `INVENTRY.LMP`) and are skipped if those are missing.
 
 ## Credits:
 

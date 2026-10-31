@@ -224,7 +224,8 @@ public sealed partial class ItemEditorModel
         new GlowColourPreset("Venom (yellow-green)", Style(40, 90, 0, 170, 255, 60)),
         new GlowColourPreset("Shadow (dark violet)", Style(30, 0, 40, 110, 40, 140)),
         new GlowColourPreset("Ember (deep orange)", Style(90, 20, 0, 255, 90, 20)),
-        new GlowColourPreset("Moonlight (white)", Style(70, 90, 110, 230, 245, 255))
+        new GlowColourPreset("Moonlight (white)", Style(70, 90, 110, 230, 245, 255)),
+        new GlowColourPreset("Acid (Corrosive's)", Corrosive.AcidGlow)
     };
 
     private static ulong Bits(params int[] bits) => bits.Aggregate(0UL, (m, b) => m | 1UL << b);

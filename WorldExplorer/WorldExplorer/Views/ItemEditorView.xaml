@@ -312,7 +312,7 @@
                                 <TextBlock Text="TRY ITEM TEXT" Style="{StaticResource Text.Section}" Margin="0,0,0,4" />
                                 <DockPanel>
                                     <TextBox DockPanel.Dock="Left" Width="300" Text="{Binding TryText, UpdateSourceTrigger=PropertyChanged}"
-                                             ToolTip="Words the game knows: fire, ice, shock, fireburst, iceburst, shockburst, wound, keen, speed, superhaste, disruption, defense, elven, fine, masterwork, mithril, adamantine, rusty, protection, strength, dexterity, constitution, intelligence, healthregeneration, magicregeneration, and numbers 1-15." />
+                                             ToolTip="Words the game knows: fire, ice, shock, fireburst, iceburst, shockburst, wound, keen, speed, superhaste, disruption, defense, elven, fine, masterwork, mithril, adamantine, rusty, protection, strength, dexterity, constitution, intelligence, healthregeneration, magicregeneration, and numbers 1-15; with the Corrosive patch (Corrosive page) also acid and acidburst." />
                                     <TextBlock Style="{StaticResource Help}" VerticalAlignment="Center" Margin="12,0,0,0" Text="{Binding TryResult}" />
                                 </DockPanel>
                             </StackPanel>
@@ -488,6 +488,78 @@
                             <TextBlock Style="{StaticResource Help}" VerticalAlignment="Center" Margin="12,0,0,0" Text="{Binding GlowTryResult}" />
                         </DockPanel>
                         <TextBlock Style="{StaticResource Help}" Margin="0,10,0,0" Text="Where the glow shows: weapons and shields in a character's hands, the turning models in the shop and inventory lists, and items lying in the level. Worn body armour, helmets, gloves and boots never glow on a character (their models can't take a glow), only in the lists. Next to an item on the ground, the game's white pick-up pulse shows instead." />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ═══════════════════════════════ Corrosive ═══════════════════════════════ -->
+            <TabItem Header="Corrosive">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,4,14,8">
+                        <TextBlock Text="CORROSIVE AND CORROSIVE BURST" Style="{StaticResource Heading}" Margin="0,4,0,6" />
+                        <TextBlock Style="{StaticResource Help}" Text="Two weapon modifiers with acid damage, on property bits the game leaves unused. Corrosive (item text +acid) adds acid to every hit, as Flaming adds fire. Corrosive Burst (+acidburst) does that too, and a critical hit with it does more acid, splashes like the acid arrow and poisons the target, as Flaming Burst sets it alight. They are priced and count for glow like Flaming and Flaming Burst, and the item card shows an acid drop after the element icons. Tick them on an item (Items page), sell them in a shop or put them in a random-loot list (Loot &amp; effects): the Corrosive patch that makes the game use them goes in when you save." />
+                        <TextBlock Style="{StaticResource Help}" Text="{Binding CorrosiveStatus}" />
+                        <TextBlock Style="{StaticResource Problem}" Margin="0,0,0,6" Text="{Binding CorrosiveProblem}"
+                                   Visibility="{Binding CorrosiveProblem, Converter={StaticResource NullToVisibility}}" />
+                        <WrapPanel Margin="0,0,0,4">
+                            <Button Content="Use the Corrosive patch" Click="UseCorrosive_Click" IsEnabled="{Binding CanTurnOnCorrosive}" Margin="0,0,8,4"
+                                    Visibility="{Binding CorrosiveOn, Converter={StaticResource InverseBoolToVisibility}}"
+                                    ToolTip="Puts the patch in when you save even while nothing in the executable uses Corrosive: for item text in levels and scripts (chests, rewards), which WorldExplorer can't see." />
+                            <Button Content="Take Corrosive out" Click="RemoveCorrosive_Click" IsEnabled="{Binding CanTurnOffCorrosive}" Margin="0,0,8,4"
+                                    Visibility="{Binding CorrosiveOn, Converter={StaticResource BoolToVisibility}}"
+                                    ToolTip="Takes the patch out of the executable when you save (the game's code goes back as it was), the names out of GTEXT.LMP and the acid drop out of INVENTRY.LMP. Only when nothing in the executable has Corrosive or Corrosive Burst; levels and scripts that name them would then make plain weapons." />
+                        </WrapPanel>
+                        <TextBlock Style="{StaticResource Help}" Text="{Binding CorrosiveUsersText}" />
+
+                        <TextBlock Text="SETTINGS" Style="{StaticResource Heading}" />
+                        <TextBlock Style="{StaticResource Help}" Text="The dice and the poison, the same for every Corrosive weapon. The tested settings are the ones tried in the game: 1-6 acid on every hit (as Flaming's fire), 1-10 for each step of a critical hit's multiplier (as Flaming Burst's), and 5 seconds of poison, 1 when the target resists acid. Poison takes a twentieth of the target's health (1 to 5 points) every 32 frames while it lasts, and tints it green; a critical hit never shortens poison that is already running." />
+                        <Grid HorizontalAlignment="Left" IsEnabled="{Binding CorrosiveUsable}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="90" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="90" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Acid on every hit: 1 to" />
+                            <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource Field}" Text="{Binding CorrosiveDie, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="The die of the acid every hit with Corrosive or Corrosive Burst adds: 1 to 1000 (tested: 6, as Flaming's fire)." />
+                            <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Critical hit, per step: 1 to" />
+                            <TextBox Grid.Row="0" Grid.Column="3" Style="{StaticResource Field}" Margin="0,3,0,3" Text="{Binding CorrosiveCriticalDie, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Corrosive Burst's extra acid on a critical hit, rolled once for each step of the multiplier above 1: 1 to 1000 (tested: 10, as Flaming Burst's)." />
+                            <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Poison, seconds" />
+                            <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource Field}" Text="{Binding CorrosivePoison, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="How long a critical hit with Corrosive Burst poisons the target: 0 to 60 seconds (tested: 5)." />
+                            <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="When it resists acid" />
+                            <TextBox Grid.Row="1" Grid.Column="3" Style="{StaticResource Field}" Margin="0,3,0,3" Text="{Binding CorrosiveResistedPoison, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="The poison's seconds when the target resists acid: 0 up to the poison's own time (tested: 1). A target immune to acid isn't poisoned." />
+                        </Grid>
+                        <WrapPanel Margin="0,4,0,0">
+                            <Button Content="The tested settings" Click="CorrosiveDefaults_Click" IsEnabled="{Binding CorrosiveUsable}" Margin="0,0,12,4"
+                                    ToolTip="Puts the settings tried in the game back: 6, 10, 5 and 1." />
+                        </WrapPanel>
+                        <TextBlock Style="{StaticResource Problem}" Text="{Binding CorrosiveSettingsProblem}"
+                                   Visibility="{Binding CorrosiveSettingsProblem, Converter={StaticResource NullToVisibility}}" />
+                        <TextBlock Style="{StaticResource Help}" Text="{Binding CorrosiveSettingsText}" />
+
+                        <TextBlock Text="NAMES AND THE ITEM CARD" Style="{StaticResource Heading}" />
+                        <TextBlock Style="{StaticResource Help}" Text="{Binding CorrosiveNamesStatus}" />
+                        <DockPanel Margin="0,0,0,6">
+                            <Button DockPanel.Dock="Right" Content="Open INVENTRY.LMP…" Margin="8,0,0,0" Click="OpenInventry_Click"
+                                    ToolTip="INVENTRY.LMP, in the game's data folder, holds the inventory's pictures and the item card's icons." />
+                            <TextBlock Style="{StaticResource Help}" VerticalAlignment="Center" Margin="0" Text="{Binding CorrosiveIconStatus}" />
+                        </DockPanel>
+                        <TextBlock Style="{StaticResource Help}" Text="GTEXT.LMP and INVENTRY.LMP are saved after the executable, each where you say: put them in your game image with it." />
+
+                        <TextBlock Text="ACID GLOW" Style="{StaticResource Heading}" />
+                        <TextBlock Style="{StaticResource Help}" Text="With glow styles, Corrosive weapons can glow yellow-green: a style in the acid colours (the first one after those in use) and a first rule that gives it to Corrosive and Corrosive Burst, the other rules moving down. Glow styles are turned on if they are off. Without this, Corrosive weapons glow like any enchanted weapon." />
+                        <WrapPanel>
+                            <Button Content="Add the acid glow" Click="AddAcidGlow_Click" IsEnabled="{Binding CanAddAcidGlow}" Margin="0,0,0,4" />
+                            <TextBlock Style="{StaticResource Help}" Margin="12,0,0,0" VerticalAlignment="Center" Text="{Binding AcidGlowResult}" />
+                        </WrapPanel>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

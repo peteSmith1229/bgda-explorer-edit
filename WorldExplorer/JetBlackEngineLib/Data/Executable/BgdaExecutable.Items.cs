@@ -86,9 +86,18 @@ public sealed class ItemEdits
 
     public Dictionary<LootModifierList, ulong[]> Loot { get; } = new();
 
+    /// <summary>
+    /// Puts the Corrosive patch in with these settings (version 3: version 1 or 2 is replaced), or changes its settings;
+    /// null leaves it as it is. Written before the items, shops and loot lists that use Corrosive or Corrosive Burst.
+    /// </summary>
+    public CorrosiveSettings? Corrosive { get; set; }
+
+    /// <summary>Takes the Corrosive patch out (after the items, shops and loot lists are written: nothing may use it then).</summary>
+    public bool RemoveCorrosive { get; set; }
+
     public bool IsEmpty => Items.Count == 0 && AddedItems == null && Models.Count == 0 && ShopTexts.Count == 0 &&
                            MaterialMultipliers == null && StanceWeights == null && Glow == null && GlowStyles == null &&
-                           !RemoveGlowStyles && Loot.Count == 0;
+                           !RemoveGlowStyles && Loot.Count == 0 && Corrosive == null && !RemoveCorrosive;
 }
 
 public partial class BgdaExecutable
@@ -244,12 +253,13 @@ public partial class BgdaExecutable
     // ═══════════════════════════════ all at once ═══════════════════════════════
 
     /// <summary>
-    /// Applies item edits together: glow styles removed, then the added items and the other items (so shops
-    /// can sell a new or renamed record), then models, shops, materials, stance weights, the glow colours,
-    /// glow styles and the loot lists. When any of them is refused nothing changes, and the exception
-    /// (<see cref="ArgumentException"/> for a bad value, <see cref="InvalidOperationException"/> when there
-    /// is no room for added items or glow styles can't be used) says which. An item can only have a glow
-    /// setting other than automatic when the executable ends up with glow styles.
+    /// Applies item edits together: glow styles removed, the Corrosive patch put in, then the added items and the
+    /// other items (so shops can sell a new or renamed record), then models, shops, materials, stance weights, the
+    /// glow colours, glow styles and the loot lists, and the Corrosive patch taken out. When any of them is refused
+    /// nothing changes, and the exception (<see cref="ArgumentException"/> for a bad value,
+    /// <see cref="InvalidOperationException"/> when there is no room for added items or glow styles or the Corrosive
+    /// patch can't be used) says which. An item can only have a glow setting other than automatic when the
+    /// executable ends up with glow styles, and Corrosive or Corrosive Burst only when it ends up with the Corrosive patch.
     /// </summary>
     public void ApplyItemEdits(ItemEdits edits)
     {
@@ -257,10 +267,13 @@ public partial class BgdaExecutable
         if (edits.IsEmpty) return;
         if (edits.RemoveGlowStyles && edits.GlowStyles != null)
             throw new ArgumentException("Glow styles can't be removed and written at once.");
+        if (edits.RemoveCorrosive && edits.Corrosive != null)
+            throw new ArgumentException("The Corrosive patch can't be removed and written at once.");
         var before = (byte[])_data.Clone();
         try
         {
             if (edits.RemoveGlowStyles) RemoveGlowStyles();
+            if (edits.Corrosive is { } corrosive) SetCorrosive(corrosive);
             if (edits.AddedItems != null) SetAddedItems(edits.AddedItems);
             foreach (var item in edits.Items) SetItem(item);
             foreach (var (index, (vif, tex)) in edits.Models) SetItemModel(index, vif, tex);
@@ -270,8 +283,10 @@ public partial class BgdaExecutable
             if (edits.Glow is { } glow) SetEnchantGlow(glow);
             if (edits.GlowStyles != null) SetGlowSettings(edits.GlowStyles);
             foreach (var (list, values) in edits.Loot) SetLootModifiers(list, values);
+            if (edits.RemoveCorrosive) RemoveCorrosive();
             CheckShopsSellItems();
             CheckItemGlows();
+            CheckCorrosiveUse();
         }
         catch
         {
