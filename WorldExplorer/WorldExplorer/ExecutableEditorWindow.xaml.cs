@@ -9,7 +9,9 @@
 // together (BgdaExecutable.ApplyItemEdits). The names the game shows are in GTEXT.LMP, found next
 // to the executable or in the data folder of the settings; changed names are saved to it after
 // the executable. Items can be added after the game's own on three-player executables (the patch
-// frees the room), so three players can't be turned off while there are any.
+// frees the room), so three players can't be turned off while there are any. Corrosive and
+// Corrosive Burst put the Corrosive patch in the executable; their names go in GTEXT.LMP and the
+// item card's acid drop in INVENTRY.LMP (found like GTEXT.LMP), saved after the executable.
 //
 // Three Players: switches the tested three-player patch (ADRIANNA26) on or off,
 // updates an older three-player build (ADRIANNA25 to 19) to ADRIANNA26 on
@@ -285,6 +287,8 @@ public partial class ExecutableEditorWindow : Window
                 ItemEditorView.TryLoadNames(_items, gtext, this, quiet: true);
             if (ItemEditorModel.FindGameFile("EQUIPMNT.LMP", _gameFolders) is { } equipment)
                 ItemEditorView.TryLoadEquipment(_items, equipment, this, quiet: true);
+            if (ItemEditorModel.FindGameFile("INVENTRY.LMP", _gameFolders) is { } inventry)
+                ItemEditorView.TryLoadInventry(_items, inventry, this, quiet: true);
         }
 
         _monsters = BgdaMonsters.Open(exe.FilePath);
@@ -411,14 +415,49 @@ public partial class ExecutableEditorWindow : Window
         UpdateThreePlayerStatus();
         UpdateDifficultyStatus();
         var namesSaved = _items.NamesNeedSaving && SaveNames();
+        var iconsSaved = _items.InventryNeedsSaving && SaveInventry();
         var cutscenes = UpdateGameCutscenes(wantThreePlayers, stateBefore);
+        var others = new List<string>();
+        if (namesSaved) others.Add("GTEXT.LMP");
+        if (iconsSaved) others.Add("INVENTRY.LMP");
+        var corrosive = _items.CorrosiveFilesNote();
         MessageBox.Show(this,
             "Saved. Replace the executable in your game image with this file " +
-            (namesSaved ? "and GTEXT.LMP with the one you saved " : "") +
+            (others.Count > 0 ? $"and {string.Join(" and ", others)} with the one{(others.Count > 1 ? "s" : "")} you saved " : "") +
             "(keep your originals as a backup). Stats and XP affect new characters and future level-ups; " +
             "items, shops and loot every game." +
+            (corrosive is null ? "" : "\n\n" + corrosive) +
             (cutscenes is null ? "" : "\n\n" + cutscenes),
             "Executable Tuning", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    /// <summary>Saves INVENTRY.LMP with the acid drop added or taken out (Items tab, Corrosive page) where the user says; false when not saved.</summary>
+    private bool SaveInventry()
+    {
+        byte[] bytes;
+        try
+        {
+            bytes = _items.InventryToSave();
+        }
+        catch (Exception ex) when (ex is InvalidDataException or InvalidOperationException)
+        {
+            MessageBox.Show(this, ex.Message + " INVENTRY.LMP wasn't saved.", "Executable Tuning", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            Title = "Save the item card's icons (INVENTRY.LMP)",
+            Filter = "Inventory pictures|INVENTRY.LMP|All Files|*.*",
+            FileName = "INVENTRY.LMP"
+        };
+        if (_items.InventryPath is { } loaded && System.IO.Path.GetDirectoryName(loaded) is { } folder && Directory.Exists(folder))
+            dialog.InitialDirectory = folder;
+        if (dialog.ShowDialog(this) != true) return false;
+
+        File.WriteAllBytes(dialog.FileName, bytes);
+        _items.InventrySaved(bytes, dialog.FileName);
+        return true;
     }
 
     /// <summary>Puts the changed item names in GTEXT.LMP and saves it where the user says; false when not saved.</summary>

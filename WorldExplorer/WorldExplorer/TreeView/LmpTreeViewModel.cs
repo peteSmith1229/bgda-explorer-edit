@@ -72,8 +72,7 @@ public class LmpTreeViewModel : AbstractLmpTreeViewModel
         var names = _lmpFile.Directory.Keys.ToList();
         if (_lmpFile is ClpFile) return names;
         names.AddRange(_lmpFile.PendingAdditions.Select(a => a.Name));
-        if (_lmpFile.IsDirectorySorted()) names.Sort(string.CompareOrdinal);
-        return names;
+        return _lmpFile.IsDirectorySorted() ? LmpFile.InGameOrder(names) : names;
     }
 
     private TreeViewItemViewModel? CreateChild(string name)

@@ -54,7 +54,7 @@ public class ArchiveImportTests
     private static int ArchiveOffset(byte[] gob, int index) => BitConverter.ToInt32(gob, index * 0x28 + 0x20);
 
     [Test]
-    public void GameArchives_AreInNameOrder_ButTheShopPictures()
+    public void GameArchives_AreInTheGamesNameOrder()
     {
         var checkedArchives = 0;
         foreach (var gobName in new[] { "TAVERN.GOB", "TEST.GOB", "CUTTOWN.GOB" })
@@ -63,13 +63,35 @@ public class ArchiveImportTests
             foreach (var (name, lmp) in Open(gobName).Directory)
             {
                 lmp.ReadDirectory();
-                // The shop screen's pictures were renamed ntsc_/pal_ after the archive was sorted.
-                Assert.That(lmp.IsDirectorySorted(), Is.EqualTo(name != "shop.lmp"), $"{gobName}/{name}");
+                // The shop screen's pictures (ntsc_back.tex, pal_back.tex) sort without their region prefix, as the game reads them.
+                Assert.That(lmp.IsDirectorySorted(), Is.True, $"{gobName}/{name}");
                 checkedArchives++;
             }
         }
 
         Assert.That(checkedArchives, Is.GreaterThanOrEqualTo(18));
+    }
+
+    [Test]
+    public void TheShopPictures_KeepTheirPlace_WhenAnEntryIsAdded()
+    {
+        var gob = Open("TAVERN.GOB");
+        var shop = Archive(gob, "shop.lmp");
+        var stock = shop.Directory.Keys.ToList();
+
+        shop.AddEntry("bag.tex", new byte[] { 1 });
+        shop.AddEntry("aaa.tex", new byte[] { 2 });
+        var saved = Archive(Saved(gob), "shop.lmp");
+
+        var expected = stock.ToList();
+        expected.Insert(0, "aaa.tex");
+        expected.Insert(expected.IndexOf("backpack.tex") + 1, "bag.tex");
+        Assert.That(saved.Directory.Keys, Is.EqualTo(expected), "where the game's search looks for them");
+        Assert.That(saved.IsDirectorySorted(), Is.True);
+        foreach (var name in stock)
+        {
+            Assert.That(saved.GetEntryBytes(name), Is.EqualTo(shop.GetEntryBytes(name)), name);
+        }
     }
 
     [Test]
@@ -108,17 +130,21 @@ public class ArchiveImportTests
     [Test]
     public void AnArchiveOutOfNameOrder_KeepsItsOrder()
     {
-        var gob = Open("TAVERN.GOB");
-        var shop = Archive(gob, "shop.lmp");
-        var stock = shop.Directory.Keys.ToList();
+        var stock = new[] { "zeta.tex", "alpha.tex", "mid.tex" };
+        var bytes = LmpWriter.PackEntries(EngineVersion.DarkAlliance, stock.Select((n, i) => (n, new byte[] { (byte)i, 9 })).ToList());
+        var lmp = new LmpFile(EngineVersion.DarkAlliance, "odd.lmp", bytes, 0, bytes.Length);
+        lmp.ReadDirectory();
+        Assert.That(lmp.IsDirectorySorted(), Is.False);
 
-        shop.AddEntry("aaa.tex", new byte[] { 1 });
-        var saved = Archive(Saved(gob), "shop.lmp");
+        lmp.AddEntry("aaa.tex", new byte[] { 1 });
+        var packed = LmpWriter.Pack(lmp);
+        var saved = new LmpFile(EngineVersion.DarkAlliance, "odd.lmp", packed, 0, packed.Length);
+        saved.ReadDirectory();
 
         Assert.That(saved.Directory.Keys, Is.EqualTo(stock.Append("aaa.tex")), "new entries go last");
         foreach (var name in stock)
         {
-            Assert.That(saved.GetEntryBytes(name), Is.EqualTo(shop.GetEntryBytes(name)), name);
+            Assert.That(saved.GetEntryBytes(name), Is.EqualTo(lmp.GetEntryBytes(name)), name);
         }
     }
 

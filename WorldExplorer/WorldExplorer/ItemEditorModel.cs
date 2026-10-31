@@ -3,8 +3,8 @@
 //
 // The Items tab of Executable Tuning (ItemEditorView.xaml): weapons, armour and other items,
 // their models, what the shops sell, materials, stance weights, the enchant glow (and glow
-// styles: ItemEditorModel.Glow.cs) and the random-loot modifiers, with the names the game
-// shows from GTEXT.LMP. Every box is text so a
+// styles: ItemEditorModel.Glow.cs), the random-loot modifiers and Corrosive and Corrosive Burst
+// (ItemEditorModel.Corrosive.cs), with the names the game shows from GTEXT.LMP. Every box is text so a
 // half-typed value never throws; Problem says what is wrong, and BuildEdits gathers the changes
 // for BgdaExecutable.ApplyItemEdits (all or nothing). No WPF types, so it runs in tests.
 // On a three-player executable items can be added after the game's 81 (AddItem copies the
@@ -97,7 +97,7 @@ public sealed partial class ItemEditorModel : ObservableObject
         _loot.Clear();
         foreach (var list in Enum.GetValues<LootModifierList>())
         {
-            _loot[list] = _exe.GetLootModifiers(list).Select((v, i) => new LootRow(i + 1, v)).ToList();
+            _loot[list] = _exe.GetLootModifiers(list).Select((v, i) => new LootRow(i + 1, v, CorrosiveEdited)).ToList();
         }
 
         OnPropertyChanged(nameof(LootRows));
@@ -110,6 +110,7 @@ public sealed partial class ItemEditorModel : ObservableObject
         }
 
         LoadGlow();
+        LoadCorrosive();
         OnPropertyChanged(nameof(ShopRows));
         SelectedItem = Items.FirstOrDefault(i => i.Index == SelectedItem?.Index) ?? Items.FirstOrDefault();
     }
@@ -137,6 +138,7 @@ public sealed partial class ItemEditorModel : ObservableObject
         OnPropertyChanged(nameof(NamesLoaded));
         OnPropertyChanged(nameof(NamesStatus));
         RefreshShops();
+        CorrosiveEdited();
     }
 
     /// <summary>The name the game shows for an item name, from GTEXT.LMP (null when not loaded or missing).</summary>
@@ -145,10 +147,19 @@ public sealed partial class ItemEditorModel : ObservableObject
     /// <summary>True when a shown name differs from GTEXT.LMP's (<see cref="ApplyNames"/> hasn't put it there yet).</summary>
     public bool NamesChanged => Names != null && Items.Any(r => r.ShownNameChanged);
 
-    /// <summary>True when GTEXT.LMP has to be saved: names were typed, or put in it and not saved yet.</summary>
-    public bool NamesNeedSaving => Names != null && (Names.Changed || NamesChanged);
+    /// <summary>True when names typed here (or put in GTEXT.LMP) haven't been saved yet.</summary>
+    public bool TypedNamesNeedSaving => Names != null && (Names.Changed || NamesChanged);
 
-    /// <summary>Writes the changed names into <see cref="Names"/> (throws <see cref="ArgumentException"/> on a bad one).</summary>
+    /// <summary>
+    /// True when GTEXT.LMP has to be saved: names were typed, or put in it and not saved yet, or Corrosive's names go in or
+    /// come out (ItemEditorModel.Corrosive.cs).
+    /// </summary>
+    public bool NamesNeedSaving => TypedNamesNeedSaving || CorrosiveNamesPending;
+
+    /// <summary>
+    /// Writes the changed names into <see cref="Names"/> (throws <see cref="ArgumentException"/> on a bad one), and Corrosive's
+    /// when they go in or come out.
+    /// </summary>
     public void ApplyNames()
     {
         if (Names == null) return;
@@ -158,6 +169,7 @@ public sealed partial class ItemEditorModel : ObservableObject
         }
 
         foreach (var row in Items.Where(r => r.ShownNameChanged)) Names.SetItemName(row.Name.Trim(), row.ShownName);
+        ApplyCorrosiveNames();
     }
 
     /// <summary>
@@ -364,8 +376,12 @@ public sealed partial class ItemEditorModel : ObservableObject
         Forget();
         if (Quiet) return;
         GlowEdited();
+        CorrosiveEdited();
         foreach (var m in Models) m.Refresh();
     }
+
+    /// <summary>A shop entry's text changed: what uses Corrosive follows.</summary>
+    internal void ShopEdited() => CorrosiveEdited();
 
     /// <summary>A material or stance weight changed: values and damage follow.</summary>
     internal void TuningEdited()
@@ -555,6 +571,7 @@ public sealed partial class ItemEditorModel : ObservableObject
             if (rows.Any(r => r.IsChanged)) edits.Loot[list] = rows.Select(r => r.Value).ToArray();
         }
 
+        BuildCorrosiveEdits(edits);
         return edits;
     }
 
@@ -973,8 +990,10 @@ public sealed class ItemRow : ObservableObject
     {
         get
         {
-            if (TryBuild(out var problem) == null) return problem;
+            if (TryBuild(out var problem) is not { } item) return problem;
             if (!_owner.GlowStylesOn && !_glow.IsAutomatic) return "Glow: glow styles are off (Glow tab), so it has to be Automatic.";
+            if (Corrosive.Uses(item.Flags) && _owner.CorrosiveProblem is { } corrosive)
+                return "Corrosive and Corrosive Burst can't be used with this executable: " + corrosive;
             if (_owner.NamesLoaded && ShownNameChanged && GameText.CheckItemName(_shownName) is { } nameProblem)
                 return "Shown name: " + nameProblem;
             if (_owner.NamesLoaded && _shownName.Length == 0 && (_name.Trim() != Source.Name || IsNew))
@@ -1321,7 +1340,9 @@ public sealed class ShopRow : ObservableObject
         get => _text;
         set
         {
-            if (SetProperty(ref _text, value)) Refresh();
+            if (!SetProperty(ref _text, value)) return;
+            Refresh();
+            _owner.ShopEdited();
         }
     }
 
@@ -1342,6 +1363,8 @@ public sealed class ShopRow : ObservableObject
                 return $"This is the {ListText.ToLowerInvariant()} list; {text} isn't one of those.";
             if (!Source.AnyText && text != Source.Text && !_owner.NearbyShopTexts.Contains(text))
                 return "This entry can only sell text the game has nearby: " + string.Join(", ", _owner.NearbyShopTexts) + ".";
+            if (Corrosive.Uses(parsed.Flags) && _owner.CorrosiveProblem is { } corrosive)
+                return "Corrosive and Corrosive Burst can't be used with this executable: " + corrosive;
             return null;
         }
     }
@@ -1452,13 +1475,15 @@ public sealed class TuningRow : ObservableObject
 /// <summary>One entry of a random-loot list.</summary>
 public sealed class LootRow : ObservableObject
 {
+    private readonly Action? _edited;
     private ulong _value;
 
-    internal LootRow(int position, ulong value)
+    internal LootRow(int position, ulong value, Action? edited = null)
     {
         Position = position;
         Source = value;
         _value = value;
+        _edited = edited;
     }
 
     public int Position { get; }
@@ -1469,7 +1494,9 @@ public sealed class LootRow : ObservableObject
         get => _value;
         set
         {
-            if (SetProperty(ref _value, value)) OnPropertyChanged(nameof(Meaning));
+            if (!SetProperty(ref _value, value)) return;
+            OnPropertyChanged(nameof(Meaning));
+            _edited?.Invoke();
         }
     }
 

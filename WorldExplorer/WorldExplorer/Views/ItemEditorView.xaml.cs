@@ -12,9 +12,9 @@ using Microsoft.Win32;
 namespace WorldExplorer.Views;
 
 /// <summary>
-/// The Items tab of Executable Tuning: items, models, shops, glow, loot and effects (DataContext: ItemEditorModel).
-/// Everything is edited in the model; this only opens GTEXT.LMP and EQUIPMNT.LMP, and asks before an added item is
-/// removed or glow settings are replaced.
+/// The Items tab of Executable Tuning: items, models, shops, glow, Corrosive, loot and effects (DataContext: ItemEditorModel).
+/// Everything is edited in the model; this only opens GTEXT.LMP, EQUIPMNT.LMP and INVENTRY.LMP, and asks before an added
+/// item is removed, glow settings are replaced or the Corrosive patch is taken out.
 /// </summary>
 public partial class ItemEditorView : UserControl
 {
@@ -73,6 +73,21 @@ public partial class ItemEditorView : UserControl
         }
     }
 
+    /// <summary>Reads INVENTRY.LMP (the item card's icons) into <paramref name="model"/>, for the acid drop.</summary>
+    public static bool TryLoadInventry(ItemEditorModel model, string path, Window? owner, bool quiet = false)
+    {
+        try
+        {
+            model.LoadInventry(File.ReadAllBytes(path), path);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            if (!quiet) Show(owner, $"{path} can't take the acid drop: {ex.Message}");
+            return false;
+        }
+    }
+
     private static void Show(Window? owner, string message)
     {
         if (owner != null) MessageBox.Show(owner, message, "Items", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -88,7 +103,7 @@ public partial class ItemEditorView : UserControl
     {
         if (Model is not { } model) return;
         var owner = Window.GetWindow(this);
-        if (model.NamesNeedSaving && !Ask(owner, "The names you changed haven't been saved. Open another GTEXT.LMP and lose them?")) return;
+        if (model.TypedNamesNeedSaving && !Ask(owner, "The names you changed haven't been saved. Open another GTEXT.LMP and lose them?")) return;
 
         var dialog = new OpenFileDialog
         {
@@ -188,6 +203,38 @@ public partial class ItemEditorView : UserControl
     }
 
     private void SetGroupGlow_Click(object sender, RoutedEventArgs e) => Model?.ApplyGroupGlow();
+
+    // ── the Corrosive page ──
+
+    private void UseCorrosive_Click(object sender, RoutedEventArgs e) => Model?.TurnOnCorrosive();
+
+    /// <summary>Takes the Corrosive patch out when the executable is saved; asks first, as levels and scripts may name the modifiers.</summary>
+    private void RemoveCorrosive_Click(object sender, RoutedEventArgs e)
+    {
+        if (Model is not { CanTurnOffCorrosive: true } model) return;
+        if (model.CorrosiveState is not JetBlackEngineLib.Data.Executable.CorrosiveState.Off &&
+            !Ask(Window.GetWindow(this), "Take the Corrosive patch out when you save, with its names in GTEXT.LMP and the acid drop in " +
+                                         "INVENTRY.LMP? Item text in levels and scripts that says acid or acidburst would then make plain weapons."))
+            return;
+        model.TurnOffCorrosive();
+    }
+
+    private void CorrosiveDefaults_Click(object sender, RoutedEventArgs e) => Model?.CorrosiveDefaults();
+
+    private void OpenInventry_Click(object sender, RoutedEventArgs e)
+    {
+        if (Model is not { } model) return;
+        var dialog = new OpenFileDialog
+        {
+            Title = "Open INVENTRY.LMP (the inventory's pictures and the item card's icons)",
+            Filter = "Inventory pictures|INVENTRY.LMP|LMP archives|*.lmp|All files|*.*"
+        };
+        var known = model.InventryPath ?? model.NamesPath ?? model.EquipmentPath;
+        if (known != null && Path.GetDirectoryName(known) is { } folder && Directory.Exists(folder)) dialog.InitialDirectory = folder;
+        if (dialog.ShowDialog(Window.GetWindow(this)) == true) TryLoadInventry(model, dialog.FileName, Window.GetWindow(this));
+    }
+
+    private void AddAcidGlow_Click(object sender, RoutedEventArgs e) => Model?.AddAcidGlow();
 
     /// <summary>
     /// A grid inside the page's ScrollViewer, or the Glow page's sideways scroller round the styles, would swallow
