@@ -1,15 +1,16 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // NEW FILE: WorldExplorer/WorldExplorer/Da2TuningWindow.xaml.cs
 //
-// Executable Tuning for Baldur's Gate: Dark Alliance II (SLUS_206.75 v1.03) and its three-player mod.
-// What it shows and edits is in Da2TuningModel; this file has the window's events: opening the
-// cheat file (the one of the last session, else PCSX2's cheats folder), saving it (a .bak copy of
-// the file it overwrites), the row buttons and the multiplier columns that are editable cell by cell.
-// A bad value in ANY tab stops the save with a message; nothing is written.
+// Executable Tuning for Baldur's Gate: Dark Alliance II (SLUS_206.75 v1.03) and its three-player mod,
+// with Dark Alliance 1's tabs and layout (XP per Level, Starting Stats, Feats & Spells, Items, Monster
+// HP, Three Players) and the two DA2 has more of (Creatures, Levels). What it shows and edits is in
+// Da2TuningModel; this file has the window's events: opening the cheat file (the one of the last
+// session, else PCSX2's cheats folder), saving it (a .bak copy of the file it overwrites), the row
+// buttons and the columns that are editable cell by cell. A bad value in ANY tab stops the save with
+// a message; nothing is written.
 // ═══════════════════════════════════════════════════════════════════════════════
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -43,17 +44,29 @@ public partial class Da2TuningWindow : Window
         _model = new Da2TuningModel(exe);
         DataContext = _model;
 
-        for (var i = 0; i < Da2Creature.Multipliers.Length; i++)
-            creatureGrid.Columns.Insert(2 + i, CellColumn(Da2Creature.Multipliers[i] + " ×", $"Cells[{i}]", 62));
+        // Monster HP: HP x before the four difficulty columns, the other four multipliers after them (as DA1 has it)
+        creatureGrid.Columns.Insert(2, CellColumn(Da2Creature.Multipliers[0] + " ×", "Cells[0]", 62));
+        for (var i = 1; i < Da2Creature.Multipliers.Length; i++)
+            creatureGrid.Columns.Insert(6 + i, CellColumn(Da2Creature.Multipliers[i] + " ×", $"Cells[{i}]", 66));
+
+        for (var i = 0; i < Da2Drop.Arguments.Length; i++)
+            dropGrid.Columns.Insert(2 + i, CellColumn(Da2Drop.Arguments[i], $"Cells[{i}]", 78));
+
+        curveGrid.Columns.Add(CellColumn("Gold: level +", nameof(Da2CurveRow.GoldOffset), 95));
+        curveGrid.Columns.Add(CellColumn("Gold: per level", nameof(Da2CurveRow.GoldPerLevel), 105));
+        curveGrid.Columns.Add(CellColumn("Gold: base", nameof(Da2CurveRow.GoldBase), 85));
+        curveGrid.Columns.Add(CellColumn("Item value: level +", nameof(Da2CurveRow.ValueOffset), 125));
+        curveGrid.Columns.Add(CellColumn("Item value: per level", nameof(Da2CurveRow.ValuePerLevel), 135));
+        curveGrid.Columns.Add(CellColumn("Item value: base", nameof(Da2CurveRow.ValueBase), 115));
+
         difficultyGrid.Columns.Add(CellColumn("Monster HP ×", nameof(Da2DifficultyRow.Hp), 110));
         difficultyGrid.Columns.Add(CellColumn("Monster damage ×", nameof(Da2DifficultyRow.Damage), 130));
         difficultyGrid.Columns.Add(CellColumn("Monster level +", nameof(Da2DifficultyRow.Level), 120));
         difficultyGrid.Columns.Add(CellColumn("Boss HP ×", nameof(Da2DifficultyRow.Boss), 100));
-        twoPlayerGrid.Columns.Insert(1, CellColumn("Value", nameof(Da2TwoPlayerRow.Cell), 100));
+        twoPlayerGrid.Columns.Insert(1, CellColumn("Value", nameof(Da2FactorRow.Cell), 90));
 
         featPriceCombo.ItemsSource = Da2Names.FeatIds.Where(id => id > 0)
             .Select(id => new FeatChoice(id, $"{Da2Names.Feat(id)} ({id})")).ToList();
-        changesText.Text = "Executable: " + exe.Source;
 
         var start = StartingCheatFile();
         if (start != null) Open(start, quiet: true);
@@ -109,10 +122,14 @@ public partial class Da2TuningWindow : Window
             ? ""
             : $"Kept as they are: {others.Count} group{(others.Count == 1 ? "" : "s")} of your own — " +
               string.Join(", ", others.Take(6).Select(g => "[" + g.Name + "]")) + (others.Count > 6 ? " …" : "") + ".";
+        changesText.Text = (_model.CheatPath is { } path ? "Cheat file: " + path : "Cheat file: none yet (Save asks where)") +
+                           "   ·   Executable: " + _model.Exe.Source;
+        changesText.ToolTip = changesText.Text;
     }
 
     private void OpenCheatFile_Click(object sender, RoutedEventArgs e)
     {
+        CommitGrids(tabs); // a grid still editing a cell can't have its rows replaced
         var dialog = new OpenFileDialog
         {
             Title = "Open the Dark Alliance II cheat file",
@@ -131,6 +148,7 @@ public partial class Da2TuningWindow : Window
                 $"Put every tab back to build {Da2ThreePlayerMod.CurrentBuild} of the mod and the game's own tables? " +
                 "The groups of your own stay; nothing is written until you save.",
                 "Start again", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+        CommitGrids(tabs);
         _model.StartFromBuild51();
         RefreshStatus();
     }
@@ -205,7 +223,9 @@ public partial class Da2TuningWindow : Window
 
         var name = Path.GetFileName(path);
         var inCheats = string.Equals(Path.GetFileName(Path.GetDirectoryName(path)), "cheats", StringComparison.OrdinalIgnoreCase);
-        var tuning = _model.Exe.HasChanges ? $" The executable edits are the group [{Da2Executable.TuningGroupName}]: tick it too." : "";
+        var tuning = _model.Exe.HasChanges
+            ? $" The executable edits ({_model.Exe.DescribeChanges()}) are the group [{Da2Executable.TuningGroupName}]: tick it too."
+            : "";
         MessageBox.Show(this,
             $"Saved {path}" + (_backedUp.Contains(Path.GetFullPath(path)) && File.Exists(backup) ? $" (the file as it was before is kept as {Path.GetFileName(backup)})." : ".") +
             (string.Equals(name, Da2ThreePlayerMod.FileName, StringComparison.OrdinalIgnoreCase) && inCheats
@@ -235,7 +255,7 @@ public partial class Da2TuningWindow : Window
     /// <summary>A text column for a <see cref="Da2Cell"/>: grey and read-only where the cell can't be changed.</summary>
     private DataGridTextColumn CellColumn(string header, string cellPath, double width)
     {
-        var shown = new Style(typeof(TextBlock));
+        var shown = new Style(typeof(TextBlock), DataGridTextColumn.DefaultElementStyle);
         var fixedCell = new DataTrigger { Binding = new Binding(cellPath + "." + nameof(Da2Cell.IsEditable)), Value = false };
         fixedCell.Setters.Add(new Setter(TextBlock.ForegroundProperty, new DynamicResourceExtension("Brush.TextMuted")));
         shown.Triggers.Add(fixedCell);
@@ -266,6 +286,20 @@ public partial class Da2TuningWindow : Window
             RoutedEvent = UIElement.MouseWheelEvent,
             Source = sender
         });
+    }
+
+    // ═══════════════════════════════ XP per Level, Items ▸ Loot ═══════════════════════════════
+
+    private void StockXpRules_Click(object sender, RoutedEventArgs e)
+    {
+        CommitGrids(tabs);
+        _model.StockXpRules();
+    }
+
+    private void StockLoot_Click(object sender, RoutedEventArgs e)
+    {
+        CommitGrids(tabs);
+        _model.StockLoot();
     }
 
     // ═══════════════════════════════ Creatures ═══════════════════════════════
@@ -335,7 +369,7 @@ public partial class Da2TuningWindow : Window
         _model.LoadPlacements(Da2ThreePlayerMod.StockPlacements());
     }
 
-    // ═══════════════════════════════ Shops, Feat Prices ═══════════════════════════════
+    // ═══════════════════════════════ Items ▸ Shops, Feats & Spells ▸ Feat prices ═══════════════════════════════
 
     private void StockShops_Click(object sender, RoutedEventArgs e)
     {
@@ -375,7 +409,7 @@ public partial class Da2TuningWindow : Window
         _model.LoadFeatPrices(Da2ThreePlayerMod.StockFeatPrices());
     }
 
-    // ═══════════════════════════════ Class Feats, Difficulty ═══════════════════════════════
+    // ═══════════════════════════════ Class feats, Three Players ═══════════════════════════════
 
     /// <summary>The class feats' price column uses the spell price tables: refreshed once the edit is in.</summary>
     private void SpecialPrices_CellEditEnding(object? sender, DataGridCellEditEndingEventArgs e) =>
@@ -388,6 +422,6 @@ public partial class Da2TuningWindow : Window
     {
         CommitGrids(difficultyGrid);
         CommitGrids(twoPlayerGrid);
-        _model.LoadDifficulty(_model.Exe.Stock().GetDifficulty());
+        _model.StockDifficulty();
     }
 }

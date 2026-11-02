@@ -1,12 +1,19 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // NEW FILE: WorldExplorer/WorldExplorer/Da2TuningModel.cs
 //
-// What the Dark Alliance II Executable Tuning window shows and edits (Da2TuningWindow):
-//   - the executable's tables (Da2Executable): XP per level, starting stats, abilities, class
-//     feats and the four spells' price tables, items, levels, creature multipliers, boss HP and
-//     the difficulty / two-player factors
-//   - the three-player mod's groups and their settings (Da2ThreePlayerMod): the main group, HUD
-//     sizes, player 3's character groups, the test helpers, placed creatures, shops, feat prices
+// What the Dark Alliance II Executable Tuning window shows and edits (Da2TuningWindow), tab by tab in
+// Dark Alliance 1's order:
+//   XP per Level     the level table, the kill XP shares and the XP bonuses (Da2Executable.Rules)
+//   Starting Stats   the classes' ability scores
+//   Feats & Spells   the ability templates, the class feat tables and the DA1 spells' price tables,
+//                    and the mod's feat price group
+//   Items            the base items, the mod's shop group, and the loot: each creature's drop values,
+//                    the drop rules, the quality table, the gold / item value of a level, potions, Ransack
+//   Monster HP       the creature multipliers with the HP they give on every difficulty, fixed-HP bosses
+//   Three Players    the mod's groups and settings, the two-player factors (three players use them),
+//                    the difficulty scaling
+//   Creatures        creatures the mod places in levels, with the room each level has
+//   Levels           monster level of every level, and its pools and memory at load (Da2LevelBudget)
 // Rows hold text exactly as typed; Apply() checks every value (ArgumentException names the first
 // bad one) and makes the cheat file. Nothing is written to the executable: the edits become the
 // "[WorldExplorer - executable tuning]" group of the cheat file.
@@ -14,6 +21,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -73,16 +82,30 @@ public sealed class Da2StatRow
     public string INT { get; set; } = "";
     public string WIS { get; set; } = "";
     public string CHA { get; set; } = "";
+
+    /// <summary>In the game's order (STR, DEX, CON, INT, WIS, CHA); the grid shows Dark Alliance 1's.</summary>
     public string[] All => new[] { STR, DEX, CON, INT, WIS, CHA };
 }
 
-public sealed class Da2AbilityRow
+public sealed class Da2AbilityRow : ObservableObject
 {
+    private string _energy = "";
     public Da2Ability Source { get; init; } = null!;
     public string Name => Source.Name;
     public string Feat => Da2Names.IsFeat(Source.FeatId) ? Da2Names.Feat(Source.FeatId) : "";
     public string Type => Source.Type.ToString(CultureInfo.InvariantCulture) + (Source.IsStream ? " (per frame)" : "");
-    public string Energy { get; set; } = "";
+
+    public string Energy
+    {
+        get => _energy;
+        set { if (SetProperty(ref _energy, value)) OnPropertyChanged(nameof(PerSecond)); }
+    }
+
+    /// <summary>The energy a held stream spell costs a second (60 frames).</summary>
+    public string PerSecond => Source.IsStream && float.TryParse(_energy, NumberStyles.Float, CultureInfo.InvariantCulture, out var e)
+        ? (e * 60).ToString("0.#", CultureInfo.InvariantCulture)
+        : "";
+
     public string PerRank { get; set; } = "";
     public string DamageMin { get; set; } = "";
     public string DamageMax { get; set; } = "";
@@ -166,6 +189,19 @@ public sealed class Da2LevelRow : ObservableObject
         set { if (SetProperty(ref _monsterLevel, value)) Changed?.Invoke(this, EventArgs.Empty); }
     }
 
+    /// <summary>The level at load in the stock game (null for the few the scan has no file for).</summary>
+    public Da2LevelBudget? Budget { get; init; }
+
+    public string Creatures => Budget?.Creatures.ToString(CultureInfo.InvariantCulture) ?? "";
+    public string CreatureSlots => Budget == null ? "" : $"{Budget.CreatureSized} of {Da2LevelBudget.CreatureSlots}";
+    public string Room => Budget == null ? "" : Budget.Room.ToString(CultureInfo.InvariantCulture);
+    public string SmallObjects => Budget == null ? "" : $"{Budget.Small} of {Da2LevelBudget.SmallSlots}";
+    public string HeapFree => Budget?.HeapFreeKb.ToString("N0", CultureInfo.InvariantCulture) ?? "";
+    public string Lumps => Budget == null ? "" : $"{Budget.Lumps} of {Da2LevelBudget.LumpSlots}";
+
+    /// <summary>"Brush.Danger" when the level has no room to spare at load, "Brush.Warning" when it is near.</summary>
+    public string RoomBrush => Budget == null ? "Brush.Text" : Budget.Room < 0 ? "Brush.Danger" : Budget.Room < 20 ? "Brush.Warning" : "Brush.Text";
+
     public event EventHandler? Changed;
     public override string ToString() => $"{Name} (act {Act}, level {_monsterLevel})";
 }
@@ -177,16 +213,25 @@ public sealed class Da2CreatureRow : ObservableObject
     public string Variant => Source.Variants > 1 ? $"{Source.Variant + 1} of {Source.Variants}" : "";
     public string Names => string.Join(", ", Source.Names);
     public Da2Cell[] Cells { get; init; } = Array.Empty<Da2Cell>();
-    public Da2Cell Hp => Cells[0];
-    public Da2Cell Armour => Cells[1];
-    public Da2Cell Damage => Cells[2];
-    public Da2Cell Attack => Cells[3];
-    public Da2Cell Xp => Cells[4];
 
-    private string _predictedHp = "", _predictedDamage = "", _predictedXp = "";
-    public string PredictedHp { get => _predictedHp; set => SetProperty(ref _predictedHp, value); }
-    public string PredictedDamage { get => _predictedDamage; set => SetProperty(ref _predictedDamage, value); }
-    public string PredictedXp { get => _predictedXp; set => SetProperty(ref _predictedXp, value); }
+    private string _easy = "", _normal = "", _hard = "", _extreme = "", _damage = "", _xp = "";
+    public string EasyHp { get => _easy; set => SetProperty(ref _easy, value); }
+    public string NormalHp { get => _normal; set => SetProperty(ref _normal, value); }
+    public string HardHp { get => _hard; set => SetProperty(ref _hard, value); }
+    public string ExtremeHp { get => _extreme; set => SetProperty(ref _extreme, value); }
+
+    /// <summary>Highest damage on Easy / Normal / Hard / Extreme.</summary>
+    public string Damage { get => _damage; set => SetProperty(ref _damage, value); }
+
+    /// <summary>XP rating on Easy to Hard / on Extreme (what a kill is worth before it is shared out).</summary>
+    public string XpRating { get => _xp; set => SetProperty(ref _xp, value); }
+
+    public string Editable => Cells.Count(c => c.IsEditable) switch
+    {
+        0 => "none (computed / shared)",
+        5 => "all five",
+        var n => $"{n} of 5"
+    };
 }
 
 public sealed class Da2BossRow : ObservableObject
@@ -220,20 +265,80 @@ public sealed class Da2DifficultyRow
     public Da2Cell Boss { get; init; } = null!;
 }
 
-/// <summary>A two-player factor (players 2 and 3 alike: the mod keeps the game's player count at 2).</summary>
-public sealed class Da2TwoPlayerRow
+/// <summary>A named value with the game's own next to it: a rule, a two-player factor.</summary>
+public sealed class Da2FactorRow
 {
-    public string Property { get; init; } = "";
-    public string Name => Da2Executable.DescribeFactor(Property);
+    public string Name { get; init; } = "";
     public Da2Cell Cell { get; init; } = null!;
     public string Stock { get; init; } = "";
-    public string Precision => Da2Executable.DifficultyFullPrecision(Property) ? "" : "rounded (upper half of a float)";
+    public string Note { get; init; } = "";
+
+    /// <summary>The rule behind it (null for a difficulty factor).</summary>
+    public Da2Setting? Setting { get; init; }
+
+    /// <summary>The difficulty property behind it (null for a rule).</summary>
+    public string? Property { get; init; }
+}
+
+/// <summary>An act of the gold / item value curves (cells shared where two acts share one constant).</summary>
+public sealed class Da2CurveRow
+{
+    public string Name { get; init; } = "";
+    public Da2Cell GoldOffset { get; init; } = null!;
+    public Da2Cell GoldPerLevel { get; init; } = null!;
+    public Da2Cell GoldBase { get; init; } = null!;
+    public Da2Cell ValueOffset { get; init; } = null!;
+    public Da2Cell ValuePerLevel { get; init; } = null!;
+    public Da2Cell ValueBase { get; init; } = null!;
+}
+
+/// <summary>A drop call of a creature's death code.</summary>
+public sealed class Da2DropRow : ObservableObject
+{
+    public Da2Drop Source { get; init; } = null!;
+    public string Creature => Source.Creature;
+    public string Note => Source.Note;
+    public string Names => string.Join(", ", Source.Names);
+    public Da2Cell[] Cells { get; init; } = Array.Empty<Da2Cell>();
+
+    private string _one = "", _more = "";
+
+    /// <summary>"item 7.5 % · potion 15 %" with one player.</summary>
+    public string OnePlayer { get => _one; set => SetProperty(ref _one, value); }
+
+    /// <summary>The same with two players counted (and so with three).</summary>
+    public string MorePlayers { get => _more; set => SetProperty(ref _more, value); }
+}
+
+/// <summary>A row of the quality table: the chance of a poor and a plain roll; good is the rest.</summary>
+public sealed class Da2QualityRow : ObservableObject
+{
+    private string _poor = "", _plain = "";
+    public int Level { get; init; }
+
+    public string Poor
+    {
+        get => _poor;
+        set { if (SetProperty(ref _poor, value)) OnPropertyChanged(nameof(Good)); }
+    }
+
+    public string Plain
+    {
+        get => _plain;
+        set { if (SetProperty(ref _plain, value)) OnPropertyChanged(nameof(Good)); }
+    }
+
+    public string Good =>
+        float.TryParse(_poor, NumberStyles.Float, CultureInfo.InvariantCulture, out var a) &&
+        float.TryParse(_plain, NumberStyles.Float, CultureInfo.InvariantCulture, out var b)
+            ? MathF.Max(0, 1 - a - b).ToString("0.####", CultureInfo.InvariantCulture)
+            : "";
 }
 
 public sealed class Da2PlacementRow : ObservableObject
 {
     private bool _include = true;
-    private string _name = "", _level = "", _type = "", _x = "", _y = "", _z = "", _facing = "", _properties = "";
+    private string _name = "", _level = "", _type = "", _x = "", _y = "", _z = "", _facing = "", _properties = "", _room = "";
     public bool Include { get => _include; set => SetProperty(ref _include, value); }
     public string Name { get => _name; set => SetProperty(ref _name, value); }
     public string Level { get => _level; set => SetProperty(ref _level, value); }
@@ -249,6 +354,9 @@ public sealed class Da2PlacementRow : ObservableObject
     public string Z { get => _z; set => SetProperty(ref _z, value); }
     public string Facing { get => _facing; set => SetProperty(ref _facing, value); }
     public string Properties { get => _properties; set => SetProperty(ref _properties, value); }
+
+    /// <summary>The creature-sized objects its level has at load with the creatures placed there.</summary>
+    public string Room { get => _room; set => SetProperty(ref _room, value); }
 
     /// <summary>The description read from the file (kept while the creature isn't changed).</summary>
     public string? Description { get; set; }
@@ -346,8 +454,19 @@ public sealed class Da2TuningModel : ObservableObject
     public List<Da2BossRow> Bosses { get; private set; } = new();
     public List<Da2DifficultyRow> Difficulty { get; private set; } = new();
 
-    /// <summary>The two-player factors: the difficulty property and its box.</summary>
-    public List<Da2TwoPlayerRow> TwoPlayer { get; private set; } = new();
+    /// <summary>The factors three players get (the game's two-player ones, the mod keeps its count at 2).</summary>
+    public List<Da2FactorRow> TwoPlayer { get; private set; } = new();
+
+    // ---- rules (Da2Executable.Settings) ----
+    public List<Da2FactorRow> KillXp { get; private set; } = new();
+    public List<Da2FactorRow> XpBonuses { get; private set; } = new();
+    public List<Da2FactorRow> DropRules { get; private set; } = new();
+    public List<Da2FactorRow> CurveRules { get; private set; } = new();
+    public List<Da2CurveRow> Curves { get; private set; } = new();
+    public List<Da2FactorRow> PotionRules { get; private set; } = new();
+    public List<Da2FactorRow> RansackRules { get; private set; } = new();
+    public List<Da2DropRow> Drops { get; private set; } = new();
+    public List<Da2QualityRow> Quality { get; private set; } = new();
 
     /// <summary>The box of each editable creature constant (variants that share a constant share the box).</summary>
     private readonly Dictionary<Da2Constant, Da2Cell> _constantCells = new();
@@ -356,6 +475,12 @@ public sealed class Da2TuningModel : ObservableObject
     private readonly Dictionary<Da2Constant, (string Class, int Argument)> _constantOwners = new();
 
     private readonly Dictionary<string, Da2Cell> _difficultyCells = new();
+    private readonly Dictionary<string, Da2Cell> _settingCells = new();
+
+    /// <summary>The exact value each rule's box was filled with (a percentage shows only two decimals).</summary>
+    private readonly Dictionary<string, float> _settingExact = new();
+    private readonly Dictionary<Da2Constant, Da2Cell> _dropCells = new();
+    private readonly Dictionary<Da2Constant, string> _dropOwners = new();
 
     /// <summary>Creature types for the placement grid: the factory's names, and the DA1 bosses the mod adds.</summary>
     public List<string> CreatureTypes { get; }
@@ -368,6 +493,7 @@ public sealed class Da2TuningModel : ObservableObject
         CreatureTypes = exe.GetCreatures().SelectMany(c => c.Names).Concat(Da2ThreePlayerMod.BossNames)
             .Distinct(StringComparer.Ordinal).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
         LevelNames = exe.GetLevels().Select(l => l.Name).ToList();
+        Placements.CollectionChanged += Placements_CollectionChanged;
         LoadMod(Da2ThreePlayerMod.DefaultSettings());
         LoadExecutable();
     }
@@ -395,6 +521,13 @@ public sealed class Da2TuningModel : ObservableObject
             {
                 Exe.ResetToStock();
                 Notes.Add($"[{Da2Executable.TuningGroupName}] wasn't read ({ex.Message}); saving replaces it.");
+            }
+
+            if (Exe.UnexpectedCode() is { } where)
+            {
+                Exe.ResetToStock();
+                Notes.Add($"[{Da2Executable.TuningGroupName}] wasn't read: it changes the code of {where} in a way " +
+                          "WorldExplorer doesn't write; saving replaces it.");
             }
         }
 
@@ -462,6 +595,7 @@ public sealed class Da2TuningModel : ObservableObject
     {
         Placements.Clear();
         foreach (var p in placements) Placements.Add(ToRow(p));
+        RefreshRoom();
     }
 
     public static Da2PlacementRow ToRow(Da2Placement p) => new()
@@ -562,13 +696,15 @@ public sealed class Da2TuningModel : ObservableObject
         }).ToList();
 
         var previousLevel = _predictionLevel?.Name;
+        var previousLootLevel = _lootLevel?.Name;
         Levels = exe.GetLevels().Select(l =>
         {
-            var row = new Da2LevelRow { Source = l, MonsterLevel = F(l.MonsterLevel) };
+            var row = new Da2LevelRow { Source = l, MonsterLevel = F(l.MonsterLevel), Budget = Da2LevelBudget.Find(l.Name) };
             row.Changed += (_, _) => RefreshPredictions();
             return row;
         }).ToList();
         _predictionLevel = Levels.FirstOrDefault(l => l.Name == previousLevel);
+        _lootLevel = Levels.FirstOrDefault(l => l.Name == previousLootLevel);
 
         _constantCells.Clear();
         _constantOwners.Clear();
@@ -608,12 +744,15 @@ public sealed class Da2TuningModel : ObservableObject
             return row;
         }).ToList();
 
+        LoadRules(exe.GetSettings());
+        LoadDrops();
+        LoadQuality(exe.GetQualityTable());
         LoadDifficulty(exe.GetDifficulty());
         RefreshPredictions();
         OnPropertyChanged(string.Empty);
     }
 
-    /// <summary>Puts difficulty factors in the Difficulty tab's boxes.</summary>
+    /// <summary>Puts difficulty factors in the boxes of the Three Players tab.</summary>
     public void LoadDifficulty(Da2Difficulty d)
     {
         var stock = Exe.Stock().GetDifficulty();
@@ -635,32 +774,216 @@ public sealed class Da2TuningModel : ObservableObject
             new() { Name = "Hard", Hp = Cell(nameof(Da2Difficulty.HardHp)), Damage = Cell(nameof(Da2Difficulty.HardDamage)), Level = Fixed("0"), Boss = Cell(nameof(Da2Difficulty.BossHard)) },
             new() { Name = "Extreme", Hp = Cell(nameof(Da2Difficulty.ExtremeHp)), Damage = Cell(nameof(Da2Difficulty.ExtremeDamage)), Level = Cell(nameof(Da2Difficulty.ExtremeLevel)), Boss = Cell(nameof(Da2Difficulty.BossExtreme)) },
         };
-        TwoPlayer = new[] { nameof(Da2Difficulty.TwoPlayerHp), nameof(Da2Difficulty.TwoPlayerDamage), nameof(Da2Difficulty.TwoPlayerXp), nameof(Da2Difficulty.BossTwoPlayer) }
-            .Select(p => new Da2TwoPlayerRow { Property = p, Cell = Cell(p), Stock = F(Get(stock, p)) }).ToList();
+
+        string Note(string p) => Da2Executable.DifficultyFullPrecision(p) ? "" : "Rounded (upper half of a float).";
+        var factors = new[]
+        {
+            (nameof(Da2Difficulty.TwoPlayerHp), "Monster HP ×"), (nameof(Da2Difficulty.TwoPlayerDamage), "Monster damage ×"),
+            (nameof(Da2Difficulty.TwoPlayerXp), "Monster XP rating ×"), (nameof(Da2Difficulty.BossTwoPlayer), "Boss HP ×")
+        }.Select(f => new Da2FactorRow { Property = f.Item1, Name = f.Item2, Cell = Cell(f.Item1), Stock = F(Get(stock, f.Item1)), Note = Note(f.Item1) }).ToList();
+
+        // the loot factors of two players counted: the pile chance is a rule, gold and the drop chance are doubled by an add
+        var piles = Da2Executable.Setting("loot.twoPlayerPiles");
+        if (_settingCells.TryGetValue(piles.Key, out var pileCell))
+            factors.Add(new Da2FactorRow { Setting = piles, Name = piles.Name, Cell = pileCell, Stock = F(Exe.Stock().GetSetting(piles)), Note = piles.Note });
+        factors.Add(new Da2FactorRow { Name = "Gold per pile ×", Cell = new Da2Cell("2", editable: false), Stock = "2", Note = "Fixed in the code (the gold scale is added to itself)." });
+        factors.Add(new Da2FactorRow { Name = "Drop chance ×", Cell = new Da2Cell("2", editable: false), Stock = "2", Note = "Fixed in the code; a potion's chance is twice the drop chance." });
+        TwoPlayer = factors;
         OnPropertyChanged(nameof(Difficulty));
         OnPropertyChanged(nameof(TwoPlayer));
         RefreshPredictions();
     }
 
+    /// <summary>Puts the rules (kill XP, drops, curves, potions, Ransack) in their boxes.</summary>
+    public void LoadRules(IReadOnlyDictionary<string, float> values)
+    {
+        var stock = Exe.Stock();
+        _settingCells.Clear();
+        _settingExact.Clear();
+        foreach (var s in Da2Executable.Settings)
+        {
+            _settingExact[s.Key] = values[s.Key];
+            var cell = new Da2Cell(SettingText(s, values[s.Key]), editable: true);
+            cell.Changed += (_, _) => RefreshPredictions();
+            _settingCells[s.Key] = cell;
+        }
+
+        Da2FactorRow Row(Da2Setting s) => new()
+        {
+            Setting = s, Name = s.Name, Cell = _settingCells[s.Key], Stock = SettingText(s, stock.GetSetting(s)),
+            Note = s.Note + (s.Kind == Da2SettingKind.Float && !s.FullPrecision ? (s.Note.Length > 0 ? " " : "") + "Rounded (upper half of a float)." : "")
+        };
+
+        List<Da2FactorRow> Group(string g) => Da2Executable.Settings.Where(s => s.Group == g).Select(Row).ToList();
+        KillXp = Group(Da2Executable.GroupKillXp);
+        XpBonuses = Group(Da2Executable.GroupXpBonus);
+        DropRules = Group(Da2Executable.GroupDrops);
+        PotionRules = Group(Da2Executable.GroupPotions);
+        RansackRules = Group(Da2Executable.GroupRansack);
+        CurveRules = new[] { "gold.scale", "gold.extreme", "gold.extremeAct1", "value.scale", "value.extreme", "value.extremeAct1" }
+            .Select(k => Row(Da2Executable.Setting(k))).ToList();
+        CurveRules = CurveRules.Select(r => new Da2FactorRow
+        {
+            Setting = r.Setting, Cell = r.Cell, Stock = r.Stock, Note = r.Note,
+            Name = (r.Setting!.Group == Da2Executable.GroupGold ? "Gold: " : "Item value: ") + r.Name
+        }).ToList();
+
+        Da2Cell C(string key) => _settingCells[key];
+        var none = new Da2Cell("0", editable: false);
+        Curves = new List<Da2CurveRow>
+        {
+            new() { Name = "Act 1", GoldOffset = none, GoldPerLevel = C("gold.act1PerLevel"), GoldBase = C("gold.act1Base"),
+                ValueOffset = none, ValuePerLevel = C("value.act1PerLevel"), ValueBase = C("value.act1Base") },
+            new() { Name = "Act 2", GoldOffset = C("gold.act2Offset"), GoldPerLevel = C("gold.act23PerLevel"), GoldBase = C("gold.act23Base"),
+                ValueOffset = C("value.act2Offset"), ValuePerLevel = C("value.act2PerLevel"), ValueBase = C("value.act2Base") },
+            new() { Name = "Act 3", GoldOffset = C("gold.act3Offset"), GoldPerLevel = C("gold.act23PerLevel"), GoldBase = C("gold.act23Base"),
+                ValueOffset = C("value.act3Offset"), ValuePerLevel = C("value.act34PerLevel"), ValueBase = C("value.act34Base") },
+            new() { Name = "Act 4", GoldOffset = C("gold.act4Offset"), GoldPerLevel = C("gold.act4PerLevel"), GoldBase = C("gold.act4Base"),
+                ValueOffset = C("value.act4Offset"), ValuePerLevel = C("value.act34PerLevel"), ValueBase = C("value.act34Base") },
+        };
+        OnPropertyChanged(nameof(KillXp));
+        OnPropertyChanged(nameof(XpBonuses));
+        OnPropertyChanged(nameof(DropRules));
+        OnPropertyChanged(nameof(PotionRules));
+        OnPropertyChanged(nameof(RansackRules));
+        OnPropertyChanged(nameof(CurveRules));
+        OnPropertyChanged(nameof(Curves));
+    }
+
+    /// <summary>A rule's value as its box shows it (percentages with two decimals).</summary>
+    public static string SettingText(Da2Setting s, float v) => s.IsPercent ? v.ToString("0.##", Inv) : F(v);
+
+    private void LoadDrops()
+    {
+        _dropCells.Clear();
+        _dropOwners.Clear();
+        Drops = Exe.GetDrops().Select(d =>
+        {
+            var cells = new Da2Cell[4];
+            for (var i = 0; i < 4; i++)
+            {
+                if (d.Constants[i] is { } k)
+                {
+                    if (!_dropCells.TryGetValue(k, out var cell))
+                    {
+                        cell = new Da2Cell(F(d.Values[i]), editable: true);
+                        cell.Changed += (_, _) => RefreshDrops();
+                        _dropCells[k] = cell;
+                        _dropOwners[k] = d.Creature;
+                    }
+
+                    cells[i] = cell;
+                }
+                else
+                {
+                    cells[i] = new Da2Cell(float.IsNaN(d.Values[i]) ? "varies" : F(d.Values[i]), editable: false);
+                }
+            }
+
+            return new Da2DropRow { Source = d, Cells = cells };
+        }).ToList();
+        OnPropertyChanged(nameof(Drops));
+    }
+
+    public void LoadQuality(float[][] table)
+    {
+        Quality = table.Select((r, i) => new Da2QualityRow { Level = i, Poor = F(r[0]), Plain = F(r[1]) }).ToList();
+        OnPropertyChanged(nameof(Quality));
+    }
+
+    /// <summary>Back to the game's own loot rules, drop values and quality table (the other tabs stay).</summary>
+    public void StockLoot()
+    {
+        var stock = Exe.Stock();
+        var values = TypedSettings();
+        foreach (var s in Da2Executable.Settings.Where(s => s.Group is Da2Executable.GroupDrops or Da2Executable.GroupGold
+                     or Da2Executable.GroupValue or Da2Executable.GroupPotions or Da2Executable.GroupRansack))
+            values[s.Key] = stock.GetSetting(s);
+        foreach (var (k, cell) in _dropCells) cell.Text = F(stock.ConstantValue(k));
+        LoadRules(values);
+        LoadDifficulty(TypedDifficulty());
+        LoadQuality(stock.GetQualityTable());
+        RefreshPredictions();
+    }
+
+    /// <summary>Back to the game's difficulty scaling and two-player factors (the pile chance included).</summary>
+    public void StockDifficulty()
+    {
+        var stock = Exe.Stock();
+        var piles = Da2Executable.Setting("loot.twoPlayerPiles");
+        _settingCells[piles.Key].Text = SettingText(piles, stock.GetSetting(piles));
+        LoadDifficulty(stock.GetDifficulty());
+    }
+
+    /// <summary>Back to the game's kill XP rules and bonuses.</summary>
+    public void StockXpRules()
+    {
+        var stock = Exe.Stock();
+        foreach (var s in Da2Executable.Settings.Where(s => s.Group is Da2Executable.GroupKillXp or Da2Executable.GroupXpBonus))
+            _settingCells[s.Key].Text = SettingText(s, stock.GetSetting(s));
+    }
+
     private static float Get(Da2Difficulty d, string property) => (float)typeof(Da2Difficulty).GetProperty(property)!.GetValue(d)!;
     private static void Set(Da2Difficulty d, string property, float v) => typeof(Da2Difficulty).GetProperty(property)!.SetValue(d, v);
 
-    // ═══════════════════════════════ predictions (Monsters tab) ═══════════════════════════════
+    // ═══════════════════════════════ room in the levels (Creatures tab) ═══════════════════════════════
+
+    private void Placements_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems != null)
+        {
+            foreach (Da2PlacementRow r in e.NewItems) r.PropertyChanged += Placement_PropertyChanged;
+        }
+
+        if (e.OldItems != null)
+        {
+            foreach (Da2PlacementRow r in e.OldItems) r.PropertyChanged -= Placement_PropertyChanged;
+        }
+
+        RefreshRoom();
+    }
+
+    private void Placement_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(Da2PlacementRow.Level) or nameof(Da2PlacementRow.Include)) RefreshRoom();
+    }
+
+    /// <summary>For each placed creature: the creature-sized objects of its level at load with the ones placed there.</summary>
+    public void RefreshRoom()
+    {
+        var placed = Placements.Where(p => p.Include).GroupBy(p => p.Level.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+        foreach (var p in Placements)
+        {
+            var b = Da2LevelBudget.Find(p.Level.Trim());
+            if (b == null)
+            {
+                p.Room = p.Level.Trim().Length == 0 ? "" : "level not in the scan";
+                continue;
+            }
+
+            var n = b.CreatureSized + (placed.TryGetValue(p.Level.Trim(), out var k) ? k : 0);
+            p.Room = $"{n} of {Da2LevelBudget.CreatureSlots}" +
+                     (n > Da2LevelBudget.CreatureSlots ? " — FULL: crashes" : n > Da2LevelBudget.SafeCreatureSlots ? " — too tight" : "");
+        }
+    }
+
+    // ═══════════════════════════════ predictions ═══════════════════════════════
 
     private Da2LevelRow? _predictionLevel;
-    private int _predictionDifficulty = 1;
     private bool _predictionTwoPlayers = true;
+    private Da2LevelRow? _lootLevel;
+    private int _lootDifficulty = 1;
 
     public Da2LevelRow? PredictionLevel
     {
         get => _predictionLevel ?? Levels.FirstOrDefault(l => l.Name == "trollb");
-        set { _predictionLevel = value; RefreshPredictions(); }
-    }
-
-    public int PredictionDifficulty
-    {
-        get => _predictionDifficulty;
-        set { _predictionDifficulty = Math.Clamp(value, 0, 3); RefreshPredictions(); }
+        set
+        {
+            if (value == null) return; // the combo box clears it while its list is replaced
+            _predictionLevel = value;
+            RefreshPredictions();
+        }
     }
 
     public bool PredictionTwoPlayers
@@ -669,9 +992,42 @@ public sealed class Da2TuningModel : ObservableObject
         set { _predictionTwoPlayers = value; RefreshPredictions(); }
     }
 
+    /// <summary>The level of the loot example (Items ▸ Loot).</summary>
+    public Da2LevelRow? LootLevel
+    {
+        get => _lootLevel ?? Levels.FirstOrDefault(l => l.Name == "trollb");
+        set
+        {
+            if (value == null) return;
+            _lootLevel = value;
+            RefreshPredictions();
+        }
+    }
+
+    public int LootDifficulty
+    {
+        get => _lootDifficulty;
+        set { _lootDifficulty = Math.Clamp(value, 0, 3); RefreshPredictions(); }
+    }
+
+    // the kill XP example (XP per Level tab)
+    /// <summary>The XP rating of the example: the creature's with two or three players (a Trollbark goblin: 98).</summary>
+    private string _exampleRating = "98", _exampleLevel = "1";
+    private int _examplePlayers = 3;
+
+    public string ExampleRating { get => _exampleRating; set { _exampleRating = value; RefreshPredictions(); } }
+    public string ExampleLevel { get => _exampleLevel; set { _exampleLevel = value; RefreshPredictions(); } }
+
+    /// <summary>0-2 for one to three players.</summary>
+    public int ExamplePlayers { get => _examplePlayers - 1; set { _examplePlayers = Math.Clamp(value + 1, 1, 3); RefreshPredictions(); } }
+
+    private string _xpExample = "", _lootExample = "";
+    public string XpExample { get => _xpExample; private set => SetProperty(ref _xpExample, value); }
+    public string LootExample { get => _lootExample; private set => SetProperty(ref _lootExample, value); }
+
     private static bool TryF(string? text, out float v) => float.TryParse(text?.Trim(), NumberStyles.Float, Inv, out v);
 
-    /// <summary>The difficulty factors as typed (the stock ones where a box doesn't hold a number).</summary>
+    /// <summary>The difficulty factors as typed (the executable's where a box doesn't hold a number).</summary>
     private Da2Difficulty TypedDifficulty()
     {
         var d = Exe.GetDifficulty();
@@ -683,9 +1039,21 @@ public sealed class Da2TuningModel : ObservableObject
         return d;
     }
 
+    /// <summary>The rules as typed (the executable's where a box doesn't hold a number).</summary>
+    private Dictionary<string, float> TypedSettings()
+    {
+        var values = Exe.GetSettings();
+        foreach (var (k, cell) in _settingCells)
+        {
+            if (TryF(cell.Text, out var v)) values[k] = v;
+        }
+
+        return values;
+    }
+
     public void RefreshPredictions()
     {
-        if (Levels.Count == 0 || _difficultyCells.Count == 0) return;
+        if (Levels.Count == 0 || _difficultyCells.Count == 0 || _settingCells.Count == 0) return;
         var level = PredictionLevel;
         var l = level != null && TryF(level.MonsterLevel, out var lv) ? lv : 1f;
         var set = level?.FormulaSet ?? 1;
@@ -697,14 +1065,18 @@ public sealed class Da2TuningModel : ObservableObject
             for (var i = 0; i < 5; i++) ok &= TryF(row.Cells[i].Text, out m[i]);
             if (!ok)
             {
-                row.PredictedHp = row.PredictedDamage = row.PredictedXp = "";
+                row.EasyHp = row.NormalHp = row.HardHp = row.ExtremeHp = row.Damage = row.XpRating = "";
                 continue;
             }
 
-            var s = Da2Executable.Predict(m, l, set, _predictionDifficulty, _predictionTwoPlayers, d);
-            row.PredictedHp = s.HpMin == s.HpMax ? s.HpMin.ToString(Inv) : $"{s.HpMin}-{s.HpMax}";
-            row.PredictedDamage = "1-" + s.DamageMax.ToString(Inv);
-            row.PredictedXp = s.XpRating.ToString("0.#", Inv);
+            var s = Enumerable.Range(0, 4).Select(k => Da2Executable.Predict(m, l, set, k, _predictionTwoPlayers, d)).ToArray();
+            static string Hp(Da2CreatureStats x) => x.HpMin == x.HpMax ? x.HpMin.ToString(Inv) : $"{x.HpMin}-{x.HpMax}";
+            row.EasyHp = Hp(s[0]);
+            row.NormalHp = Hp(s[1]);
+            row.HardHp = Hp(s[2]);
+            row.ExtremeHp = Hp(s[3]);
+            row.Damage = string.Join(" / ", s.Select(x => x.DamageMax.ToString(Inv)));
+            row.XpRating = s[1].XpRating.ToString("0.#", Inv) + " / " + s[3].XpRating.ToString("0.#", Inv);
         }
 
         foreach (var b in Bosses)
@@ -722,6 +1094,78 @@ public sealed class Da2TuningModel : ObservableObject
             b.Hard = At(2);
             b.Extreme = At(3);
         }
+
+        var rules = TypedSettings();
+        RefreshXpExample(rules);
+        RefreshDrops(rules);
+        RefreshLootExample(rules);
+    }
+
+    private void RefreshXpExample(Dictionary<string, float> r)
+    {
+        if (!TryF(_exampleRating, out var rating) || rating < 0 ||
+            !int.TryParse(_exampleLevel?.Trim(), NumberStyles.Integer, Inv, out var level) || level < 1)
+        {
+            XpExample = "";
+            return;
+        }
+
+        // the rating typed is the creature's with two or three players; alone the game doesn't multiply it
+        var twoPlayerXp = TypedDifficulty().TwoPlayerXp;
+        var solo = twoPlayerXp > 0 ? rating / twoPlayerXp : rating;
+        int Kill(int players) => Da2Executable.KillXp(players == 1 ? solo : rating, level * players, players,
+            r["xp.exponent"], r["xp.share"], r["xp.shareEach"]);
+        int Troll(int players) => Da2Executable.KillXp(players == 1 ? solo : rating, level * players, players,
+            r["xp.trollExponent"], 1f, r["xp.trollShareEach"]);
+        var n = _examplePlayers;
+        string Each(int p) => p == 1 ? $"one player (rated {solo:0.#}): {Kill(1):N0}" : $"{(p == 2 ? "two" : "three")} players: {Kill(p):N0} each";
+        var others = Enumerable.Range(1, 3).Where(p => p != n).Select(Each);
+        XpExample = $"{(n == 1 ? $"Alone (rated {solo:0.#}) the player gets" : "Each of the " + n + " players gets")} {Kill(n):N0} XP for the kill " +
+                    $"({string.Join("; ", others)}). A troll rated the same pays {Troll(n):N0}{(n == 1 ? "" : " each")}. Class and item bonuses come on top.";
+    }
+
+    private void RefreshDrops() => RefreshDrops(TypedSettings());
+
+    private void RefreshDrops(Dictionary<string, float> r)
+    {
+        var low = r["loot.lowChance"];
+        foreach (var row in Drops)
+        {
+            if (!TryF(row.Cells[3].Text, out var chance))
+            {
+                row.OnePlayer = row.MorePlayers = "";
+                continue;
+            }
+
+            var c = chance < 1f ? chance * low : chance;
+            static string P(float v) => (Math.Clamp(v, 0f, 1f) * 100).ToString("0.#", Inv) + " %";
+            row.OnePlayer = $"item {P(c)} · potion {P(c + c)}";
+            row.MorePlayers = $"item {P(c + c)} · potion {P(4 * c)}";
+        }
+    }
+
+    private void RefreshLootExample(Dictionary<string, float> r)
+    {
+        var level = LootLevel;
+        if (level == null || !TryF(level.MonsterLevel, out var l))
+        {
+            LootExample = "";
+            return;
+        }
+
+        var flags = level.Source.Flags;
+        var gold = Da2Executable.LevelLootValue(k => r[k], true, l, flags, _lootDifficulty);
+        var value = Da2Executable.LevelLootValue(k => r[k], false, l, flags, _lootDifficulty);
+        // the goblin: gold scale 2.0 (x 2 with two players counted), quality 1.8
+        var pile = r["loot.goldFactor"] * gold * 2f * 2f;
+        var lo = (int)(r["loot.pileBase"] * pile);
+        var hi = (int)((r["loot.pileBase"] + r["loot.pileSpread"] - 1) * pile);
+        var item = r["loot.itemValue"] * value;
+        LootExample = string.Create(Inv,
+            $"{level.Name} (act {level.Act}, monster level {l:0.##}) on {Da2Executable.DifficultyNames[_lootDifficulty]}: gold value {gold:0.###}, " +
+            $"item value {value:0.###}. A goblin's gold pile with two or three players: {lo:N0}–{hi:N0} gold; an item of a plain roll " +
+            $"is worth about {item * r["loot.itemFloor"]:N0}–{item * (r["loot.itemFloor"] + r["loot.itemSpread"]):N0} gold (× {r["loot.qualityLow"]:0.##} for a " +
+            $"poor roll, × {r["loot.qualityHigh"]:0.##} for a good one).");
     }
 
     // ═══════════════════════════════ applying ═══════════════════════════════
@@ -872,11 +1316,39 @@ public sealed class Da2TuningModel : ObservableObject
             Set(d, p, ParseF(cell.Text, Da2Executable.DescribeFactor(p)));
         exe.SetDifficulty(d);
 
+        var rules = new Dictionary<string, float>();
+        foreach (var s in Da2Executable.Settings)
+            rules[s.Key] = ParseF(_settingCells[s.Key].Text, $"{s.Group}, {s.Name}");
+        // a box left as it was keeps the exact value it was filled with (a percentage shows only two decimals)
+        foreach (var s in Da2Executable.Settings)
+        {
+            if (_settingExact.TryGetValue(s.Key, out var exact) && _settingCells[s.Key].Text == SettingText(s, exact)) rules[s.Key] = exact;
+        }
+
+        exe.SetSettings(rules);
+
+        foreach (var (constant, cell) in _dropCells)
+        {
+            var argument = Da2Executable.DropArgument(constant);
+            exe.SetDropValue(constant, ParseF(cell.Text, $"{_dropOwners[constant]}, {Da2Drop.Arguments[argument].ToLowerInvariant()}"));
+        }
+
+        foreach (var q in Quality)
+            exe.SetQualityRow(q.Level, ParseF(q.Poor, $"Quality level {q.Level}, poor"), ParseF(q.Plain, $"Quality level {q.Level}, plain"));
+
         // show what is written: a constant without an ori keeps only the upper half of the float (2500 -> 2496)
         foreach (var (constant, cell) in _constantCells) cell.Show(F(exe.ConstantValue(constant)));
         foreach (var b in Bosses) b.Hp = F(exe.ConstantValue(b.Source.Constant));
         var written = exe.GetDifficulty();
         foreach (var (p, cell) in _difficultyCells) cell.Show(F(Get(written, p)));
+        var writtenRules = exe.GetSettings();
+        foreach (var s in Da2Executable.Settings)
+        {
+            _settingExact[s.Key] = writtenRules[s.Key];
+            _settingCells[s.Key].Show(SettingText(s, writtenRules[s.Key]));
+        }
+
+        foreach (var (constant, cell) in _dropCells) cell.Show(F(exe.ConstantValue(constant)));
         RefreshPredictions();
     }
 

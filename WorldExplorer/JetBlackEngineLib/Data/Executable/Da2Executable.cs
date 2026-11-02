@@ -17,6 +17,10 @@
 //                              base cost), the four DA1 spells' price tables
 //   Da2Executable.Items.cs     base items (value, weight, armour), levels (monster level)
 //   Da2Executable.Monsters.cs  difficulty and two-player factors, creature multipliers, boss HP
+//   Da2Executable.Rules.cs     kill XP shares, XP bonuses, drop rolls, gold / item value curves,
+//                              potions, Ransack, the two-player pile chance
+//   Da2Executable.Loot.cs      each creature's drop values (Da2LootData), the quality table
+//   (Da2LevelBudget: the stock levels' object pools and heap at load, read from the game's files)
 //
 // XP per level, 0x313920: 41 int32. Entry n (0-based) is the total XP for level n + 1 (level 1 = 0);
 //   giveXP 0x2B8468 compares the XP with entry[level] while the level byte (record + 85) is below 40;
@@ -244,6 +248,14 @@ public sealed partial class Da2Executable
         if (DifficultyConstants.Any(c => Any(c.Lui, 4) || (c.Ori != 0 && Any(c.Ori, 4)))) parts.Add("difficulty");
         if (Da2MonsterData.Constants.Any(c => Any(c.Lui, 4) || (c.Ori != 0 && Any(c.Ori, 4)))) parts.Add("creature multipliers");
         if (Da2MonsterData.BossHp.Any(b => Any(b.Lui, 4) || (b.Ori != 0 && Any(b.Ori, 4)))) parts.Add("boss hit points");
+        bool AnySetting(params string[] groups) =>
+            Settings.Where(s => groups.Contains(s.Group)).Any(s => SettingWords(s).Any(a => Any(a, 4)));
+        if (AnySetting(GroupKillXp, GroupXpBonus)) parts.Add("XP rules");
+        var drops = Da2LootData.Constants.Count(c => Any(c.Lui, 4) || (c.Ori != 0 && Any(c.Ori, 4)));
+        if (drops > 0) parts.Add(Plural(drops, "creature drop value", "creature drop values"));
+        if (AnySetting(GroupDrops, GroupGold, GroupValue, GroupTwoPlayers) || Any(QualityTable, 12 * QualityRows)) parts.Add("loot rules");
+        if (AnySetting(GroupPotions)) parts.Add("potions");
+        if (AnySetting(GroupRansack)) parts.Add("Ransack");
         return parts.Count == 0 ? "nothing" : string.Join(", ", parts);
     }
 
