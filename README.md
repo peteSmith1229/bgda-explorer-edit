@@ -64,8 +64,10 @@ Alliance II files are read with the Dark Alliance formats for now.
 - **Tools** for the selected game are in the Tools menu, the Tools drop-down on the toolbar and the start page.
   For Dark Alliance: Executable Tuning (XP per level, starting stats, feats and spells, items, monster HP,
   three-player co-op and difficulty scaling, saved to a copy of `SLES_506.72`), the Save Game Editor (memory-card
-  exports, `.psu`), and Edit Script Rewards and Insert Reward at Call Site, which work on the selected script. Games
-  without tools yet say so.
+  exports, `.psu`), and Edit Script Rewards and Insert Reward at Call Site, which work on the selected script. For
+  Dark Alliance II: Executable Tuning, which makes the PCSX2 cheat file of the three-player mod, Build
+  Three-Player ISO, and the same two script tools (Dark Alliance II's level scripts have Dark Alliance's format and
+  reward commands). Games without tools yet say so.
 - **Edit items** in Executable Tuning's Items tab: every weapon, armour piece, potion, ring and amulet (damage,
   armour, price, weight, slot, stance, models and the 64 property bits, with the game's own damage and price
   formulas previewed), the item models, what each shop sells, material multipliers, the enchant glow and the
@@ -89,6 +91,47 @@ Alliance II files are read with the Dark Alliance formats for now.
 - **Pick colours** by clicking a colour box: a glow style's halo or core on the Glow tab, or a player's automap
   marker on the Three Players tab. Drag in the square and the hue bar, type red, green and blue or a `#RRGGBB`
   value, or click a ready-made colour; OK puts the colour in the red, green and blue boxes.
+- **Tune Dark Alliance II and its three-player mod** with Dark Alliance II's Executable Tuning: open
+  `SLUS_206.75` (USA v1.03, PCSX2 CRC B0859096) or the game's disc image. It has Dark Alliance's tabs, in the same
+  order and layout, and two more. It saves the PCSX2 cheat file `SLUS-20675_B0859096.pnach` (in PCSX2's cheats
+  folder, e.g. `Documents\PCSX2\cheats`). PCSX2 finds a cheat file by the executable's CRC, so the executable is
+  never changed: the edits to the game's tables become one more group of the cheat file, `[WorldExplorer -
+  executable tuning]`, written once when the game boots. The cheat file of the last session (or the one in PCSX2's
+  cheats folder) is opened with it; saving over a file keeps a `.bak` copy of it as it was, and groups that aren't
+  the mod's are kept as they are. Tick the groups in PCSX2's cheat list.
+  - **XP per Level**: the XP table, how a kill's XP is shared out (exponent, share, each player's part, and the
+    own rules of Lyran, trolls and owlbears) with a worked example for one to three players, and the XP bonuses
+    (Vahn and Adrianna, Drizzt and Artemis, the equipment's XP bonus).
+  - **Starting Stats**: the ability scores of the ten classes, the DA1 heroes' rows included.
+  - **Feats & Spells**: the ability templates (energy, damage, colours), the class feat tables (ranks, base cost
+    and the DA1 spells' price tables), and the feat prices of the mod's feat group.
+  - **Items**: the base items (weight, value, armour); the mod's shops group (the random stock of every visit);
+    and **Loot**: every creature's drop values (gold scale, pile chance, quality, drop chance — editable where the
+    game's code holds the value on its own, with the item and potion chance per kill), how a drop is rolled, the
+    quality table, the gold and item value of a level by act (with an example for any level and difficulty),
+    potions and Borador's Ransack.
+  - **Monster HP**: each creature's HP, armour, damage, attack and XP multipliers with the HP they give on every
+    difficulty in a chosen level (one player, or two and three), its damage and XP rating, and the fixed HP of the
+    bosses. Most of these values keep only the upper half of a float in the code: the boxes show the value as
+    written when you save.
+  - **Three Players**: the mod's groups — `[3 Player mod]` itself, the HUD sizes (any from 25 to 100 %), the
+    `[P3 character - …]` groups, the DA1 heroes' shouts in sound memory, the test helpers (feat points, gold, the
+    Trade Way goblins with player spells) — the two-player factors three-player games use (the mod keeps the
+    game's player count at 2: monster HP, damage, XP rating and boss HP, and the loot factors) and the difficulty
+    scaling. With the default settings the file is build 51 of the mod byte for byte; a file of an older build (16,
+    17 or 20 to 50) is recognised, its settings are read, and it is saved as build 51.
+  - **Creatures**: creatures placed in a level when it first loads, one group each: build 51's DA1 bosses in
+    Trollbark Forest, or others (up to 24: level, creature type, position, facing and placement properties such as
+    `hpscale=2`), with the creature slots the level then uses at load. Any set other than build 51's bosses moves
+    the spawn table; that layout has been checked in an emulator, not yet in the game.
+  - **Levels**: the monster level of every level, and what each level uses when it loads in the stock game: its
+    creatures, the 256 creature-sized object slots and the room left for more creatures, the 1,280 small objects,
+    the free memory with the heaviest party and the lumps loaded (read from the game's level files).
+- **Build the [3P] disc image** of Dark Alliance II with Build Three-Player ISO: it copies the original image (or
+  updates the copy made before) and adds to its `BG\0MOD` folder the multitap driver `MTAPMAN.IRX` from Champions of
+  Norrath and the Dark Alliance 1 files of the DA1 heroes and bosses (`HUMAN.LMP`, `DWARF.LMP`, `MOUTH.VAT` as
+  `DA1MOUTH.VAT`, `LILVARRA.LMP`, `MINOTAUR.LMP`). The files are found in folders of extracted disc files or picked
+  by hand; the original image is only read.
 - **Save** with Ctrl+S. Edited items are marked with a dot in the explorer and the title bar shows `●` until
   the file is saved; you are asked before unsaved changes would be lost.
 - Level textures for a GOB come from the `.TEX` file with the same name next to it (e.g. `TAVERN.TEX`). They
@@ -105,7 +148,10 @@ Requires Windows and the .NET 10 SDK. Open `WorldExplorer/WorldExplorer.sln` in 
 
 `dotnet test WorldExplorer/WorldExplorer.sln` runs the library tests. The executable, item, script, cutscene,
 archive and text tests use the game files in `Test_files` (`SLES_506.72`, `TAVERN.GOB`, `TEST.GOB`,
-`CUTTOWN.GOB`, `GTEXT.LMP`, `TMAN2.LMP`, `INVENTRY.LMP`) and are skipped if those are missing.
+`CUTTOWN.GOB`, `GTEXT.LMP`, `TMAN2.LMP`) and are skipped if those are missing. The Dark Alliance II tests use
+`Test_files/SLUS_206.75` (USA v1.03), `Test_files/Da2Builds` (older builds of the mod's cheat file,
+`da2_3p_build16.pnach` …) and `Test_files/Da2Data` (level files of the game, `BG/DATA/*.gob`); they aren't
+included, and those tests are skipped without them.
 
 ## Credits:
 
