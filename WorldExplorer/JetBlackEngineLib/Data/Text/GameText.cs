@@ -156,6 +156,9 @@ public sealed class GameText
     /// <summary>A text in a language (0 English ... 4 Spanish), or null when the key isn't there.</summary>
     public string? Get(string key, int language = 0) => _languages[language].Get(key);
 
+    /// <summary>Every entry of a language (0 English ... 4 Spanish), in the order of its file.</summary>
+    public IReadOnlyList<(string Key, string Text)> Entries(int language) => _languages[language].Entries;
+
     /// <summary>The key of an item's name: "longsword" gives "longsword_name".</summary>
     public static string NameKey(string itemName) => itemName + "_name";
 
@@ -224,6 +227,30 @@ public sealed class GameText
     {
         if (string.IsNullOrEmpty(text) || text.Contains('\0')) throw new ArgumentException($"Enter the text of {key}.");
         SetText(key, text, null);
+    }
+
+    /// <summary>
+    /// Sets the text of <paramref name="key"/> in one language (0 English ... 4 Spanish): the first entry with the key
+    /// changes, or one is added at the end of that language's file. Other languages stay as they are.
+    /// </summary>
+    public void SetLanguageText(int language, string key, string text)
+    {
+        if (language < 0 || language >= _languages.Length) throw new ArgumentOutOfRangeException(nameof(language));
+        if (string.IsNullOrEmpty(key) || key.Any(c => c <= ' ' || c > '~'))
+            throw new ArgumentException($"\"{key}\" isn't a key: use letters, digits and punctuation, without spaces.");
+        if (string.IsNullOrEmpty(text) || text.Contains('\0')) throw new ArgumentException($"Enter the text of {key}.");
+        if (_languages[language].Get(key) == text) return;
+        _languages[language].Set(key, text);
+        _changed[language] = true;
+    }
+
+    /// <summary>Takes every entry with <paramref name="key"/> out of one language; true when there was one.</summary>
+    public bool RemoveLanguageText(int language, string key)
+    {
+        if (language < 0 || language >= _languages.Length) throw new ArgumentOutOfRangeException(nameof(language));
+        if (_languages[language].Entries.RemoveAll(e => e.Key == key) == 0) return false;
+        _changed[language] = true;
+        return true;
     }
 
     private void SetText(string key, string text, IReadOnlyList<string>? marks)

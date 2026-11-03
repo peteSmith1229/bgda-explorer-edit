@@ -263,16 +263,33 @@ public class LmpFile
     }
 
     /// <summary>
-    /// True when the directory is in name order, compared byte by byte as the
-    /// game does. The game finds an entry by binary search, so its archives are.
+    /// The name the game sorts and finds an entry by. When it loads an archive (FUN_001390E8) the game drops
+    /// the other region's pictures and cuts "pal_" (PAL) or "ntsc_" (NTSC) off the names of its own before it
+    /// searches, so "ntsc_back.tex" and "pal_back.tex" sit where "back.tex" sorts.
+    /// </summary>
+    public static string GameSortKey(string name) =>
+        name.StartsWith("ntsc_", StringComparison.Ordinal) ? name[5..] :
+        name.StartsWith("pal_", StringComparison.Ordinal) ? name[4..] : name;
+
+    /// <summary>
+    /// <paramref name="names"/> in the game's order: by <see cref="GameSortKey"/>, byte by byte, names with the
+    /// same key (an ntsc_ and pal_ pair) keeping their order.
+    /// </summary>
+    public static List<string> InGameOrder(IEnumerable<string> names) =>
+        names.OrderBy(GameSortKey, StringComparer.Ordinal).ToList();
+
+    /// <summary>
+    /// True when the directory is in the game's name order (<see cref="GameSortKey"/>, compared byte by byte as
+    /// the game does). The game finds an entry by binary search, so its archives are.
     /// </summary>
     public bool IsDirectorySorted()
     {
         string? previous = null;
         foreach (var name in Directory.Keys)
         {
-            if (previous != null && string.CompareOrdinal(previous, name) > 0) return false;
-            previous = name;
+            var key = GameSortKey(name);
+            if (previous != null && string.CompareOrdinal(previous, key) > 0) return false;
+            previous = key;
         }
 
         return true;
@@ -288,8 +305,7 @@ public class LmpFile
         EnsureDirectory();
         var names = Directory.Keys.Where(n => !PendingDeletions.Contains(n)).ToList();
         names.AddRange(PendingAdditions.Select(a => a.Name).Where(n => !PendingDeletions.Contains(n)));
-        if (IsDirectorySorted()) names.Sort(string.CompareOrdinal);
-        return names;
+        return IsDirectorySorted() ? InGameOrder(names) : names;
     }
 
     /// <summary>Why <paramref name="name"/> can't name an entry, or null when it can.</summary>

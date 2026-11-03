@@ -106,7 +106,8 @@ public static class ItemBits
         Blunt = 16, Masterwork = 21, Stackable = 22, SuperHaste = 23, UniqueName = 24,
         NoRandomLoot = 29, Protection = 31, Dexterity = 32, Constitution = 33, Strength = 34,
         Intelligence = 35, Regeneration = 36, Rejuvenation = 37, Jeweled = 38, Fine = 39,
-        Serrated = 40, Adamantine = 41, Mithril = 42, Metal = 43, Rusty = 44;
+        Serrated = 40, Adamantine = 41, Mithril = 42, Metal = 43, Rusty = 44,
+        Corrosive = 59, CorrosiveBurst = 60;
 
     /// <summary>Every bit, in bit order (bits 0-3 and 26-28 are listed once each).</summary>
     public static readonly IReadOnlyList<ItemBit> All = new[]
@@ -182,8 +183,15 @@ public static class ItemBits
         new ItemBit(56, ItemBitKind.Kind, "One-handed melee", null, null, "One-handed melee weapons."),
         new ItemBit(57, ItemBitKind.Kind, "Two-handed melee", null, null, "Two-handed melee weapons."),
         new ItemBit(58, ItemBitKind.Kind, "Warhammer", null, null, "Only the warhammer: what Clangeddin's Fist needs."),
-        new ItemBit(59, ItemBitKind.Unknown, "Bit 59", null, null, "Not set on any item."),
-        new ItemBit(60, ItemBitKind.Unknown, "Bit 60", null, null, "Not set on any item."),
+        new ItemBit(Corrosive, ItemBitKind.Modifier, "Corrosive", "acid", "it_corrosive",
+            "Every hit does acid damage more (1-6 with the tested settings), as Flaming does fire: halved when the target " +
+            "resists acid, nothing when it is immune. Value and power as Flaming. Unused by the game itself: WorldExplorer " +
+            "puts the Corrosive patch in when it saves an executable that uses it (Corrosive page)."),
+        new ItemBit(CorrosiveBurst, ItemBitKind.Modifier, "Corrosive Burst", "acidburst", "it_corrosiveburst",
+            "Acid on every hit as Corrosive, and on a critical hit more acid for each step of the multiplier, the acid " +
+            "arrow's splash and poison (1-10 and 5 s with the tested settings), as Flaming Burst sets the target alight. " +
+            "Value and power as Flaming Burst. Unused by the game itself: WorldExplorer puts the Corrosive patch in when it " +
+            "saves an executable that uses it (Corrosive page)."),
         new ItemBit(61, ItemBitKind.Unknown, "Bit 61", null, null, "Not set on any item."),
         new ItemBit(62, ItemBitKind.Unknown, "Bit 62", null, null, "Not set on any item."),
         new ItemBit(63, ItemBitKind.Unknown, "Bit 63", null, null, "Not set on any item.")
@@ -467,14 +475,19 @@ public static class ItemFormulas
 
     /// <summary>
     /// An item's power (FUN_00174098): drives regeneration and the value of potions and gems.
-    /// The game adds 7 when bit 0 is set, so odd enchantments count for much more.
+    /// The game adds 7 when bit 0 is set, so odd enchantments count for much more. With the Corrosive
+    /// patch, Corrosive adds 1 and Corrosive Burst 2, as Flaming and Flaming Burst do.
     /// </summary>
     public static int Power(ulong flags)
     {
         var n = ItemBits.Enchantment(flags);
         var v = n;
         if ((flags & 1) != 0) v += 7;
-        foreach (var (bit, add) in new[] { (4, 1), (5, 1), (6, 1), (7, 1), (8, 2), (9, 4), (11, 2), (12, 2), (13, 2), (14, 2), (23, 8) })
+        foreach (var (bit, add) in new[]
+                 {
+                     (4, 1), (5, 1), (6, 1), (7, 1), (8, 2), (9, 4), (11, 2), (12, 2), (13, 2), (14, 2), (23, 8),
+                     (ItemBits.Corrosive, 1), (ItemBits.CorrosiveBurst, 2)
+                 })
         {
             if (ItemBits.Has(flags, bit)) v += add;
         }
@@ -512,6 +525,8 @@ public static class ItemFormulas
             if (Has(ItemBits.IceBurst)) { low += 16; high += 32; }
             if (Has(ItemBits.ShockBurst)) { low += 48; high += 64; }
             if (Has(ItemBits.Wounding)) Both(6);
+            if (Has(ItemBits.Corrosive)) Both(6);                          // the Corrosive patch: as Flaming
+            if (Has(ItemBits.CorrosiveBurst)) { low += 8; high += 16; }    // and as Flaming Burst
             if (Has(ItemBits.SuperHaste)) { high *= 3; low *= 3; }
             if (Has(ItemBits.Speed)) { high += high * half; low += low * half; }
             var p = Pow(n, 1.1f);
@@ -527,7 +542,7 @@ public static class ItemFormulas
             if (Has(ItemBits.Keen)) v *= 1.5f;
             if (Has(ItemBits.Defence)) v *= 1.5f;
             v *= 40f;
-            if ((flags & 0x807BDF) != 0) v += 400f;
+            if ((flags & (0x807BDFUL | 1UL << ItemBits.Corrosive | 1UL << ItemBits.CorrosiveBurst)) != 0) v += 400f;
             if (Has(ItemBits.Jeweled)) v += v;
             return (int)(v * half + half);
         }
