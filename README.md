@@ -162,12 +162,12 @@ included, and those tests are skipped without them.
 
 ## Credits:
 
--bigianb (Ian Brown) - Author and progenitor of the bgda-explorer tool.
+- [bigianb](https://github.com/bigianb) (Ian Brown) - Author and progenitor of the bgda-explorer tool.
 
--BryceBarbara (Bryce Barbara) - Contributor to the bgda-explorer tool.
+- [Claude](https://www.claude.ai) (Anthropic AI) - Contributor to the reverse-engineering of the bgda-explorer tool converting the original viewer into a World editor.
 
--kran27 (Kran) - Contributor to the bgda-explorer tool.
+- [hughmcg786-spec](https://github.com/hughmcg786-spec) (hughmcg786) - Instigator for Baldur's Gate Dark Alliance 2.
 
--Claude (Anthropic AI) - Contributor to the reverse-engineering of the bgda-explorer tool converting the original viewer into a World editor.
+- [adyboi786](https://github.com/adyboi786) (adyboi786) - Reviewer and tester of the new WorldExplorer tool.
 
--peteSmith1229 - Instigator.
+- [peteSmith1229](https://github.com/peteSmith1229) (Pete Smith) - Instigator for Baldur's Gate Dark Alliance 1.
