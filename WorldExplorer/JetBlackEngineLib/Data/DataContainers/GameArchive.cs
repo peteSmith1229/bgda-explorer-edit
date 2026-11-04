@@ -20,8 +20,9 @@
 //
 // So Insert puts a new entry where its name sorts and its file just before the next entry's file;
 // every later file moves by the new file's size rounded up to 0x80, and nothing else changes. The
-// directory has to have room for one more entry before the first file. Remove takes an inserted
-// entry out and gives the archive back byte for byte. Both check the result as the game will read it
+// directory has to have room for one more entry before the first file, or (growDirectory) every file
+// first moves on by 0x80 to make that room. Remove takes an inserted entry out (and with
+// shrinkDirectory the room again) and gives the archive back byte for byte. Both check the result as the game will read it
 // (Problem): sorted in both regions, every name found by the game's search, the files in order.
 // ═══════════════════════════════════════════════════════════════════════════════
 using System;
@@ -178,10 +179,12 @@ public static class GameArchive
     /// <summary>
     /// <paramref name="data"/> with an entry <paramref name="name"/> holding <paramref name="file"/>: in the directory where its
     /// name sorts, its file just before the next entry's file (or at the end), later files moved by its size rounded up to 0x80.
-    /// Throws <see cref="InvalidDataException"/> when the archive can't take it (no room in the directory, already there, or the
+    /// With <paramref name="growDirectory"/>, a directory with no room for another entry first gets room: every file moves on
+    /// to the next multiple of 0x80 after the bigger directory (ICONS.LMP's directory is full). Throws
+    /// <see cref="InvalidDataException"/> when the archive can't take it (no room in the directory, already there, or the
     /// archive isn't one the game reads as it should).
     /// </summary>
-    public static byte[] Insert(byte[] data, string name, byte[] file)
+    public static byte[] Insert(byte[] data, string name, byte[] file, bool growDirectory = false)
     {
         if (name.Length == 0 || name.Length >= NameSize || name.Any(c => c <= ' ' || c > '~'))
             throw new ArgumentException($"\"{name}\" can't be an entry name: up to {NameSize - 1} letters, digits and punctuation.");
@@ -190,7 +193,14 @@ public static class GameArchive
         if (entries.Any(e => e.Name == name)) throw new InvalidDataException($"The archive already has {name}.");
         var first = entries.Min(e => e.Offset);
         if (4 + EntrySize * (entries.Count + 1) > first)
-            throw new InvalidDataException("The archive's directory has no room for another entry before its first file.");
+        {
+            if (!growDirectory)
+                throw new InvalidDataException("The archive's directory has no room for another entry before its first file.");
+            data = MoveFiles(data, entries, Align(4 + EntrySize * (entries.Count + 1)) - first);
+            entries = ReadDirectory(data);
+            first = entries.Min(e => e.Offset);
+        }
+
         var directoryEnd = 4 + EntrySize * entries.Count;
         if (data.AsSpan(directoryEnd, first - directoryEnd).IndexOfAnyExcept((byte)0) >= 0)
             throw new InvalidDataException("The space between the archive's directory and its first file isn't empty.");
@@ -226,9 +236,11 @@ public static class GameArchive
 
     /// <summary>
     /// <paramref name="data"/> without the entry <paramref name="name"/> and its file (later files moved back): the archive as it
-    /// was before <see cref="Insert"/>. Throws <see cref="InvalidDataException"/> when the entry isn't there or its file is shared.
+    /// was before <see cref="Insert"/>. With <paramref name="shrinkDirectory"/>, the files then move back to the first multiple
+    /// of 0x80 after the directory, undoing <see cref="Insert"/>'s growDirectory. Throws <see cref="InvalidDataException"/> when
+    /// the entry isn't there or its file is shared.
     /// </summary>
-    public static byte[] Remove(byte[] data, string name)
+    public static byte[] Remove(byte[] data, string name, bool shrinkDirectory = false)
     {
         var entries = ReadDirectory(data);
         var k = entries.FindIndex(e => e.Name == name);
@@ -262,6 +274,26 @@ public static class GameArchive
             Array.Copy(data, first, output, first, end - first);
         }
 
+        if (shrinkDirectory)
+        {
+            var left = ReadDirectory(output);
+            var start = left.Min(e => e.Offset);
+            var least = Align(4 + EntrySize * left.Count);
+            var directoryEnd = 4 + EntrySize * left.Count;
+            if (least < start && output.AsSpan(directoryEnd, start - directoryEnd).IndexOfAnyExcept((byte)0) < 0)
+                output = MoveFiles(output, left, least - start);
+        }
+
+        return output;
+    }
+
+    /// <summary><paramref name="data"/> with every file (and every entry's offset) moved by <paramref name="by"/> bytes, a multiple of 0x80.</summary>
+    private static byte[] MoveFiles(byte[] data, IReadOnlyList<Entry> entries, int by)
+    {
+        var first = entries.Min(e => e.Offset);
+        var output = new byte[data.Length + by];
+        WriteDirectory(output, entries.Select(e => e with { Offset = e.Offset + by }).ToList(), data);
+        Array.Copy(data, first, output, first + by, data.Length - first);
         return output;
     }
 

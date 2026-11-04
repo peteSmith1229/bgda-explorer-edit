@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // COMPLETE FILE — replace WorldExplorer/WorldExplorer/ExecutableEditorWindow.xaml.cs
 //
-// Tabs: XP per Level, Starting Stats, Feats & Spells, Items, Monster HP, Three Players.
+// Tabs: XP per Level, Starting Stats, Feats & Spells, Items, Monster HP, Three Players, Enhancements.
 // A bad value in ANY tab aborts the save with a message; nothing is written.
 //
 // Items (Views/ItemEditorView, ItemEditorModel): weapons, armour and other items, their models,
@@ -21,6 +21,12 @@
 // game's own cutscenes when you save: only those cutscene entries of the game's GOB
 // files change (ThreePlayerCutscenes, found like GTEXT.LMP). Turning three players
 // off offers to put the game's own cutscenes back when one with player 3 needs ADRIANNA26.
+//
+// Enhancements (Views/EnhancementsView, EnhancementsModel): additions that work with or without
+// three players, each on or off by itself. Xantam's Fire for Adrianna goes into game code nothing
+// runs (BgdaExecutable.XantamFire.cs); it is written before the Three Players tab's change, so that
+// can switch three players underneath it. Its names go in GTEXT.LMP (the Items tab's copy, one save
+// for both) and its icon in ICONS.LMP (found like GTEXT.LMP), saved after the executable.
 // ═══════════════════════════════════════════════════════════════════════════════
 using System;
 using System.Collections.Generic;
@@ -218,6 +224,7 @@ public partial class ExecutableEditorWindow : Window
     private readonly List<DifficultyRow> _difficultyRows;
     private readonly bool _difficultyEditable;
     private readonly ItemEditorModel _items;
+    private readonly EnhancementsModel _enhancements;
 
     /// <summary>Where the game's files are looked for: next to the executable, then the data folder in Settings.</summary>
     private readonly string?[] _gameFolders;
@@ -290,6 +297,16 @@ public partial class ExecutableEditorWindow : Window
             if (ItemEditorModel.FindGameFile("INVENTRY.LMP", _gameFolders) is { } inventry)
                 ItemEditorView.TryLoadInventry(_items, inventry, this, quiet: true);
         }
+
+        // ── Enhancements tab: its names share the Items tab's GTEXT.LMP; ICONS.LMP is found the same way ──
+        _enhancements = new EnhancementsModel(_exe, () => _items.Names);
+        enhancementsView.DataContext = _enhancements;
+        _items.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ItemEditorModel.Names)) _enhancements.NamesReloaded();
+        };
+        if (ItemEditorModel.FindGameFile("ICONS.LMP", _gameFolders) is { } icons)
+            EnhancementsView.TryLoadIcons(_enhancements, icons, this, quiet: true);
 
         _monsters = BgdaMonsters.Open(exe.FilePath);
         _monsterRows = _monsters.GetMonsters().Select(mon => new MonsterRow
@@ -369,12 +386,14 @@ public partial class ExecutableEditorWindow : Window
         var wantThreePlayers = threePlayerCheck.IsChecked == true;
         ThreePlayerSettings? threePlayerSettings;
         DifficultyScaling? difficulty;
+        XantamFireSettings? xantamFire;
         try
         {
-            // the Three Players tab is only read and checked here; it is applied once a
-            // file name has been chosen, so cancelling leaves the loaded executable as it was
+            // the Three Players and Enhancements tabs are only read and checked here; they are applied
+            // once a file name has been chosen, so cancelling leaves the loaded executable as it was
             threePlayerSettings = wantThreePlayers ? ReadThreePlayerSettings() : null;
             difficulty = _difficultyEditable ? ReadDifficulty() : null;
+            xantamFire = _enhancements.ReadXantamFire();
 
             ApplyXpEdits();
             ApplyStatEdits();
@@ -399,6 +418,9 @@ public partial class ExecutableEditorWindow : Window
         var stateBefore = _exe.GetThreePlayerState();
         try
         {
+            // Enhancements first: they live where the three-player patch never writes, and an old test
+            // version that needs three players is updated before they can be turned off
+            _enhancements.ApplyXantamFire(xantamFire);
             ApplyThreePlayers(wantThreePlayers, threePlayerSettings);
             if (difficulty is not null) _exe.SetDifficultyScaling(difficulty);
         }
@@ -414,21 +436,59 @@ public partial class ExecutableEditorWindow : Window
         _items.RoomChanged(); // three players turned on make room for added items
         UpdateThreePlayerStatus();
         UpdateDifficultyStatus();
-        var namesSaved = _items.NamesNeedSaving && SaveNames();
+        var namesSaved = (_items.NamesNeedSaving || _enhancements.NamesPending) && SaveNames();
         var iconsSaved = _items.InventryNeedsSaving && SaveInventry();
+        var spellIconsSaved = _enhancements.IconsNeedSaving && SaveSpellIcons();
+        var enhancements = _enhancements.FilesNote(namesSaved);
+        _enhancements.Reload();
         var cutscenes = UpdateGameCutscenes(wantThreePlayers, stateBefore);
         var others = new List<string>();
         if (namesSaved) others.Add("GTEXT.LMP");
         if (iconsSaved) others.Add("INVENTRY.LMP");
+        if (spellIconsSaved) others.Add("ICONS.LMP");
         var corrosive = _items.CorrosiveFilesNote();
         MessageBox.Show(this,
             "Saved. Replace the executable in your game image with this file " +
-            (others.Count > 0 ? $"and {string.Join(" and ", others)} with the one{(others.Count > 1 ? "s" : "")} you saved " : "") +
+            (others.Count > 0 ? $"and {Join(others)} with the one{(others.Count > 1 ? "s" : "")} you saved " : "") +
             "(keep your originals as a backup). Stats and XP affect new characters and future level-ups; " +
             "items, shops and loot every game." +
             (corrosive is null ? "" : "\n\n" + corrosive) +
+            (enhancements is null ? "" : "\n\n" + enhancements) +
             (cutscenes is null ? "" : "\n\n" + cutscenes),
             "Executable Tuning", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    /// <summary>"a", "a and b", "a, b and c".</summary>
+    private static string Join(IReadOnlyList<string> names) =>
+        names.Count < 2 ? string.Join("", names) : string.Join(", ", names.Take(names.Count - 1)) + " and " + names[^1];
+
+    /// <summary>Saves ICONS.LMP with Xantam's Fire's icon added or taken out (Enhancements tab) where the user says; false when not saved.</summary>
+    private bool SaveSpellIcons()
+    {
+        byte[] bytes;
+        try
+        {
+            bytes = _enhancements.IconsToSave();
+        }
+        catch (Exception ex) when (ex is InvalidDataException or InvalidOperationException)
+        {
+            MessageBox.Show(this, ex.Message + " ICONS.LMP wasn't saved.", "Executable Tuning", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            Title = "Save the HUD's spell icons (ICONS.LMP)",
+            Filter = "Spell icons|ICONS.LMP|All Files|*.*",
+            FileName = "ICONS.LMP"
+        };
+        if (_enhancements.IconsPath is { } loaded && System.IO.Path.GetDirectoryName(loaded) is { } folder && Directory.Exists(folder))
+            dialog.InitialDirectory = folder;
+        if (dialog.ShowDialog(this) != true) return false;
+
+        File.WriteAllBytes(dialog.FileName, bytes);
+        _enhancements.IconsSaved(bytes, dialog.FileName);
+        return true;
     }
 
     /// <summary>Saves INVENTRY.LMP with the acid drop added or taken out (Items tab, Corrosive page) where the user says; false when not saved.</summary>
@@ -466,6 +526,7 @@ public partial class ExecutableEditorWindow : Window
         try
         {
             _items.ApplyNames();
+            _enhancements.ApplyNames();
         }
         catch (ArgumentException ex)
         {
@@ -475,7 +536,7 @@ public partial class ExecutableEditorWindow : Window
 
         var dialog = new SaveFileDialog
         {
-            Title = "Save the item names (GTEXT.LMP)",
+            Title = "Save the item and spell names (GTEXT.LMP)",
             Filter = "Game text|GTEXT.LMP|All Files|*.*",
             FileName = "GTEXT.LMP"
         };
