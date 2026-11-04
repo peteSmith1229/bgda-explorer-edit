@@ -1,0 +1,114 @@
+<UserControl x:Class="WorldExplorer.Views.EnhancementsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:WorldExplorer"
+             mc:Ignorable="d" d:DesignWidth="1060" d:DesignHeight="560"
+             d:DataContext="{d:DesignInstance Type=local:EnhancementsModel}">
+    <!-- The Enhancements tab of Executable Tuning. DataContext: EnhancementsModel. -->
+    <UserControl.Resources>
+        <Style x:Key="Help" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        </Style>
+        <Style x:Key="Heading" TargetType="TextBlock" BasedOn="{StaticResource Text.Section}">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Margin" Value="0,14,0,6" />
+        </Style>
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        </Style>
+        <Style x:Key="Field" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Width" Value="60" />
+            <Setter Property="Margin" Value="0,3,18,3" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+        <Style x:Key="Problem" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,6,0,0" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="0,2,14,8">
+            <TextBlock Style="{StaticResource Help}" Text="Additions to the game that work with or without three players. Each one is turned on or off by itself here, and taking one out puts the game's own code back exactly. Nothing is written until you save." />
+
+            <Border Style="{StaticResource Card}" Margin="0,4,0,4" Padding="14,12">
+                <StackPanel>
+                    <CheckBox Content="Xantam's Fire for Adrianna" FontWeight="SemiBold"
+                              IsChecked="{Binding XantamOn}" IsEnabled="{Binding XantamUsable}"
+                              ToolTip="A new spell on Adrianna's level-up screen: the fire trails of the beholder Xantam, which burn the monsters in their path." />
+                    <TextBlock Style="{StaticResource Help}" Margin="24,6,0,0" Text="{Binding XantamStatus}" />
+                    <TextBlock Style="{StaticResource Help}" Margin="24,0,0,0" Text="She casts three trails of fire along the ground in a fan (five from rank 3); every monster in them catches fire and is burnt five times a second, and her kills give her the experience. At rank 5 the trails turn green and home in on the nearest monster in front of her. They never hurt her or the other players." />
+
+                    <StackPanel Margin="24,4,0,0" IsEnabled="{Binding XantamOn}">
+                        <TextBlock Text="SETTINGS" Style="{StaticResource Heading}" />
+                        <Grid HorizontalAlignment="Left">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Price" />
+                            <TextBox Grid.Column="1" Style="{StaticResource Field}" Text="{Binding Price, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="The level-up price: 0 to 30, priced as the game prices its own feats (16, as Ball Lightning, makes the ranks cost 16, 17, 19, 21 and 25 feat points; 0 makes every rank free)." />
+                            <TextBlock Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Mana a cast takes" />
+                            <TextBox Grid.Column="3" Style="{StaticResource Field}" Text="{Binding Mana, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Above 0 and at most 100 (15, as Ball Lightning)." />
+                        </Grid>
+                        <TextBlock Style="{StaticResource Help}" Text="{Binding RankCostText}" />
+
+                        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,8,0,4" Text="Damage of each burn, by rank (least to most)" />
+                        <ItemsControl ItemsSource="{Binding Ranks}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type local:XantamRankRow}">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,18,0">
+                                        <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding Label}" />
+                                        <TextBox Style="{StaticResource Field}" Width="44" Margin="0,3,4,3"
+                                                 Text="{Binding Min, UpdateSourceTrigger=PropertyChanged}" ToolTip="The least damage of a burn: 0 to 255." />
+                                        <TextBlock Style="{StaticResource FieldLabel}" Text="–" />
+                                        <TextBox Style="{StaticResource Field}" Width="44" Margin="0,3,0,3"
+                                                 Text="{Binding Max, UpdateSourceTrigger=PropertyChanged}" ToolTip="The most damage of a burn: 0 to 255." />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Style="{StaticResource Help}" Margin="0,4,0,0" Text="A monster standing in a trail is usually in three or four of its patches of fire at once, and each of them burns it. The HUD's damage line shows the rank's numbers." />
+                        <WrapPanel Margin="0,4,0,0">
+                            <Button Content="The tested settings" Click="XantamDefaults_Click" Margin="0,0,12,4"
+                                    ToolTip="Price 16, 15 mana, and 1-2, 1-3, 2-4, 2-5 and 3-6 damage: what featpatch.py writes." />
+                        </WrapPanel>
+                        <TextBlock Style="{StaticResource Problem}" Text="{Binding SettingsProblem}"
+                                   Visibility="{Binding SettingsProblem, Converter={StaticResource NullToVisibility}}" />
+                    </StackPanel>
+
+                    <TextBlock Text="NAME AND ICON" Style="{StaticResource Heading}" Margin="24,14,0,6" />
+                    <TextBlock Style="{StaticResource Help}" Margin="24,0,0,6" Text="{Binding NamesStatus}" />
+                    <DockPanel Margin="24,0,0,6">
+                        <Button DockPanel.Dock="Right" Content="Open ICONS.LMP…" Margin="8,0,0,0" Click="OpenIcons_Click"
+                                ToolTip="ICONS.LMP, in the game's data folder, holds the HUD's spell icons." />
+                        <TextBlock Style="{StaticResource Help}" VerticalAlignment="Center" Margin="0" Text="{Binding IconStatus}" />
+                    </DockPanel>
+                    <TextBlock Style="{StaticResource Help}" Margin="24,0,0,0" Text="GTEXT.LMP and ICONS.LMP are saved after the executable, each where you say: put them in your game image with it." />
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="ROOM FOR NEW FEATS" Style="{StaticResource Heading}" />
+            <TextBlock Style="{StaticResource Help}" Text="{Binding PoolText}" />
+            <TextBlock Style="{StaticResource Help}" Text="That code is loaded with the rest of the game, so nothing is copied at start-up and the executable keeps its size. The three-player patch never touches it, so three players can be turned on or off on their tab with any of these in." />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

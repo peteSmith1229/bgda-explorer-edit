@@ -63,7 +63,7 @@ Alliance II files are read with the Dark Alliance formats for now.
   does for player 3 in three-player games.
 - **Tools** for the selected game are in the Tools menu, the Tools drop-down on the toolbar and the start page.
   For Dark Alliance: Executable Tuning (XP per level, starting stats, feats and spells, items, monster HP,
-  three-player co-op and difficulty scaling, saved to a copy of `SLES_506.72`), the Save Game Editor (memory-card
+  three-player co-op and difficulty scaling, enhancements, saved to a copy of `SLES_506.72`), the Save Game Editor (memory-card
   exports, `.psu`), and Edit Script Rewards and Insert Reward at Call Site, which work on the selected script. For
   Dark Alliance II: Executable Tuning, which makes the PCSX2 cheat file of the three-player mod, Build
   Three-Player ISO, and the same two script tools (Dark Alliance II's level scripts have Dark Alliance's format and
@@ -88,6 +88,13 @@ Alliance II files are read with the Dark Alliance formats for now.
   the Corrosive patch goes in the executable when it is saved (its dice and poison can be set); their names
   (in all five languages) go in `GTEXT.LMP` and the item card's acid drop in `INVENTRY.LMP`, each saved after the
   executable. "Take Corrosive out" takes all three out again, and the acid glow is one click away.
+- **Add enhancements** on Executable Tuning's Enhancements tab: additions to the game that work with or without
+  three players, each turned on or off by itself. The first is Xantam's Fire, a new spell for Adrianna on her
+  level-up screen: the beholder Xantam's fire trails, which burn the monsters in their path (5 ranks; its price,
+  mana and damage per rank can be set). It goes into game code nothing ever runs (about 32 KB of it, the same in
+  the stock executable and every three-player build, so three players can still be turned on or off), its name
+  and description (in all five languages) into `GTEXT.LMP` and its HUD icon into `ICONS.LMP`, each saved after
+  the executable. Unticking it puts the game's own code back exactly.
 - **Pick colours** by clicking a colour box: a glow style's halo or core on the Glow tab, or a player's automap
   marker on the Three Players tab. Drag in the square and the hue bar, type red, green and blue or a `#RRGGBB`
   value, or click a ready-made colour; OK puts the colour in the red, green and blue boxes.
