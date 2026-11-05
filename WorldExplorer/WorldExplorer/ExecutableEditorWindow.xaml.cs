@@ -23,10 +23,11 @@
 // off offers to put the game's own cutscenes back when one with player 3 needs ADRIANNA26.
 //
 // Enhancements (Views/EnhancementsView, EnhancementsModel): additions that work with or without
-// three players, each on or off by itself. Xantam's Fire for Adrianna goes into game code nothing
-// runs (BgdaExecutable.XantamFire.cs); it is written before the Three Players tab's change, so that
-// can switch three players underneath it. Its names go in GTEXT.LMP (the Items tab's copy, one save
-// for both) and its icon in ICONS.LMP (found like GTEXT.LMP), saved after the executable.
+// three players, each on or off by itself. The borrowed spells (Xantam's Fire for Adrianna; Blade
+// Barrier, Antimagic Field and Righteous Might for Kromlech) go into game code nothing runs
+// (BgdaExecutable.BorrowedSpells.cs); they are written before the Three Players tab's change, so that
+// can switch three players underneath them. Their names go in GTEXT.LMP (the Items tab's copy, one
+// save for both) and their icons in ICONS.LMP (found like GTEXT.LMP), saved after the executable.
 // ═══════════════════════════════════════════════════════════════════════════════
 using System;
 using System.Collections.Generic;
@@ -386,14 +387,14 @@ public partial class ExecutableEditorWindow : Window
         var wantThreePlayers = threePlayerCheck.IsChecked == true;
         ThreePlayerSettings? threePlayerSettings;
         DifficultyScaling? difficulty;
-        XantamFireSettings? xantamFire;
+        IReadOnlyDictionary<BorrowedSpell, BorrowedSpellSettings> spells;
         try
         {
             // the Three Players and Enhancements tabs are only read and checked here; they are applied
             // once a file name has been chosen, so cancelling leaves the loaded executable as it was
             threePlayerSettings = wantThreePlayers ? ReadThreePlayerSettings() : null;
             difficulty = _difficultyEditable ? ReadDifficulty() : null;
-            xantamFire = _enhancements.ReadXantamFire();
+            spells = _enhancements.ReadSpells();
 
             ApplyXpEdits();
             ApplyStatEdits();
@@ -420,7 +421,7 @@ public partial class ExecutableEditorWindow : Window
         {
             // Enhancements first: they live where the three-player patch never writes, and an old test
             // version that needs three players is updated before they can be turned off
-            _enhancements.ApplyXantamFire(xantamFire);
+            _enhancements.ApplySpells(spells);
             ApplyThreePlayers(wantThreePlayers, threePlayerSettings);
             if (difficulty is not null) _exe.SetDifficultyScaling(difficulty);
         }
@@ -462,7 +463,7 @@ public partial class ExecutableEditorWindow : Window
     private static string Join(IReadOnlyList<string> names) =>
         names.Count < 2 ? string.Join("", names) : string.Join(", ", names.Take(names.Count - 1)) + " and " + names[^1];
 
-    /// <summary>Saves ICONS.LMP with Xantam's Fire's icon added or taken out (Enhancements tab) where the user says; false when not saved.</summary>
+    /// <summary>Saves ICONS.LMP with the borrowed spells' icons added or taken out (Enhancements tab) where the user says; false when not saved.</summary>
     private bool SaveSpellIcons()
     {
         byte[] bytes;

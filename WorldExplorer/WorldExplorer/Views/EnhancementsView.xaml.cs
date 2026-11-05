@@ -7,8 +7,8 @@ using Microsoft.Win32;
 namespace WorldExplorer.Views;
 
 /// <summary>
-/// The Enhancements tab of Executable Tuning (DataContext: EnhancementsModel). Everything is edited in the model; this only
-/// opens ICONS.LMP.
+/// The Enhancements tab of Executable Tuning (DataContext: EnhancementsModel; each spell's card: SpellCard). Everything is
+/// edited in the model; this only opens ICONS.LMP and passes a card's button on to it.
 /// </summary>
 public partial class EnhancementsView : UserControl
 {
@@ -31,7 +31,7 @@ public partial class EnhancementsView : UserControl
         {
             if (!quiet)
             {
-                var message = $"{path} can't take Xantam's Fire's icon: {ex.Message}";
+                var message = $"{path} can't take the borrowed spells' icons: {ex.Message}";
                 if (owner != null) MessageBox.Show(owner, message, "Enhancements", MessageBoxButton.OK, MessageBoxImage.Warning);
                 else MessageBox.Show(message, "Enhancements", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
@@ -40,7 +40,8 @@ public partial class EnhancementsView : UserControl
         }
     }
 
-    private void XantamDefaults_Click(object sender, RoutedEventArgs e) => Model?.Defaults();
+    /// <summary>A card's "The tested settings" button: that spell's boxes back to what featpatch.py writes.</summary>
+    private void SpellDefaults_Click(object sender, RoutedEventArgs e) => ((sender as FrameworkElement)?.DataContext as SpellCard)?.Defaults();
 
     private void OpenIcons_Click(object sender, RoutedEventArgs e)
     {

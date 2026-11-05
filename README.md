@@ -89,12 +89,17 @@ Alliance II files are read with the Dark Alliance formats for now.
   (in all five languages) go in `GTEXT.LMP` and the item card's acid drop in `INVENTRY.LMP`, each saved after the
   executable. "Take Corrosive out" takes all three out again, and the acid glow is one click away.
 - **Add enhancements** on Executable Tuning's Enhancements tab: additions to the game that work with or without
-  three players, each turned on or off by itself. The first is Xantam's Fire, a new spell for Adrianna on her
-  level-up screen: the beholder Xantam's fire trails, which burn the monsters in their path (5 ranks; its price,
-  mana and damage per rank can be set). It goes into game code nothing ever runs (about 32 KB of it, the same in
-  the stock executable and every three-player build, so three players can still be turned on or off), its name
-  and description (in all five languages) into `GTEXT.LMP` and its HUD icon into `ICONS.LMP`, each saved after
-  the executable. Unticking it puts the game's own code back exactly.
+  three players, each turned on or off by itself. Four spells borrowed from the game's monsters, each a new feat
+  on its hero's level-up screen (5 ranks; price, mana and the values of each rank can be set):
+  - Xantam's Fire for Adrianna: the beholder Xantam's fire trails, which burn the monsters in their path;
+  - Blade Barrier for Kromlech: Ilivarra's whirling axes, which hit every monster in reach once a second;
+  - Antimagic Field for Kromlech: fire, cold, electricity and magic do him no harm while it lasts;
+  - Righteous Might for Kromlech: he grows, his melee hits do more damage and physical hits on him less.
+
+  They go into game code nothing ever runs (about 32 KB of it, the same in the stock executable and every
+  three-player build, so three players can still be turned on or off), their names and descriptions (in all
+  five languages) into `GTEXT.LMP` and their HUD icons into `ICONS.LMP`, each saved after the executable.
+  Unticking one puts the game's own code back exactly.
 - **Pick colours** by clicking a colour box: a glow style's halo or core on the Glow tab, or a player's automap
   marker on the Three Players tab. Drag in the square and the hue bar, type red, green and blue or a `#RRGGBB`
   value, or click a ready-made colour; OK puts the colour in the red, green and blue boxes.
