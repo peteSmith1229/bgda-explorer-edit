@@ -15,8 +15,8 @@ namespace JetBlackEngineLib.Tests;
 /// Antimagic Field and Righteous Might for Kromlech. On the stock PAL executable in Test_files (skipped when it is not
 /// present), with the Three Players tab switching three players underneath them; their names in GTEXT.LMP and their icons
 /// in ICONS.LMP (archives built here). The patch is featpatch.py version 5: the checksums are of the files featpatch.py
-/// writes, and what it does in the game was checked by emulation (test_feats5.py, 169 checks on each of seven files; 40
-/// broken copies all caught, on two bases).
+/// writes, and what it does in the game was checked by emulation (test_feats5.py on seven files: 168 checks on each with
+/// all four; 40 broken copies, all caught on two bases).
 /// </summary>
 [TestFixture]
 public class BgdaBorrowedSpellsTests
