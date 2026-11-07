@@ -1,46 +1,59 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // NEW FILE: WorldExplorer/JetBlackEngineLib/Data/Executable/BgdaExecutable.BorrowedSpells.cs
 //
-// BORROWED SPELLS (the Enhancements tab): four spells the heroes learn from the game's monsters, each
-// a new feat on a hero's level-up screen (5 ranks), each turned on or off by itself:
+// BORROWED SPELLS (the Enhancements tab): four spells the heroes learn from the game's monsters and one feat
+// the game has but never offers, each a feat on a hero's level-up screen (5 ranks), each turned on or off by
+// itself:
 //   Xantam's Fire for Adrianna    the beholder Xantam's fire trails, which burn the monsters in their path;
+//   Power Attack for Kromlech     the game's own cut feat: casting it readies his weapon, and his next hits
+//                                 (one at rank 1, up to five at rank 5) within 10 seconds do double damage;
 //   Blade Barrier for Kromlech    Ilivarra's nine whirling axes: once a second every monster in reach is hit;
 //   Antimagic Field for Kromlech  Ilivarra's field: fire, cold, electricity and magic do him no harm;
 //   Righteous Might for Kromlech  Ilivarra's might: he grows, his weapon hits do more damage and take less.
-// It is featpatch.py version 5, written from the data in BgdaFeatPatch.cs (generated from that script), so
+// It is featpatch.py version 6, written from the data in BgdaFeatPatch.cs (generated from that script), so
 // the bytes are the ones tested in the emulator.
+//
+// POWER ATTACK is the game's: its ability record (0x0030E2E0, bit 34, cast type 18, 5 mana), its grant, its
+// HUD icon and line ("Damage: Double Normal Melee Damage") and its texts in five languages were all left in,
+// but no hero's list offers it and its cast case does nothing. The patch adds its list entry to Kromlech's
+// list and its cast case, and doubles his hits in the melee hit (where Righteous Might raises them). Its
+// mana is its record's, which the Feats & Spells tab edits; it needs nothing in GTEXT.LMP or ICONS.LMP.
 //
 // WHERE IT GOES. The pool: 61 stretches of the game's own code that nothing ever runs (unused library
 // functions and leftover routines, 32,724 bytes; see featpool.py). They are the same addresses and bytes
 // in the stock executable and in every three-player build, the game's own segment loads them, and no
-// other patch WorldExplorer knows writes there. The patch takes 6,784 bytes of it: its data block at
-// 0x00132D90, its code in eleven pieces and four vtable copies. The code is the same whichever spells
-// are on; only the hooks of the spells that are on are written (14 words when all four are), and the
-// data block says which ones are. Nothing else changes: no program header, no start-up copy, the same
-// file length.
+// other patch WorldExplorer knows writes there. The patch takes 7,200 bytes of it: its data block at
+// 0x00132D90, its code in ten pieces and four vtable copies. The code is the same whichever spells are
+// on; only the hooks of the spells that are on are written (14 words when all five are), and the data
+// block says which ones are. Nothing else changes: no program header, no start-up copy, the same file
+// length.
 //
 // SO IT NEEDS NO THREE-PLAYER BUILD, and the Three Players tab can turn three players on or off
 // underneath it: the three-player patch never touches these bytes, and the code finds the class lists
 // (0x002A0478 in the stock game, 0x000D0100 with three players) from FUN_00162B78's own instructions while
 // the game runs. (Checked: installing and switching three players commute.) Corrosive and Glow can be in
-// as well: Righteous Might hooks the instruction before the melee hit's call, which Corrosive changes.
+// as well: Righteous Might and Power Attack hook the instruction before the melee hit's call, which
+// Corrosive changes.
 //
-// STATES. Off: the hooks and the pool are the game's. On: version 5 is in, with the spells its data
-// block names. Outdated: Xantam's Fire alone as the fourth or third test version (test4: in the pool;
-// test3: a 12 KB spell area copied into low memory at start-up); saving takes it out and puts version 5
-// in, Xantam's Fire with its price, mana and damage. Unrecognized: anything else (earlier test versions,
-// or another patch in those places).
+// STATES. Off: the hooks and the pool are the game's. On: version 6 is in, with the spells its data
+// block names. Outdated: version 5 (kromlech-spells-test1: the four borrowed spells, without Power
+// Attack), or Xantam's Fire alone as the fourth or third test version (test4: in the pool; test3: a 12 KB
+// spell area copied into low memory at start-up); saving takes it out and puts version 6 in, every spell
+// it had with its settings. Unrecognized: anything else (earlier test versions, or another patch in those
+// places).
 //
 // SETTINGS (the data block; the code reads them while the game runs): each spell's level-up price
 // (0-30, priced as the game prices its own feats: from 5 on a rank costs price + rank^1.6, so 16 gives
-// 16, 17, 19, 21 and 25; below 5, (rank + 1) x price; 0 makes every rank free), the mana a cast takes, and
-// two values or one by rank: Xantam's Fire and Blade Barrier the least and most damage of a burn or a hit,
-// Antimagic Field its seconds, Righteous Might the percentage more damage his weapon hits do and the
-// percentage less weapon hits on him do.
+// 16, 17, 19, 21 and 25; below 5, (rank + 1) x price; 0 makes every rank free), the mana a cast takes (not
+// Power Attack's: its record's), and two values or one by rank: Xantam's Fire and Blade Barrier the least
+// and most damage of a burn or a hit, Power Attack the hits it doubles, Antimagic Field its seconds,
+// Righteous Might the percentage more damage his weapon hits do and the percentage less weapon hits on him
+// do.
 //
-// THE GAME'S FILES. GTEXT.LMP needs each spell's name and description (and two HUD lines; BorrowedSpellTexts,
-// in the five languages), or the level-up screen and the HUD show NF:<name>_name. ICONS.LMP can take the
-// HUD icons (BorrowedSpellIcons); without one the HUD shows a game icon in its place.
+// THE GAME'S FILES. GTEXT.LMP needs each borrowed spell's name and description (and two HUD lines;
+// BorrowedSpellTexts, in the five languages), or the level-up screen and the HUD show NF:<name>_name.
+// ICONS.LMP can take their HUD icons (BorrowedSpellIcons); without one the HUD shows a game icon in its
+// place. Power Attack's texts and icon are the game's own: neither file changes for it.
 // ═══════════════════════════════════════════════════════════════════════════════
 using System;
 using System.Collections.Generic;
@@ -58,6 +71,7 @@ namespace JetBlackEngineLib.Data.Executable;
 public enum BorrowedSpell
 {
     XantamFire,
+    PowerAttack,
     BladeBarrier,
     AntimagicField,
     RighteousMight
@@ -67,9 +81,9 @@ public enum BorrowedSpellsState
 {
     /// <summary>The game's code and the free pool: the spells can be put in.</summary>
     Off,
-    /// <summary>Version 5 is in: which spells, and their settings, can be read and changed.</summary>
+    /// <summary>Version 6 is in: which spells, and their settings, can be read and changed.</summary>
     On,
-    /// <summary>Xantam's Fire alone as the fourth or third test version: saving brings it to version 5.</summary>
+    /// <summary>Version 5 (the four borrowed spells), or Xantam's Fire alone as the fourth or third test version: saving brings it to version 6.</summary>
     Outdated,
     /// <summary>Neither: an earlier test version, or another patch where it goes.</summary>
     Unrecognized
@@ -77,22 +91,26 @@ public enum BorrowedSpellsState
 
 /// <summary>
 /// What a spell is (its name, its hero, where his or her level-up list has it, its feat bit and cast type), what its settings
-/// by rank mean and the values they may take, and its defaults (what featpatch.py writes).
+/// by rank mean and the values they may take, and its defaults (what featpatch.py writes). <paramref name="GameFeat"/>: the
+/// game's own feat (Power Attack), whose ability record (and so its mana), icon and texts are the game's.
 /// </summary>
 public sealed record BorrowedSpellInfo(
     BorrowedSpell Spell, string Title, string Hero, string After, int Bit, int CastType,
     string Values, string FirstName, int FirstMin, int FirstMax, string? SecondName, int SecondMin, int SecondMax,
-    bool Range, BorrowedSpellSettings Default)
+    bool Range, BorrowedSpellSettings Default, bool GameFeat = false)
 {
     /// <summary>The spell has two values by rank (damage least and most, or more and less).</summary>
     public bool HasSecond => SecondName != null;
+
+    /// <summary>The patch writes the mana a cast takes (not for Power Attack, whose record's mana the Feats &amp; Spells tab edits).</summary>
+    public bool HasMana => !GameFeat;
 }
 
 /// <summary>
-/// One spell's settings: the level-up price byte, the mana a cast takes, and its values by rank (ranks 1-5): Xantam's Fire
-/// and Blade Barrier the least (<see cref="First"/>) and most (<see cref="Second"/>) damage, Antimagic Field the seconds
-/// (<see cref="First"/>; <see cref="Second"/> empty), Righteous Might the percentage more damage (<see cref="First"/>) and
-/// less damage taken (<see cref="Second"/>).
+/// One spell's settings: the level-up price byte, the mana a cast takes (0 for Power Attack: its record's), and its values by
+/// rank (ranks 1-5): Xantam's Fire and Blade Barrier the least (<see cref="First"/>) and most (<see cref="Second"/>) damage,
+/// Power Attack the hits it doubles and Antimagic Field the seconds (<see cref="First"/>; <see cref="Second"/> empty),
+/// Righteous Might the percentage more damage (<see cref="First"/>) and less damage taken (<see cref="Second"/>).
 /// </summary>
 public sealed record BorrowedSpellSettings(int Price, float Mana, IReadOnlyList<int> First, IReadOnlyList<int> Second)
 {
@@ -110,8 +128,10 @@ public sealed record BorrowedSpellSettings(int Price, float Mana, IReadOnlyList<
     {
         var info = BorrowedSpells.Info(spell);
         if (Price is < 0 or > MaxPrice) return $"{info.Title}: the price is 0 to {MaxPrice} (0 makes every rank free).";
-        if (!float.IsFinite(Mana) || Mana <= 0f || Mana > MaxMana)
+        if (info.HasMana && (!float.IsFinite(Mana) || Mana <= 0f || Mana > MaxMana))
             return $"{info.Title}: the mana a cast takes is above 0 and at most {MaxMana:0}.";
+        if (!info.HasMana && Mana != 0f)
+            return $"{info.Title}: its mana is its own ability record's (the Feats & Spells tab), so it has none here (0).";
         if (First is null || First.Count != Ranks || Second is null || Second.Count != (info.HasSecond ? Ranks : 0))
             return $"{info.Title}: {info.Values} is given for each of the {Ranks} ranks.";
         for (var r = 0; r < Ranks; r++)
@@ -134,17 +154,25 @@ public sealed record BorrowedSpellSettings(int Price, float Mana, IReadOnlyList<
     public override int GetHashCode() => HashCode.Combine(Price, Mana, First.Count, Second.Count);
 }
 
-/// <summary>The four spells: what each is, its defaults (what featpatch.py writes) and the test files' settings.</summary>
+/// <summary>The five spells: what each is, its defaults (what featpatch.py writes) and the test files' settings.</summary>
 public static class BorrowedSpells
 {
+    /// <summary>Every spell, in the order of <see cref="BorrowedSpell"/> (the data block's).</summary>
     public static IReadOnlyList<BorrowedSpell> All { get; } =
-        new[] { BorrowedSpell.XantamFire, BorrowedSpell.BladeBarrier, BorrowedSpell.AntimagicField, BorrowedSpell.RighteousMight };
+        new[]
+        {
+            BorrowedSpell.XantamFire, BorrowedSpell.PowerAttack, BorrowedSpell.BladeBarrier, BorrowedSpell.AntimagicField,
+            BorrowedSpell.RighteousMight
+        };
 
     private static readonly BorrowedSpellInfo[] Infos =
     {
         new(BorrowedSpell.XantamFire, "Xantam's Fire", "Adrianna", "Targetting", 26, 10,
             "the damage of each burn", "the least damage", 0, 255, "the most damage", 0, 255, true,
             new BorrowedSpellSettings(16, 15f, new[] { 1, 1, 2, 2, 3 }, new[] { 2, 3, 4, 5, 6 })),
+        new(BorrowedSpell.PowerAttack, "Power Attack", "Kromlech", "his own feats", 34, 18,
+            "the number of hits it doubles", "the number of hits doubled", 1, 20, null, 0, 0, false,
+            new BorrowedSpellSettings(5, 0f, new[] { 1, 2, 3, 4, 5 }, Array.Empty<int>()), GameFeat: true),
         new(BorrowedSpell.BladeBarrier, "Blade Barrier", "Kromlech", "his own feats", 43, 32,
             "the damage of each hit", "the least damage", 0, 255, "the most damage", 0, 255, true,
             new BorrowedSpellSettings(10, 15f, new[] { 4, 6, 8, 10, 12 }, new[] { 8, 10, 13, 16, 20 })),
@@ -158,18 +186,23 @@ public static class BorrowedSpells
 
     public static BorrowedSpellInfo Info(BorrowedSpell spell) => Infos[(int)spell];
 
-    /// <summary>The test files' settings: every rank free, 4 mana a cast, the default values.</summary>
-    public static BorrowedSpellSettings TestSettings(BorrowedSpell spell) => Info(spell).Default with { Price = 0, Mana = 4f };
+    /// <summary>The test files' settings: every rank free, 4 mana a cast (Power Attack: its record's), the default values.</summary>
+    public static BorrowedSpellSettings TestSettings(BorrowedSpell spell) =>
+        Info(spell).Default with { Price = 0, Mana = Info(spell).HasMana ? 4f : 0f };
 
     internal static SpellPatchData Data(BorrowedSpell spell) => FeatPatch.Spells[(int)spell];
 
     internal static int Mask(BorrowedSpell spell) => Data(spell).Mask;
 }
 
-/// <summary>The spells' texts in GTEXT.LMP: the level-up screen's names and descriptions, the HUD's names and two of its lines.</summary>
+/// <summary>
+/// The spells' texts in GTEXT.LMP: the level-up screen's names and descriptions, the HUD's names and two of its lines. Power
+/// Attack has none here: its texts (powerattack_name, powerattack_desc, PowerSpellDamageWeapon) are the game's own, never
+/// added or taken out.
+/// </summary>
 public static class BorrowedSpellTexts
 {
-    /// <summary>The keys and texts of <paramref name="spell"/> in each language (0 English ... 4 Spanish): what gtext_feats5.py writes.</summary>
+    /// <summary>The keys and texts of <paramref name="spell"/> in each language (0 English ... 4 Spanish): what gtext_feats5.py writes (none for Power Attack).</summary>
     public static IReadOnlyList<(int Language, string Key, string Text)> Of(BorrowedSpell spell)
     {
         var key = BorrowedSpells.Data(spell).Key;
@@ -206,18 +239,25 @@ public static class BorrowedSpellTexts
     }
 }
 
-/// <summary>The spells' HUD icons in ICONS.LMP (icon_xantamfire.tex, icon_bladebarrier.tex, icon_antimagicfield.tex, icon_righteousmight.tex).</summary>
+/// <summary>
+/// The spells' HUD icons in ICONS.LMP (icon_xantamfire.tex, icon_bladebarrier.tex, icon_antimagicfield.tex,
+/// icon_righteousmight.tex). Power Attack's, icon_powerattack.tex, is the game's own: never added or taken out.
+/// </summary>
 public static class BorrowedSpellIcons
 {
     public static string EntryName(BorrowedSpell spell) => BorrowedSpells.Data(spell).IconName;
 
-    /// <summary>The texture: 44 x 44, 8-bit with 256 colours, in the layout of the game's spell icons.</summary>
+    /// <summary>The spell brings an icon of its own (every one but Power Attack, whose icon the game has).</summary>
+    public static bool HasOwnIcon(BorrowedSpell spell) => !BorrowedSpells.Info(spell).GameFeat;
+
+    /// <summary>The texture: 44 x 44, 8-bit with 256 colours, in the layout of the game's spell icons (empty for Power Attack).</summary>
     public static byte[] Texture(BorrowedSpell spell) => Convert.FromBase64String(BorrowedSpells.Data(spell).IconBase64);
 
     /// <summary>The game's icon the HUD shows when the spell's own isn't in ICONS.LMP.</summary>
     public static string FallbackName(BorrowedSpell spell) => spell switch
     {
         BorrowedSpell.XantamFire => "icon_protection.tex (Fire Shield's)",
+        BorrowedSpell.PowerAttack => "icon_powerattack.tex (its own, the game's)",
         BorrowedSpell.BladeBarrier => "icon_whirlwind.tex (Whirlwind Attack's)",
         BorrowedSpell.AntimagicField => "icon_protection.tex (Fire Shield's)",
         _ => "icon_powerattack.tex (Power Attack's)"
@@ -247,13 +287,13 @@ public static class BorrowedSpellIcons
     /// <summary>
     /// ICONS.LMP with the icons of <paramref name="spells"/> added where the game finds them (where each name sorts; when the
     /// directory is full every file first moves on by 0x80): icons_lmp5.py's result, byte for byte. An icon that is in already
-    /// is left as it is.
+    /// is left as it is, and Power Attack brings none (the game's is used).
     /// </summary>
     public static byte[] AddTo(byte[] icons, IEnumerable<BorrowedSpell> spells)
     {
         if (Problem(icons) is { } problem) throw new InvalidDataException(problem);
         var set = spells.ToHashSet();
-        foreach (var spell in BorrowedSpells.All.Where(set.Contains))
+        foreach (var spell in BorrowedSpells.All.Where(s => set.Contains(s) && HasOwnIcon(s)))
         {
             if (!IsIn(icons, spell)) icons = GameArchive.Insert(icons, EntryName(spell), Texture(spell), growDirectory: true);
         }
@@ -261,12 +301,15 @@ public static class BorrowedSpellIcons
         return icons;
     }
 
-    /// <summary>ICONS.LMP without the icons of <paramref name="spells"/>, its directory back to its smallest size: as it was before they went in.</summary>
+    /// <summary>
+    /// ICONS.LMP without the icons of <paramref name="spells"/>, its directory back to its smallest size: as it was before they went
+    /// in. The game's own icon_powerattack.tex always stays.
+    /// </summary>
     public static byte[] RemoveFrom(byte[] icons, IEnumerable<BorrowedSpell> spells)
     {
         if (Problem(icons) is { } problem) throw new InvalidDataException(problem);
         var set = spells.ToHashSet();
-        foreach (var spell in BorrowedSpells.All.Reverse().Where(set.Contains))
+        foreach (var spell in BorrowedSpells.All.Reverse().Where(s => set.Contains(s) && HasOwnIcon(s)))
         {
             if (IsIn(icons, spell)) icons = GameArchive.Remove(icons, EntryName(spell), shrinkDirectory: true);
         }
@@ -305,6 +348,9 @@ public partial class BgdaExecutable
         new[] { FeatPatch.Pool[^1].End, FeatPatch.AbilityTableEndVa + 4, FeatPatch.GameCastTableVa + 4 * FeatPatch.GameCastTypes }
             .Concat(FeatPatch.Checks.Select(c => c.Va + 4))
             .Concat(FeatPatch.Hooks.Select(h => h.Va + 4))
+            .Concat(FeatPatch.V5Hooks.Select(h => h.Va + 4))
+            .Concat(FeatPatch.V5Code.Select(c => c.Va + c.Length))
+            .Concat(FeatPatch.V5VTables.Select(v => v.GameVa + FeatPatch.VTableSize))
             .Concat(FeatPatch.V4Hooks.Select(h => h.Va + 4))
             .Concat(FeatPatch.Strings.Select(s => s.Va + s.Text.Length + 1))
             .Concat(FeatPatch.VTables.Select(v => v.GameVa + FeatPatch.VTableSize))
@@ -356,15 +402,39 @@ public partial class BgdaExecutable
         return names.Count < 2 ? string.Join("", names) : string.Join(", ", names.Take(names.Count - 1)) + " and " + names[^1];
     }
 
-    /// <summary>The spells version 5 says it has (its data block's mask), or null when the file doesn't have version 5's mark.</summary>
-    private List<BorrowedSpell>? V5Spells()
+    /// <summary>The spells the data block says are in when it has the mark of <paramref name="version"/>, or null.</summary>
+    private List<BorrowedSpell>? MarkedSpells(int version)
     {
-        if (!BytesAre(FeatPatch.DataVa, FeatMark) || ReadU32(FeatDataAt(FeatPatch.VersionAt)) != FeatPatch.Version) return null;
+        if (!BytesAre(FeatPatch.DataVa, FeatMark) || ReadU32(FeatDataAt(FeatPatch.VersionAt)) != version) return null;
         return SpellsOf((int)ReadU32(FeatDataAt(FeatPatch.SpellsAt)));
     }
 
+    /// <summary>The spells version 6 says it has (its data block's mask), or null when the file doesn't have version 6's mark.</summary>
+    private List<BorrowedSpell>? V6Spells() => MarkedSpells(FeatPatch.Version);
+
     /// <summary>
-    /// Off, On, Outdated (Xantam's Fire alone as the fourth or third test version, updated on save) or Unrecognized;
+    /// Version 5 (the four borrowed spells, without Power Attack) as WorldExplorer or featpatch.py version 5 wrote it: its mark, a
+    /// mask of its own spells, their hooks (and only theirs), its code and its vtable copies. Null when it isn't.
+    /// </summary>
+    private List<BorrowedSpell>? V5Spells()
+    {
+        if (MarkedSpells(FeatPatch.V5Version) is not { } spells) return null;
+        var mask = (int)ReadU32(FeatDataAt(FeatPatch.SpellsAt));
+        if (spells.Count == 0 || spells.Contains(BorrowedSpell.PowerAttack) || mask != FeatMask(spells)) return null;
+        if (!FeatPatch.V5Hooks.All(h => ReadU32(FileOffset(h.Va)) == ((h.Spells & mask) != 0 ? h.Patched : h.Game))) return null;
+        if (!FeatPatch.V5VTables.All(v => BytesAre(v.Va, FeatVTable(v)))) return null;
+        using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        foreach (var (va, length) in FeatPatch.V5Code)
+        {
+            if (_data.Length < FileOffset(va) + length) return null;
+            sha.AppendData(_data, FileOffset(va), length);
+        }
+
+        return Convert.ToHexString(sha.GetHashAndReset()).ToLowerInvariant() == FeatPatch.V5CodeSha256 ? spells : null;
+    }
+
+    /// <summary>
+    /// Off, On, Outdated (version 5, or Xantam's Fire alone as the fourth or third test version: updated on save) or Unrecognized;
     /// <paramref name="detail"/> says what was found, in a sentence.
     /// </summary>
     public BorrowedSpellsState GetBorrowedSpellsState(out string detail)
@@ -376,13 +446,13 @@ public partial class BgdaExecutable
         }
 
         var (_, code, _, v4Code) = FeatPatchData.Value;
-        if (V5Spells() is { } spells)
+        if (V6Spells() is { } spells)
         {
             var mask = FeatMask(spells);
             var hooks = FeatPatch.Hooks.All(h => ReadU32(FileOffset(h.Va)) == ((h.Spells & mask) != 0 ? h.Patched : h.Game));
             if (spells.Count > 0 && hooks && code.All(c => BytesAre(c.Va, c.Bytes)) && FeatPatch.VTables.All(v => BytesAre(v.Va, FeatVTable(v))))
             {
-                detail = $"In (version 5, in game code nothing runs): {Names(spells)}. It works with or without three players.";
+                detail = $"In (version 6, in game code nothing runs): {Names(spells)}. It works with or without three players.";
                 return BorrowedSpellsState.On;
             }
 
@@ -390,9 +460,16 @@ public partial class BgdaExecutable
             return BorrowedSpellsState.Unrecognized;
         }
 
+        if (V5Spells() is { } old)
+        {
+            detail = $"In as version 5 (the first test of Kromlech's spells): {Names(old)}. Saving brings it to version 6, which adds " +
+                     "Power Attack for Kromlech; every spell keeps its settings.";
+            return BorrowedSpellsState.Outdated;
+        }
+
         if (V4Present(v4Code))
         {
-            detail = "Xantam's Fire is in as the fourth test version (Adrianna's spell alone). Saving brings it to version 5, which " +
+            detail = "Xantam's Fire is in as the fourth test version (Adrianna's spell alone). Saving brings it to version 6, which " +
                      "also has Kromlech's spells; its price, mana and damage are kept.";
             return BorrowedSpellsState.Outdated;
         }
@@ -400,7 +477,7 @@ public partial class BgdaExecutable
         if (V3Present())
         {
             detail = "Xantam's Fire is in as the third test version (its spell area, which only a three-player build loads). " +
-                     "Saving brings it to version 5, which works with or without three players; its price, mana and damage are kept.";
+                     "Saving brings it to version 6, which works with or without three players; its price, mana and damage are kept.";
             return BorrowedSpellsState.Outdated;
         }
 
@@ -448,10 +525,18 @@ public partial class BgdaExecutable
             foreach (var spell in BorrowedSpells.All)
             {
                 var info = BorrowedSpells.Info(spell);
+                if (info.GameFeat) continue;            // Power Attack: the game's record is the one it uses
                 if ((ReadU64(at + 0x48) & 1UL << info.Bit) != 0 || BitConverter.ToInt16(_data, at + 0x20) == info.CastType)
                     return $"An ability already uses bit {info.Bit} or cast type {info.CastType}, which {info.Title} needs.";
             }
         }
+
+        // the game's Power Attack: its name, cast type and bit (its mana, damage and colours are the Feats & Spells tab's)
+        var power = FileOffset(FeatPatch.PowerRecordVa);
+        var pa = BorrowedSpells.Info(BorrowedSpell.PowerAttack);
+        if (!BytesAre(FeatPatch.PowerRecordVa, Encoding.ASCII.GetBytes(FeatPatch.PowerRecordName + "\0")) ||
+            BitConverter.ToInt16(_data, power + 0x20) != pa.CastType || ReadU64(power + 0x48) != 1UL << pa.Bit)
+            return $"The game's Power Attack record (0x{FeatPatch.PowerRecordVa:X8}) isn't the game's any more.";
 
         // the game's own segment loads the pool (the first program header: type 1, file 0x1000, address 0x00100000)
         var ph = (int)ReadU32(0x1C);
@@ -479,11 +564,23 @@ public partial class BgdaExecutable
         _data.AsSpan(FeatPatch.V3AreaFile, 4).SequenceEqual(FeatMark) && ReadU32(FeatPatch.V3AreaFile + 4) == 3 &&
         FeatPatch.V3Hooks.All(h => ReadU32(FileOffset(h.Va)) == h.Patched);
 
-    /// <summary>The spells in the file and their settings (On; Outdated: Xantam's Fire's), or none (Off, Unrecognized).</summary>
+    /// <summary>
+    /// The spells in the file and their settings (On; Outdated: version 5's spells, or Xantam's Fire's), or none (Off,
+    /// Unrecognized). Power Attack's mana is 0: its record's is the Feats &amp; Spells tab's.
+    /// </summary>
     public IReadOnlyDictionary<BorrowedSpell, BorrowedSpellSettings> GetBorrowedSpells()
     {
         var found = new Dictionary<BorrowedSpell, BorrowedSpellSettings>();
         var state = GetBorrowedSpellsState(out _);
+        if (state == BorrowedSpellsState.Outdated && V5Spells() is { } old)
+        {
+            // version 5: every spell had its own ability record, in the order of the entries
+            for (var i = 0; i < old.Count; i++)
+                found[old[i]] = ReadSettings(old[i], FeatPatch.V5EntriesAt + FeatPatch.EntryStride * i,
+                                             FeatPatch.V5AbilitiesAt + FeatPatch.AbilityStride * i, version5: true);
+            return found;
+        }
+
         if (state == BorrowedSpellsState.Outdated)
         {
             var block = V3Present() ? FeatPatch.V3AreaFile : FeatDataAt(0);        // the same layout in both
@@ -494,34 +591,51 @@ public partial class BgdaExecutable
         }
 
         if (state != BorrowedSpellsState.On) return found;
-        var spells = V5Spells()!;
+        var spells = V6Spells()!;
+        var own = 0;
         for (var i = 0; i < spells.Count; i++)
         {
             var spell = spells[i];
-            var price = _data[FeatDataAt(FeatPatch.EntriesAt + FeatPatch.EntryStride * i + FeatPatch.EntryPriceAt)];
-            var mana = BitConverter.ToSingle(_data, FeatDataAt(FeatPatch.AbilitiesAt + FeatPatch.AbilityStride * i + FeatPatch.AbilityManaAt));
-            found[spell] = spell switch
-            {
-                BorrowedSpell.XantamFire => new BorrowedSpellSettings(price, mana, ByRank(FeatDataAt(FeatPatch.XantamDamageMinAt)),
-                                                                      ByRank(FeatDataAt(FeatPatch.XantamDamageMaxAt))),
-                BorrowedSpell.BladeBarrier => new BorrowedSpellSettings(price, mana, ByRank(FeatDataAt(FeatPatch.BarrierDamageMinAt)),
-                                                                        ByRank(FeatDataAt(FeatPatch.BarrierDamageMaxAt))),
-                BorrowedSpell.AntimagicField => new BorrowedSpellSettings(price, mana,
-                    Enumerable.Range(1, BorrowedSpellSettings.Ranks)
-                        .Select(r => ReadU16(FeatDataAt(FeatPatch.FieldFramesAt + 2 * r)) / 50).ToArray(), Array.Empty<int>()),
-                _ => new BorrowedSpellSettings(price, mana, ByRank(FeatDataAt(FeatPatch.MightDamageAt)),
-                                               ByRank(FeatDataAt(FeatPatch.MightDefenceAt)))
-            };
+            var record = BorrowedSpells.Data(spell).OwnRecord ? own++ : -1;
+            found[spell] = ReadSettings(spell, FeatPatch.EntriesAt + FeatPatch.EntryStride * i,
+                                        record < 0 ? -1 : FeatPatch.AbilitiesAt + FeatPatch.AbilityStride * record, version5: false);
         }
 
         return found;
+    }
+
+    /// <summary>
+    /// One spell's settings from the data block: the price from its entry (at <paramref name="entry"/>), the mana from its ability
+    /// record (at <paramref name="ability"/>; -1: none, Power Attack), its values by rank where version 6 (or 5) keeps them.
+    /// </summary>
+    private BorrowedSpellSettings ReadSettings(BorrowedSpell spell, int entry, int ability, bool version5)
+    {
+        var price = _data[FeatDataAt(entry + FeatPatch.EntryPriceAt)];
+        var mana = ability < 0 ? 0f : BitConverter.ToSingle(_data, FeatDataAt(ability + FeatPatch.AbilityManaAt));
+        return spell switch
+        {
+            BorrowedSpell.XantamFire => new BorrowedSpellSettings(price, mana, ByRank(FeatDataAt(FeatPatch.XantamDamageMinAt)),
+                                                                  ByRank(FeatDataAt(FeatPatch.XantamDamageMaxAt))),
+            BorrowedSpell.PowerAttack => new BorrowedSpellSettings(price, 0f, ByRank(FeatDataAt(FeatPatch.PowerHitsAt)),
+                                                                   Array.Empty<int>()),
+            BorrowedSpell.BladeBarrier => new BorrowedSpellSettings(price, mana,
+                ByRank(FeatDataAt(version5 ? FeatPatch.V5BarrierDamageMinAt : FeatPatch.BarrierDamageMinAt)),
+                ByRank(FeatDataAt(version5 ? FeatPatch.V5BarrierDamageMaxAt : FeatPatch.BarrierDamageMaxAt))),
+            BorrowedSpell.AntimagicField => new BorrowedSpellSettings(price, mana,
+                Enumerable.Range(1, BorrowedSpellSettings.Ranks)
+                    .Select(r => ReadU16(FeatDataAt((version5 ? FeatPatch.V5FieldFramesAt : FeatPatch.FieldFramesAt) + 2 * r)) / 50)
+                    .ToArray(), Array.Empty<int>()),
+            _ => new BorrowedSpellSettings(price, mana,
+                ByRank(FeatDataAt(version5 ? FeatPatch.V5MightDamageAt : FeatPatch.MightDamageAt)),
+                ByRank(FeatDataAt(version5 ? FeatPatch.V5MightDefenceAt : FeatPatch.MightDefenceAt)))
+        };
     }
 
     /// <summary>Ranks 1-5 of a by-rank byte table (its entry 0 is rank 0's).</summary>
     private int[] ByRank(int at) => Enumerable.Range(1, BorrowedSpellSettings.Ranks).Select(r => (int)_data[at + r]).ToArray();
 
     /// <summary>
-    /// Puts in, updates (Outdated: to version 5), changes or takes out the borrowed spells so that exactly
+    /// Puts in, updates (Outdated: to version 6), changes or takes out the borrowed spells so that exactly
     /// <paramref name="spells"/> are in, with their settings (none: <see cref="RemoveBorrowedSpells"/>). Throws
     /// <see cref="ArgumentException"/> on bad settings and <see cref="InvalidOperationException"/> when the state is
     /// Unrecognized; nothing is changed then.
@@ -545,8 +659,7 @@ public partial class BgdaExecutable
         if (state == BorrowedSpellsState.Outdated)
         {
             var copy = (byte[])_data.Clone();
-            if (V3Present()) RemoveV3();
-            else RemoveV4();
+            RemoveOutdated();
             if (BorrowedSpellsProblem() is { } left)
             {
                 _data = copy;
@@ -566,29 +679,39 @@ public partial class BgdaExecutable
         foreach (var (va, game, patched, need) in FeatPatch.Hooks) WriteInt(FileOffset(va), (int)((need & mask) != 0 ? patched : game));
     }
 
-    /// <summary>The data block for <paramref name="spells"/>, as featpatch.py's data_block makes it (the game's cast table from this file).</summary>
+    /// <summary>
+    /// The data block for <paramref name="spells"/>, as featpatch.py's data_block makes it (the game's cast table from this file):
+    /// a list entry for each, in the order of <see cref="BorrowedSpells.All"/>, and an ability record for each but Power Attack.
+    /// </summary>
     private byte[] FeatDataBlock(IReadOnlyDictionary<BorrowedSpell, BorrowedSpellSettings> spells)
     {
         var block = (byte[])FeatPatchData.Value.Data.Clone();
         var on = BorrowedSpells.All.Where(spells.ContainsKey).ToList();
+        var own = on.Count(s => BorrowedSpells.Data(s).OwnRecord);
         BitConverter.GetBytes(on.Count).CopyTo(block, FeatPatch.CountAt);
-        BitConverter.GetBytes(on.Count).CopyTo(block, FeatPatch.AbilityCountAt);
+        BitConverter.GetBytes(own).CopyTo(block, FeatPatch.AbilityCountAt);
         BitConverter.GetBytes(FeatMask(on)).CopyTo(block, FeatPatch.SpellsAt);
         var table = new uint[FeatPatch.CastTypes];
         for (var t = 0; t < table.Length; t++)
             table[t] = t < FeatPatch.GameCastTypes ? ReadU32(FileOffset(FeatPatch.GameCastTableVa + 4 * t)) : FeatPatch.CastDefault;
+        var record = 0;
         for (var i = 0; i < on.Count; i++)
         {
             var spell = on[i];
             var s = spells[spell];
             var data = BorrowedSpells.Data(spell);
             var entry = FeatPatch.EntriesAt + FeatPatch.EntryStride * i;
-            var ability = FeatPatch.AbilitiesAt + FeatPatch.AbilityStride * i;
             Convert.FromBase64String(data.EntryBase64).CopyTo(block, entry);
-            Convert.FromBase64String(data.AbilityBase64).CopyTo(block, ability);
             block[entry + FeatPatch.EntryPriceAt] = (byte)s.Price;
-            BitConverter.GetBytes(s.Mana).CopyTo(block, ability + FeatPatch.AbilityManaAt);
             table[data.CastType - 1] = data.Cast;
+            var ability = -1;
+            if (data.OwnRecord)
+            {
+                ability = FeatPatch.AbilitiesAt + FeatPatch.AbilityStride * record++;
+                Convert.FromBase64String(data.AbilityBase64).CopyTo(block, ability);
+                BitConverter.GetBytes(s.Mana).CopyTo(block, ability + FeatPatch.AbilityManaAt);
+            }
+
             switch (spell)
             {
                 case BorrowedSpell.XantamFire:
@@ -605,6 +728,9 @@ public partial class BgdaExecutable
                         block[max + r + 1] = (byte)s.Second[r];
                     }
 
+                    break;
+                case BorrowedSpell.PowerAttack:
+                    for (var r = 0; r < BorrowedSpellSettings.Ranks; r++) block[FeatPatch.PowerHitsAt + r + 1] = (byte)s.First[r];
                     break;
                 case BorrowedSpell.AntimagicField:
                     for (var r = 0; r < BorrowedSpellSettings.Ranks; r++)
@@ -639,8 +765,7 @@ public partial class BgdaExecutable
             case BorrowedSpellsState.Unrecognized:
                 throw new InvalidOperationException("The borrowed spells can't be taken out: " + detail);
             case BorrowedSpellsState.Outdated:
-                if (V3Present()) RemoveV3();
-                else RemoveV4();
+                RemoveOutdated();
                 return;
         }
 
@@ -651,6 +776,21 @@ public partial class BgdaExecutable
     private void RestorePool()
     {
         foreach (var (a, b) in FeatPatch.Pool) PoolOriginal(a, b).CopyTo(_data.AsSpan(FileOffset(a)));
+    }
+
+    /// <summary>Takes out the earlier version that is in (Outdated): version 5, or the fourth or third test version.</summary>
+    private void RemoveOutdated()
+    {
+        if (V5Spells() != null) RemoveV5();
+        else if (V3Present()) RemoveV3();
+        else RemoveV4();
+    }
+
+    /// <summary>Takes version 5 out: the game's words back at its hooks, the game's bytes back in the pool.</summary>
+    private void RemoveV5()
+    {
+        foreach (var (va, game, _, _) in FeatPatch.V5Hooks) WriteInt(FileOffset(va), (int)game);
+        RestorePool();
     }
 
     /// <summary>Takes the fourth test version out: the game's words back at its six hooks, the game's bytes back in the pool.</summary>

@@ -78,10 +78,13 @@
                             <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Price" />
                             <TextBox Grid.Column="1" Style="{StaticResource Field}" Text="{Binding Price, UpdateSourceTrigger=PropertyChanged}"
                                      ToolTip="The level-up price: 0 to 30, priced as the game prices its own feats (16, as Ball Lightning, makes the ranks cost 16, 17, 19, 21 and 25 feat points; 0 makes every rank free)." />
-                            <TextBlock Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Mana a cast takes" />
+                            <TextBlock Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Mana a cast takes"
+                                       Visibility="{Binding HasMana, Converter={StaticResource BoolToVisibility}}" />
                             <TextBox Grid.Column="3" Style="{StaticResource Field}" Text="{Binding Mana, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Above 0 and at most 100." />
+                                     ToolTip="Above 0 and at most 100." Visibility="{Binding HasMana, Converter={StaticResource BoolToVisibility}}" />
                         </Grid>
+                        <TextBlock Style="{StaticResource Help}" Text="{Binding ManaNote}"
+                                   Visibility="{Binding ManaNote, Converter={StaticResource NullToVisibility}}" />
                         <TextBlock Style="{StaticResource Help}" Text="{Binding RankCostText}" />
 
                         <TextBlock Style="{StaticResource FieldLabel}" Margin="0,8,0,4" Text="{Binding ValuesCaption}" />
@@ -107,9 +110,9 @@
         <StackPanel Margin="0,2,14,8">
             <TextBlock Style="{StaticResource Help}" Text="Additions to the game that work with or without three players. Each one is turned on or off by itself here, and taking one out puts the game's own code back exactly. Nothing is written until you save." />
 
-            <TextBlock Text="SPELLS BORROWED FROM THE GAME'S MONSTERS" Style="{StaticResource Heading}" Margin="0,8,0,6" />
+            <TextBlock Text="NEW FEATS: SPELLS BORROWED FROM THE GAME'S MONSTERS, AND POWER ATTACK" Style="{StaticResource Heading}" Margin="0,8,0,6" />
             <TextBlock Style="{StaticResource Help}" Text="{Binding StateText}" />
-            <TextBlock Style="{StaticResource Help}" Text="Each is a new feat on its hero's level-up screen, with 5 ranks, and the HUD shows its icon and its numbers for the rank. They cost mana like the game's own spells." />
+            <TextBlock Style="{StaticResource Help}" Text="Each is a feat on its hero's level-up screen, with 5 ranks, and the HUD shows its icon and its numbers for the rank. Four are spells borrowed from the game's monsters; Power Attack is the game's own feat, which it never offers. They cost mana like the game's own spells." />
             <ItemsControl ItemsSource="{Binding Spells}" Focusable="False" />
 
             <TextBlock Text="NAMES AND ICONS" Style="{StaticResource Heading}" />
