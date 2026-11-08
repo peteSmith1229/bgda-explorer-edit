@@ -3,11 +3,13 @@
 //
 // The Enhancements tab of Executable Tuning (Views/EnhancementsView.xaml): additions to the game that
 // work with or without three players, each turned on or off by itself. Four spells borrowed from the
-// game's monsters (BgdaExecutable.BorrowedSpells.cs), one card each: Xantam's Fire for Adrianna; Blade
-// Barrier, Antimagic Field and Righteous Might for Kromlech. Each card has its tick box, price, mana and
-// values by rank; the names they need in GTEXT.LMP (the Items tab's copy, so one save writes both tabs'
-// texts) and their icons in ICONS.LMP are shared. Every box is text so a half-typed value never throws;
-// SettingsProblem says what is wrong. No WPF types, so it runs in tests.
+// game's monsters and one feat the game has but never offers (BgdaExecutable.BorrowedSpells.cs), one card
+// each: Xantam's Fire for Adrianna; Power Attack, Blade Barrier, Antimagic Field and Righteous Might for
+// Kromlech. Each card has its tick box, price, mana (not Power Attack's: its record's, on the Feats &
+// Spells tab) and values by rank; the names they need in GTEXT.LMP (the Items tab's copy, so one save
+// writes both tabs' texts) and their icons in ICONS.LMP are shared (Power Attack's are the game's own).
+// Every box is text so a half-typed value never throws; SettingsProblem says what is wrong. No WPF types,
+// so it runs in tests.
 //
 // Saving (ExecutableEditorWindow.SaveAs_Click): ReadSpells checks the boxes before the file name is
 // asked for; ApplySpells writes the executable's part once it is chosen, before the Three Players tab's
@@ -110,6 +112,11 @@ public sealed class SpellCard : ObservableObject
             "She casts three trails of fire along the ground in a fan (five from rank 3); every monster in them catches fire and is " +
             "burnt five times a second, and her kills give her the experience. At rank 5 the trails turn green and home in on the " +
             "nearest monster in front of her. They never hurt her or the other players.",
+        BorrowedSpell.PowerAttack =>
+            "The game's own feat, which it never offers: casting it readies his weapon, and his next melee hits on monsters (the " +
+            "rank's number of them) within 10 seconds do double damage, each with a crash. Not with a bow, as the game has it. " +
+            "Casting it again starts the count and the 10 seconds again. Its icon, its HUD line (\"Damage: Double Normal Melee " +
+            "Damage\") and its texts are the game's.",
         BorrowedSpell.BladeBarrier =>
             "Nine axes whirl around him for 10 seconds, as they do around Ilivarra: once a second every monster in their reach takes " +
             "the rank's damage from him, and his kills give him the experience. They never hit him or the other players. Casting it " +
@@ -128,6 +135,7 @@ public sealed class SpellCard : ObservableObject
     public string ValuesCaption => Spell switch
     {
         BorrowedSpell.XantamFire => "Damage of each burn, by rank (least to most)",
+        BorrowedSpell.PowerAttack => "Melee hits it doubles, by rank",
         BorrowedSpell.BladeBarrier => "Damage of each hit, by rank (least to most)",
         BorrowedSpell.AntimagicField => "Seconds it lasts, by rank",
         _ => "Percentage more melee damage and less physical damage taken, by rank"
@@ -136,7 +144,10 @@ public sealed class SpellCard : ObservableObject
     /// <summary>What goes before, between and after a rank's boxes ("4 – 8", "6 s", "+10 % / −10 %").</summary>
     public string FirstPrefix => Spell == BorrowedSpell.RighteousMight ? "+" : "";
 
-    public string FirstSuffix => Spell switch { BorrowedSpell.AntimagicField => "s", BorrowedSpell.RighteousMight => "%", _ => "" };
+    public string FirstSuffix => Spell switch
+    {
+        BorrowedSpell.AntimagicField => "s", BorrowedSpell.RighteousMight => "%", BorrowedSpell.PowerAttack => "hits", _ => ""
+    };
 
     public string Between => Spell == BorrowedSpell.RighteousMight ? "−" : "–";
 
@@ -144,6 +155,7 @@ public sealed class SpellCard : ObservableObject
 
     public string FirstTip => Spell switch
     {
+        BorrowedSpell.PowerAttack => "How many of his next melee hits on monsters do double damage: 1 to 20 (within 10 seconds of the cast).",
         BorrowedSpell.AntimagicField => "How long the field lasts: 1 to 60 seconds.",
         BorrowedSpell.RighteousMight => "How much more damage his melee hits do: 0 to 200 percent.",
         _ => "The least damage: 0 to 255."
@@ -158,6 +170,8 @@ public sealed class SpellCard : ObservableObject
         get
         {
             var d = Info.Default;
+            if (!Info.HasMana)
+                return $"Price {d.Price} and {string.Join(", ", d.First)} hits: what featpatch.py writes (its mana is its record's).";
             var values = Spell switch
             {
                 BorrowedSpell.AntimagicField => string.Join(", ", d.First) + " seconds",
@@ -209,6 +223,15 @@ public sealed class SpellCard : ObservableObject
         }
     }
 
+    /// <summary>The card has a Mana box (not Power Attack's: its record's mana is on the Feats &amp; Spells tab).</summary>
+    public bool HasMana => Info.HasMana;
+
+    /// <summary>Where Power Attack's mana is (null for the others, whose box this is).</summary>
+    public string? ManaNote => Info.HasMana
+        ? null
+        : "Mana: its own ability record's" + (_owner.PowerAttackMana is { } m ? $", {NumberText.Format(m)} in this executable" : "") +
+          " (\"powerattack\" on the Feats & Spells tab, as the game's other feats).";
+
     /// <summary>The boxes of ranks 1-5.</summary>
     public IReadOnlyList<SpellRankRow> Ranks { get; }
 
@@ -221,7 +244,7 @@ public sealed class SpellCard : ObservableObject
     private void Fill(BorrowedSpellSettings s)
     {
         SetProperty(ref _price, s.Price.ToString(), nameof(Price));
-        SetProperty(ref _mana, NumberText.Format(s.Mana), nameof(Mana));
+        SetProperty(ref _mana, Info.HasMana ? NumberText.Format(s.Mana) : "", nameof(Mana));
         for (var r = 0; r < Ranks.Count; r++) Ranks[r].Fill(s.First[r], Info.HasSecond ? s.Second[r] : null);
     }
 
@@ -242,7 +265,8 @@ public sealed class SpellCard : ObservableObject
             return null;
         }
 
-        if (!NumberText.TryParseDecimal(_mana, out var mana))
+        var mana = 0.0;
+        if (Info.HasMana && !NumberText.TryParseDecimal(_mana, out mana))
         {
             problem = $"{Info.Title}: the mana a cast takes is a number, such as 15 or 7.5.";
             return null;
@@ -294,8 +318,8 @@ public sealed class SpellCard : ObservableObject
             var where = $"{Info.Hero}'s level-up screen offers it after {Info.After} (5 ranks)";
             if (_owner.State == BorrowedSpellsState.Outdated && InFile)
                 return _on
-                    ? "In as an earlier test version: saving brings it to the version that lives in game code nothing runs, " +
-                      "so it works with or without three players; its settings are kept."
+                    ? "In as an earlier test version: saving brings it to the current one, in game code nothing runs, so it works " +
+                      "with or without three players; its settings are kept."
                     : "The earlier test version is taken out when you save: the game's code back, exactly.";
             if (InFile)
             {
@@ -321,6 +345,7 @@ public sealed class SpellCard : ObservableObject
         OnPropertyChanged(nameof(Changed));
         OnPropertyChanged(nameof(SettingsProblem));
         OnPropertyChanged(nameof(RankCostText));
+        OnPropertyChanged(nameof(ManaNote));
     }
 }
 
@@ -343,7 +368,7 @@ public sealed class EnhancementsModel : ObservableObject
         Reload();
     }
 
-    /// <summary>The four spells' cards: Xantam's Fire, Blade Barrier, Antimagic Field, Righteous Might.</summary>
+    /// <summary>The five spells' cards: Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might.</summary>
     public IReadOnlyList<SpellCard> Spells { get; }
 
     public SpellCard Card(BorrowedSpell spell) => Spells[(int)spell];
@@ -352,11 +377,15 @@ public sealed class EnhancementsModel : ObservableObject
     internal IReadOnlyDictionary<BorrowedSpell, BorrowedSpellSettings> Loaded { get; private set; } =
         new Dictionary<BorrowedSpell, BorrowedSpellSettings>();
 
+    /// <summary>The mana in the game's Power Attack record as the executable has it (null when it can't be read).</summary>
+    internal float? PowerAttackMana { get; private set; }
+
     /// <summary>Reads the state and the spells from the executable again (on opening, and after saving).</summary>
     public void Reload()
     {
         _state = _exe.GetBorrowedSpellsState(out _detail);
         Loaded = _exe.GetBorrowedSpells();
+        PowerAttackMana = _exe.GetFeatSpells().FirstOrDefault(f => f.Name == "powerattack")?.EnergyCost;
         _namesApplied = false;
         foreach (var card in Spells)
             card.Load(Loaded.ContainsKey(card.Spell), Loaded.TryGetValue(card.Spell, out var s) ? s : card.Info.Default);
@@ -376,7 +405,7 @@ public sealed class EnhancementsModel : ObservableObject
         BorrowedSpellsState.Unrecognized => _detail + " The borrowed spells can't be put in or taken out here.",
         BorrowedSpellsState.Outdated => _detail,
         BorrowedSpellsState.On => $"{_detail} Saving writes the cards' settings; an unticked one is taken out.",
-        _ => "No borrowed spells in this executable yet. Tick the ones to give the heroes: each goes in by itself, and they work " +
+        _ => "None of them is in this executable yet. Tick the ones to give the heroes: each goes in by itself, and they work " +
              "with or without three players."
     };
 
@@ -386,6 +415,9 @@ public sealed class EnhancementsModel : ObservableObject
     private List<SpellCard> WillBeIn => Spells.Where(c => c.WillBeIn).ToList();
 
     private List<SpellCard> TakingOut => Spells.Where(c => c.TakingOut).ToList();
+
+    /// <summary>Those with names and an icon of their own to put in GTEXT.LMP and ICONS.LMP (all but Power Attack, whose are the game's).</summary>
+    private static bool HasOwnFiles(SpellCard c) => !c.Info.GameFeat;
 
     /// <summary>
     /// The settings to save, checked (empty when every spell is to be out); throws <see cref="ArgumentException"/> on a bad box.
@@ -413,8 +445,8 @@ public sealed class EnhancementsModel : ObservableObject
 
     /// <summary>GTEXT.LMP has to change: names go in (a spell will be in and its names are missing) or come out (taken out here).</summary>
     public bool NamesPending =>
-        _names() is { } names && (WillBeIn.Any(c => !BorrowedSpellTexts.HasNames(names, c.Spell)) ||
-                                  TakingOut.Any(c => BorrowedSpellTexts.HasAnyName(names, c.Spell)));
+        _names() is { } names && (WillBeIn.Where(HasOwnFiles).Any(c => !BorrowedSpellTexts.HasNames(names, c.Spell)) ||
+                                  TakingOut.Where(HasOwnFiles).Any(c => BorrowedSpellTexts.HasAnyName(names, c.Spell)));
 
     /// <summary>Called when the Items tab loads or saves GTEXT.LMP: the names' status follows it.</summary>
     public void NamesReloaded() => Edited();
@@ -423,8 +455,8 @@ public sealed class EnhancementsModel : ObservableObject
     public void ApplyNames()
     {
         if (_names() is not { } names || !NamesPending) return;
-        BorrowedSpellTexts.AddNames(names, WillBeIn.Where(c => !BorrowedSpellTexts.HasNames(names, c.Spell)).Select(c => c.Spell));
-        BorrowedSpellTexts.RemoveNames(names, TakingOut.Select(c => c.Spell));
+        BorrowedSpellTexts.AddNames(names, WillBeIn.Where(HasOwnFiles).Where(c => !BorrowedSpellTexts.HasNames(names, c.Spell)).Select(c => c.Spell));
+        BorrowedSpellTexts.RemoveNames(names, TakingOut.Where(HasOwnFiles).Select(c => c.Spell));
         _namesApplied = true;
     }
 
@@ -433,14 +465,14 @@ public sealed class EnhancementsModel : ObservableObject
         get
         {
             var names = _names();
-            var going = WillBeIn;
+            var going = WillBeIn.Where(HasOwnFiles).ToList();
             if (names == null)
                 return going.Count > 0
                     ? "GTEXT.LMP isn't loaded (Items tab, Open GTEXT.LMP…): without the spells' names the level-up screen and the HUD " +
                       $"show NF:{BorrowedSpellTexts.NameKey(going[0].Spell)} and the like."
                     : "GTEXT.LMP isn't loaded (Items tab).";
             var adding = going.Where(c => !BorrowedSpellTexts.HasNames(names, c.Spell)).Select(c => c.Info.Title).ToList();
-            var removing = TakingOut.Where(c => BorrowedSpellTexts.HasAnyName(names, c.Spell)).Select(c => c.Info.Title).ToList();
+            var removing = TakingOut.Where(HasOwnFiles).Where(c => BorrowedSpellTexts.HasAnyName(names, c.Spell)).Select(c => c.Info.Title).ToList();
             var parts = new List<string>();
             if (adding.Count > 0)
                 parts.Add($"The names and descriptions of {Join(adding)} (in all five languages) are added to GTEXT.LMP when you save.");
@@ -451,7 +483,7 @@ public sealed class EnhancementsModel : ObservableObject
             if (parts.Count > 0) return string.Join(" ", parts);
             return going.Count > 0
                 ? "GTEXT.LMP has the spells' names and descriptions, in all five languages."
-                : "Each spell's name and description go in GTEXT.LMP with it.";
+                : "Each spell's name and description go in GTEXT.LMP with it (Power Attack's are the game's: always there).";
         }
     }
 
@@ -474,16 +506,16 @@ public sealed class EnhancementsModel : ObservableObject
 
     /// <summary>ICONS.LMP has to change: icons go in (a spell will be in) or come out (taken out here).</summary>
     public bool IconsNeedSaving =>
-        _icons is { } icons && (WillBeIn.Any(c => !BorrowedSpellIcons.IsIn(icons, c.Spell)) ||
-                                TakingOut.Any(c => BorrowedSpellIcons.IsIn(icons, c.Spell)));
+        _icons is { } icons && (WillBeIn.Where(HasOwnFiles).Any(c => !BorrowedSpellIcons.IsIn(icons, c.Spell)) ||
+                                TakingOut.Where(HasOwnFiles).Any(c => BorrowedSpellIcons.IsIn(icons, c.Spell)));
 
     /// <summary>ICONS.LMP as it is to be saved (see <see cref="IconsNeedSaving"/>).</summary>
     public byte[] IconsToSave()
     {
         if (_icons == null) throw new InvalidOperationException("ICONS.LMP isn't loaded.");
         if (!IconsNeedSaving) return _icons;
-        var icons = BorrowedSpellIcons.RemoveFrom(_icons, TakingOut.Select(c => c.Spell));
-        return BorrowedSpellIcons.AddTo(icons, WillBeIn.Select(c => c.Spell));
+        var icons = BorrowedSpellIcons.RemoveFrom(_icons, TakingOut.Where(HasOwnFiles).Select(c => c.Spell));
+        return BorrowedSpellIcons.AddTo(icons, WillBeIn.Where(HasOwnFiles).Select(c => c.Spell));
     }
 
     /// <summary>Called after ICONS.LMP was saved: what was written is the new starting point.</summary>
@@ -493,14 +525,15 @@ public sealed class EnhancementsModel : ObservableObject
     {
         get
         {
-            var going = WillBeIn;
+            var going = WillBeIn.Where(HasOwnFiles).ToList();
             if (_icons is not { } icons)
                 return going.Count > 0
                     ? "ICONS.LMP isn't loaded: open it from the game's data folder to add the spells' HUD icons. Without them the HUD " +
                       "shows a game icon in their place; nothing else changes."
                     : "ICONS.LMP isn't loaded.";
             var adding = going.Where(c => !BorrowedSpellIcons.IsIn(icons, c.Spell)).Select(c => BorrowedSpellIcons.EntryName(c.Spell)).ToList();
-            var removing = TakingOut.Where(c => BorrowedSpellIcons.IsIn(icons, c.Spell)).Select(c => BorrowedSpellIcons.EntryName(c.Spell)).ToList();
+            var removing = TakingOut.Where(HasOwnFiles).Where(c => BorrowedSpellIcons.IsIn(icons, c.Spell))
+                .Select(c => BorrowedSpellIcons.EntryName(c.Spell)).ToList();
             var parts = new List<string>();
             if (adding.Count > 0)
                 parts.Add($"{Join(adding)} {(adding.Count == 1 ? "is" : "are")} added to {IconsPath} when you save: the game finds every other icon as before.");
@@ -508,7 +541,9 @@ public sealed class EnhancementsModel : ObservableObject
                 parts.Add($"{Join(removing)} {(removing.Count == 1 ? "is" : "are")} taken out of " +
                           (adding.Count > 0 ? "it." : $"{IconsPath} when you save."));
             if (parts.Count > 0) return string.Join(" ", parts);
-            return going.Count > 0 ? $"{IconsPath} has the spells' icons." : $"{IconsPath}: each spell's icon goes in with it.";
+            return going.Count > 0
+                ? $"{IconsPath} has the spells' icons."
+                : $"{IconsPath}: each spell's icon goes in with it (Power Attack's is the game's own).";
         }
     }
 
@@ -518,7 +553,7 @@ public sealed class EnhancementsModel : ObservableObject
     /// </summary>
     public string? FilesNote(bool namesWritten)
     {
-        var going = WillBeIn;
+        var going = WillBeIn.Where(HasOwnFiles).ToList();
         if (going.Count == 0) return null;
         var missing = new List<string>();
         var names = _names();
@@ -543,7 +578,7 @@ public sealed class EnhancementsModel : ObservableObject
             var used = WillBeIn.Count > 0 ? BgdaExecutable.BorrowedSpellsBytes : 0;
             return $"New feats go into game code that nothing ever runs: {BgdaExecutable.FeatPoolStretches} stretches, " +
                    $"{BgdaExecutable.FeatPoolBytes:N0} bytes, the same in the stock executable and every three-player build. " +
-                   (used > 0 ? $"The borrowed spells take {used:N0} bytes of it (the same for one or all four); " : "") +
+                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all five); " : "") +
                    $"{BgdaExecutable.FeatPoolBytes - used:N0} bytes are free for more.";
         }
     }
