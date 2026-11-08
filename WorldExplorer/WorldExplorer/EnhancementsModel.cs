@@ -3,11 +3,13 @@
 //
 // The Enhancements tab of Executable Tuning (Views/EnhancementsView.xaml): additions to the game that
 // work with or without three players, each turned on or off by itself. Four spells borrowed from the
-// game's monsters and one feat the game has but never offers (BgdaExecutable.BorrowedSpells.cs), one card
-// each: Xantam's Fire for Adrianna; Power Attack, Blade Barrier, Antimagic Field and Righteous Might for
-// Kromlech. Each card has its tick box, price, mana (not Power Attack's: its record's, on the Feats &
-// Spells tab) and values by rank; the names they need in GTEXT.LMP (the Items tab's copy, so one save
-// writes both tabs' texts) and their icons in ICONS.LMP are shared (Power Attack's are the game's own).
+// game's monsters and two feats the game has but never offers (BgdaExecutable.BorrowedSpells.cs), one card
+// each: Xantam's Fire and Sorcerer's Blood for Adrianna; Power Attack, Blade Barrier, Antimagic Field and
+// Righteous Might for Kromlech. Each card has its tick box, price, mana (not Power Attack's: its record's,
+// on the Feats & Spells tab) and values by rank; Sorcerer's Blood, a passive, has the number of ranks its
+// entry offers instead of mana and values. The names they need in GTEXT.LMP (the Items tab's copy, so one
+// save writes both tabs' texts) and their icons in ICONS.LMP are shared (Power Attack's and Sorcerer's
+// Blood's are the game's own).
 // Every box is text so a half-typed value never throws; SettingsProblem says what is wrong. No WPF types,
 // so it runs in tests.
 //
@@ -88,7 +90,7 @@ public sealed class SpellCard : ObservableObject
 {
     private readonly EnhancementsModel _owner;
     private bool _on;
-    private string _price = "", _mana = "";
+    private string _price = "", _mana = "", _rankCount = "";
 
     internal SpellCard(EnhancementsModel owner, BorrowedSpell spell)
     {
@@ -125,6 +127,11 @@ public sealed class SpellCard : ObservableObject
             "Ilivarra's field: for the rank's time fire, cold, electricity and magic do him no harm (burning, freezing and shocks " +
             "included), and a spell that reaches him bursts into lilac sparks. Weapons still hurt him. Casting it again while it " +
             "runs starts its time again.",
+        BorrowedSpell.SorcerersBlood =>
+            "The game's own feat, which it never offers, as its description says: \"+1 Mana Point gain per level. This is not " +
+            "retroactive.\" Once she has it, every level she gains gives her 1 more mana for each rank (12 in place of 11 at one " +
+            "rank); the levels she had before don't count, so it is worth most taken early. A passive feat: no mana, no HUD slot. " +
+            "Her extra mana is kept with her in saved games. Its texts are the game's.",
         _ =>
             "Ilivarra's might: for 10 seconds he grows to 1.3 times his size in a green glow, his melee hits do the rank's " +
             "percentage more damage and physical hits on him the rank's percentage less (spells do their full damage). Casting it " +
@@ -138,6 +145,7 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.PowerAttack => "Melee hits it doubles, by rank",
         BorrowedSpell.BladeBarrier => "Damage of each hit, by rank (least to most)",
         BorrowedSpell.AntimagicField => "Seconds it lasts, by rank",
+        BorrowedSpell.SorcerersBlood => "",
         _ => "Percentage more melee damage and less physical damage taken, by rank"
     };
 
@@ -170,6 +178,8 @@ public sealed class SpellCard : ObservableObject
         get
         {
             var d = Info.Default;
+            if (Info.Passive)
+                return $"Price {d.Price} and {RanksText(d.RankCount)}: what featpatch.py writes, as the game's description has it (+1 mana a level).";
             if (!Info.HasMana)
                 return $"Price {d.Price} and {string.Join(", ", d.First)} hits: what featpatch.py writes (its mana is its record's).";
             var values = Spell switch
@@ -223,14 +233,32 @@ public sealed class SpellCard : ObservableObject
         }
     }
 
-    /// <summary>The card has a Mana box (not Power Attack's: its record's mana is on the Feats &amp; Spells tab).</summary>
+    /// <summary>The card has a Mana box (not Power Attack's: its record's mana is on the Feats &amp; Spells tab; not a passive's).</summary>
     public bool HasMana => Info.HasMana;
 
-    /// <summary>Where Power Attack's mana is (null for the others, whose box this is).</summary>
+    /// <summary>The card has boxes by rank (every one but Sorcerer's Blood's).</summary>
+    public bool HasValues => Info.HasValues;
+
+    /// <summary>The card has a box for the number of ranks its entry offers (Sorcerer's Blood's).</summary>
+    public bool HasRankCount => Info.Passive;
+
+    /// <summary>Where Power Attack's mana is, or that a passive takes none (null for the others, whose box this is).</summary>
     public string? ManaNote => Info.HasMana
         ? null
-        : "Mana: its own ability record's" + (_owner.PowerAttackMana is { } m ? $", {NumberText.Format(m)} in this executable" : "") +
-          " (\"powerattack\" on the Feats & Spells tab, as the game's other feats).";
+        : Info.Passive
+            ? "No mana: a passive feat. Each rank adds 1 mana for every level she gains once she has it; the levels before don't count."
+            : "Mana: its own ability record's" + (_owner.PowerAttackMana is { } m ? $", {NumberText.Format(m)} in this executable" : "") +
+              " (\"powerattack\" on the Feats & Spells tab, as the game's other feats).";
+
+    /// <summary>The number of ranks the level-up screen offers (Sorcerer's Blood: 1 to 5, each adding 1 mana a level).</summary>
+    public string RankCount
+    {
+        get => _rankCount;
+        set
+        {
+            if (SetProperty(ref _rankCount, value)) Edited();
+        }
+    }
 
     /// <summary>The boxes of ranks 1-5.</summary>
     public IReadOnlyList<SpellRankRow> Ranks { get; }
@@ -245,8 +273,13 @@ public sealed class SpellCard : ObservableObject
     {
         SetProperty(ref _price, s.Price.ToString(), nameof(Price));
         SetProperty(ref _mana, Info.HasMana ? NumberText.Format(s.Mana) : "", nameof(Mana));
+        SetProperty(ref _rankCount, s.RankCount.ToString(), nameof(RankCount));
+        if (!Info.HasValues) return;
         for (var r = 0; r < Ranks.Count; r++) Ranks[r].Fill(s.First[r], Info.HasSecond ? s.Second[r] : null);
     }
+
+    /// <summary>"1 rank", "3 ranks".</summary>
+    private static string RanksText(int n) => n == 1 ? "1 rank" : $"{n} ranks";
 
     /// <summary>The boxes back to what featpatch.py writes.</summary>
     public void Defaults()
@@ -272,6 +305,19 @@ public sealed class SpellCard : ObservableObject
             return null;
         }
 
+        if (Info.Passive)
+        {
+            if (!NumberText.TryParseInteger(_rankCount, out var count))
+            {
+                problem = $"{Info.Title}: the number of ranks is a whole number from 1 to {BorrowedSpellSettings.MaxRankCount}.";
+                return null;
+            }
+
+            var p = new BorrowedSpellSettings(price, 0f, Array.Empty<int>(), Array.Empty<int>(), count);
+            problem = p.Problem(Spell);
+            return problem == null ? p : null;
+        }
+
         var first = new int[Ranks.Count];
         var second = new int[Info.HasSecond ? Ranks.Count : 0];
         for (var r = 0; r < Ranks.Count; r++)
@@ -292,15 +338,24 @@ public sealed class SpellCard : ObservableObject
     /// <summary>What is wrong with the boxes (only while the spell is to be in), or null.</summary>
     public string? SettingsProblem => _on && TrySettings(out var p) == null ? p : null;
 
+    /// <summary>The ranks the level-up screen offers as the boxes say (5, or Sorcerer's Blood's box), or 0 when its box isn't a number.</summary>
+    private int OfferedRanks =>
+        !Info.Passive ? BorrowedSpellSettings.Ranks
+        : NumberText.TryParseInteger(_rankCount, out var n) && n is >= 1 and <= BorrowedSpellSettings.MaxRankCount ? n : 0;
+
     /// <summary>What the ranks cost with the price in the box ("10, 11, 13, 15 and 19 feat points"), or "" when it isn't a price.</summary>
     public string RankCostText
     {
         get
         {
             if (!NumberText.TryParseInteger(_price, out var price) || price is < 0 or > BorrowedSpellSettings.MaxPrice) return "";
-            if (price == 0) return "Every rank is free (for testing).";
-            var costs = Enumerable.Range(0, BorrowedSpellSettings.Ranks).Select(h => BorrowedSpellSettings.RankCost(price, h).ToString()).ToList();
-            return $"Ranks 1-5 cost {string.Join(", ", costs.Take(4))} and {costs[4]} feat points.";
+            var ranks = OfferedRanks;
+            if (ranks == 0) return "";
+            if (price == 0) return ranks == 1 ? "It is free (for testing)." : "Every rank is free (for testing).";
+            var costs = Enumerable.Range(0, ranks).Select(h => BorrowedSpellSettings.RankCost(price, h).ToString()).ToList();
+            return ranks == 1
+                ? $"It costs {costs[0]} feat points."
+                : $"Ranks 1-{ranks} cost {string.Join(", ", costs.Take(ranks - 1))} and {costs[^1]} feat points.";
         }
     }
 
@@ -315,7 +370,8 @@ public sealed class SpellCard : ObservableObject
         get
         {
             if (!Usable) return "Can't be put in or taken out here (see above).";
-            var where = $"{Info.Hero}'s level-up screen offers it after {Info.After} (5 ranks)";
+            var ranks = OfferedRanks;
+            var where = $"{Info.Hero}'s level-up screen offers it after {Info.After}" + (ranks > 0 ? $" ({RanksText(ranks)})" : "");
             if (_owner.State == BorrowedSpellsState.Outdated && InFile)
                 return _on
                     ? "In as an earlier test version: saving brings it to the current one, in game code nothing runs, so it works " +
@@ -324,8 +380,11 @@ public sealed class SpellCard : ObservableObject
             if (InFile)
             {
                 if (!_on)
-                    return $"Taken out when you save: the game's own code goes back. A saved game whose {Info.Hero} learnt it keeps " +
-                           "the slot, but the spell then does nothing.";
+                    return Info.Passive
+                        ? $"Taken out when you save: the game's own code goes back, and {Info.Hero}'s maximum mana is the game's again " +
+                          "(a saved game keeps her extra mana, which counts again if the feat is put back)."
+                        : $"Taken out when you save: the game's own code goes back. A saved game whose {Info.Hero} learnt it keeps " +
+                          "the slot, but the spell then does nothing.";
                 return Changed ? $"In. Its new settings are written when you save." : $"In: {where}.";
             }
 
@@ -346,6 +405,7 @@ public sealed class SpellCard : ObservableObject
         OnPropertyChanged(nameof(SettingsProblem));
         OnPropertyChanged(nameof(RankCostText));
         OnPropertyChanged(nameof(ManaNote));
+        OnPropertyChanged(nameof(RankCount));
     }
 }
 
@@ -368,7 +428,7 @@ public sealed class EnhancementsModel : ObservableObject
         Reload();
     }
 
-    /// <summary>The five spells' cards: Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might.</summary>
+    /// <summary>The six spells' cards: Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood.</summary>
     public IReadOnlyList<SpellCard> Spells { get; }
 
     public SpellCard Card(BorrowedSpell spell) => Spells[(int)spell];
@@ -416,7 +476,7 @@ public sealed class EnhancementsModel : ObservableObject
 
     private List<SpellCard> TakingOut => Spells.Where(c => c.TakingOut).ToList();
 
-    /// <summary>Those with names and an icon of their own to put in GTEXT.LMP and ICONS.LMP (all but Power Attack, whose are the game's).</summary>
+    /// <summary>Those with names and an icon of their own to put in GTEXT.LMP and ICONS.LMP (all but Power Attack and Sorcerer's Blood, whose are the game's).</summary>
     private static bool HasOwnFiles(SpellCard c) => !c.Info.GameFeat;
 
     /// <summary>
@@ -483,7 +543,7 @@ public sealed class EnhancementsModel : ObservableObject
             if (parts.Count > 0) return string.Join(" ", parts);
             return going.Count > 0
                 ? "GTEXT.LMP has the spells' names and descriptions, in all five languages."
-                : "Each spell's name and description go in GTEXT.LMP with it (Power Attack's are the game's: always there).";
+                : "Each spell's name and description go in GTEXT.LMP with it (Power Attack's and Sorcerer's Blood's are the game's: always there).";
         }
     }
 
@@ -543,7 +603,7 @@ public sealed class EnhancementsModel : ObservableObject
             if (parts.Count > 0) return string.Join(" ", parts);
             return going.Count > 0
                 ? $"{IconsPath} has the spells' icons."
-                : $"{IconsPath}: each spell's icon goes in with it (Power Attack's is the game's own).";
+                : $"{IconsPath}: each spell's icon goes in with it (Power Attack's is the game's own; Sorcerer's Blood, a passive feat, has none).";
         }
     }
 
@@ -578,7 +638,7 @@ public sealed class EnhancementsModel : ObservableObject
             var used = WillBeIn.Count > 0 ? BgdaExecutable.BorrowedSpellsBytes : 0;
             return $"New feats go into game code that nothing ever runs: {BgdaExecutable.FeatPoolStretches} stretches, " +
                    $"{BgdaExecutable.FeatPoolBytes:N0} bytes, the same in the stock executable and every three-player build. " +
-                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all five); " : "") +
+                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all six); " : "") +
                    $"{BgdaExecutable.FeatPoolBytes - used:N0} bytes are free for more.";
         }
     }

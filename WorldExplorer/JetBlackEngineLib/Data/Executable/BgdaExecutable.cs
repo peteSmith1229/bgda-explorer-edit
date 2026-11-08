@@ -81,8 +81,17 @@ public sealed class FeatSpell
 public partial class BgdaExecutable
 {
     // ---- supported-build layout (SLES_506.72) ----
-    public const int XpTableOffset    = 0x00134DA0;   // 16 × int32
-    public const int XpTableCount     = 16;
+    public const int XpTableOffset    = 0x00134DA0;   // VA 0x00233DA0: levels 1-40 × int32, then the cap
+
+    /// <summary>
+    /// The game's levels, 1 to 40: entry [i] is the total XP level i + 1 needs (the level-up, FUN_0017B3A0, compares the XP with
+    /// entry [level]). After level 40's comes the cap, 99,999,999 in the game (<see cref="GetXpCap"/>), which no one reaches, so
+    /// level 40 is the highest.
+    /// </summary>
+    public const int XpTableCount     = 40;
+
+    /// <summary>The entries the build is recognised by: the first 16, all the XP tab once showed (so files edited then still open).</summary>
+    private const int XpFingerprintCount = 16;
     public const int StatsTableOffset = 0x0020A510;   // 4 classes × 6 stats × int32
     public const int StatsClassCount  = 4;
     public const int StatsPerClass    = 6;            // STR, INT, WIS, DEX, CON, CHA
@@ -162,13 +171,13 @@ public partial class BgdaExecutable
     /// </summary>
     private bool LooksLikeSupportedBuild()
     {
-        if (XpTableOffset + XpTableCount * 4 > _data.Length) return false;
+        if (XpTableOffset + (XpTableCount + 1) * 4 > _data.Length) return false;
         if (StatsTableOffset + StatsClassCount * StatsPerClass * 4 > _data.Length) return false;
         if (FeatTableOffset + FeatRecordSize > _data.Length) return false;
 
         if (ReadInt(XpTableOffset) != 0) return false;
         var prev = 0;
-        for (var i = 1; i < XpTableCount; i++)
+        for (var i = 1; i < XpFingerprintCount; i++)
         {
             var v = ReadInt(XpTableOffset + i * 4);
             if (v <= prev) return false;
@@ -193,6 +202,16 @@ public partial class BgdaExecutable
         return t;
     }
 
+    /// <summary>
+    /// The XP after level 40's: what a level 41 would need. The game has 99,999,999, which no one reaches, so level 40 is the
+    /// highest; it is never changed here.
+    /// </summary>
+    public int GetXpCap() => ReadInt(XpTableOffset + XpTableCount * 4);
+
+    /// <summary>
+    /// Writes levels 1-40. Level 1 needs 0, each level more than the one before, and level 40 less than the cap after it
+    /// (<see cref="GetXpCap"/>), which keeps 40 the highest level; otherwise <see cref="ArgumentException"/>, and nothing is written.
+    /// </summary>
     public void SetXpTable(int[] values)
     {
         if (values.Length != XpTableCount)
@@ -203,8 +222,13 @@ public partial class BgdaExecutable
         {
             if (values[i] <= values[i - 1])
                 throw new ArgumentException(
-                    $"XP thresholds must strictly increase (entry {i + 1} is not greater than entry {i}).");
+                    $"Level {i + 1} needs {values[i]} XP, which isn't more than level {i}'s {values[i - 1]}: each level must need more XP than the one before.");
         }
+
+        var cap = GetXpCap();
+        if (values[XpTableCount - 1] >= cap)
+            throw new ArgumentException(
+                $"Level {XpTableCount} needs {values[XpTableCount - 1]} XP: it must be less than the {cap} the game keeps after it, which no one reaches, so that {XpTableCount} stays the highest level.");
 
         for (var i = 0; i < XpTableCount; i++) WriteInt(XpTableOffset + i * 4, values[i]);
     }

@@ -74,6 +74,8 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Price" />
                             <TextBox Grid.Column="1" Style="{StaticResource Field}" Text="{Binding Price, UpdateSourceTrigger=PropertyChanged}"
@@ -82,13 +84,19 @@
                                        Visibility="{Binding HasMana, Converter={StaticResource BoolToVisibility}}" />
                             <TextBox Grid.Column="3" Style="{StaticResource Field}" Text="{Binding Mana, UpdateSourceTrigger=PropertyChanged}"
                                      ToolTip="Above 0 and at most 100." Visibility="{Binding HasMana, Converter={StaticResource BoolToVisibility}}" />
+                            <TextBlock Grid.Column="4" Style="{StaticResource FieldLabel}" Text="Ranks"
+                                       Visibility="{Binding HasRankCount, Converter={StaticResource BoolToVisibility}}" />
+                            <TextBox Grid.Column="5" Style="{StaticResource Field}" Text="{Binding RankCount, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="How many ranks the level-up screen offers: 1 (the game's description: +1 mana a level) to 5. Each rank adds 1 mana for every level she gains once she has it."
+                                     Visibility="{Binding HasRankCount, Converter={StaticResource BoolToVisibility}}" />
                         </Grid>
                         <TextBlock Style="{StaticResource Help}" Text="{Binding ManaNote}"
                                    Visibility="{Binding ManaNote, Converter={StaticResource NullToVisibility}}" />
                         <TextBlock Style="{StaticResource Help}" Text="{Binding RankCostText}" />
 
-                        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,8,0,4" Text="{Binding ValuesCaption}" />
-                        <ItemsControl ItemsSource="{Binding Ranks}">
+                        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,8,0,4" Text="{Binding ValuesCaption}"
+                                   Visibility="{Binding HasValues, Converter={StaticResource BoolToVisibility}}" />
+                        <ItemsControl ItemsSource="{Binding Ranks}" Visibility="{Binding HasValues, Converter={StaticResource BoolToVisibility}}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <WrapPanel />
@@ -110,9 +118,9 @@
         <StackPanel Margin="0,2,14,8">
             <TextBlock Style="{StaticResource Help}" Text="Additions to the game that work with or without three players. Each one is turned on or off by itself here, and taking one out puts the game's own code back exactly. Nothing is written until you save." />
 
-            <TextBlock Text="NEW FEATS: SPELLS BORROWED FROM THE GAME'S MONSTERS, AND POWER ATTACK" Style="{StaticResource Heading}" Margin="0,8,0,6" />
+            <TextBlock Text="NEW FEATS: SPELLS BORROWED FROM THE GAME'S MONSTERS, POWER ATTACK AND SORCERER'S BLOOD" Style="{StaticResource Heading}" Margin="0,8,0,6" />
             <TextBlock Style="{StaticResource Help}" Text="{Binding StateText}" />
-            <TextBlock Style="{StaticResource Help}" Text="Each is a feat on its hero's level-up screen, with 5 ranks, and the HUD shows its icon and its numbers for the rank. Four are spells borrowed from the game's monsters; Power Attack is the game's own feat, which it never offers. They cost mana like the game's own spells." />
+            <TextBlock Style="{StaticResource Help}" Text="Each is a feat on its hero's level-up screen. Four are spells borrowed from the game's monsters; Power Attack and Sorcerer's Blood are the game's own feats, which it never offers. The spells and Power Attack have 5 ranks, cost mana like the game's own spells, and the HUD shows their icons and their numbers for the rank. Sorcerer's Blood is passive: it adds to Adrianna's mana as she gains levels." />
             <ItemsControl ItemsSource="{Binding Spells}" Focusable="False" />
 
             <TextBlock Text="NAMES AND ICONS" Style="{StaticResource Heading}" />

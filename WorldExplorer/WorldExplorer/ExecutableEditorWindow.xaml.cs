@@ -23,12 +23,15 @@
 // off offers to put the game's own cutscenes back when one with player 3 needs ADRIANNA26.
 //
 // Enhancements (Views/EnhancementsView, EnhancementsModel): additions that work with or without
-// three players, each on or off by itself. The borrowed spells (Xantam's Fire for Adrianna; Power
-// Attack, Blade Barrier, Antimagic Field and Righteous Might for Kromlech) go into game code nothing
-// runs (BgdaExecutable.BorrowedSpells.cs); they are written before the Three Players tab's change, so
-// that can switch three players underneath them. Their names go in GTEXT.LMP (the Items tab's copy,
-// one save for both) and their icons in ICONS.LMP (found like GTEXT.LMP), saved after the executable;
-// Power Attack's names and icon are the game's own, and its mana is its record's on Feats & Spells.
+// three players, each on or off by itself. The borrowed spells (Xantam's Fire and Sorcerer's Blood for
+// Adrianna; Power Attack, Blade Barrier, Antimagic Field and Righteous Might for Kromlech) go into game
+// code nothing runs (BgdaExecutable.BorrowedSpells.cs); they are written before the Three Players tab's
+// change, so that can switch three players underneath them. Their names go in GTEXT.LMP (the Items tab's
+// copy, one save for both) and their icons in ICONS.LMP (found like GTEXT.LMP), saved after the
+// executable; Power Attack's and Sorcerer's Blood's names (and Power Attack's icon) are the game's own,
+// and Power Attack's mana is its record's on Feats & Spells.
+//
+// XP per Level: the game's 40 levels (after level 40 it keeps 99,999,999, which no one reaches).
 // ═══════════════════════════════════════════════════════════════════════════════
 using System;
 using System.Collections.Generic;

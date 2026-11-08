@@ -61,13 +61,13 @@ Alliance II files are read with the Dark Alliance formats for now.
   `Player2`, then `Player3`; a copy of anyone else keeps the name, and the name's list picks another
   character. `Player` and `Player2` stand in for players 1 and 2; with the ADRIANNA23 executable, `Player3`
   does for player 3 in three-player games.
-- **Tools** for the selected game are in the Tools menu, the Tools drop-down on the toolbar and the start page.
-  For Dark Alliance: Executable Tuning (XP per level, starting stats, feats and spells, items, monster HP,
-  three-player co-op and difficulty scaling, enhancements, saved to a copy of `SLES_506.72`), the Save Game Editor (memory-card
-  exports, `.psu`), and Edit Script Rewards and Insert Reward at Call Site, which work on the selected script. For
-  Dark Alliance II: Executable Tuning, which makes the PCSX2 cheat file of the three-player mod, Build
-  Three-Player ISO, and the same two script tools (Dark Alliance II's level scripts have Dark Alliance's format and
-  reward commands). Games without tools yet say so.
+- **Tools** for the selected game are in the Tools menu, the Tools drop-down on the toolbar and the start page. For
+  Dark Alliance: Executable Tuning (the XP each of the 40 levels needs, starting stats, feats and spells, items,
+  monster HP, three-player co-op and difficulty scaling, enhancements, saved to a copy of `SLES_506.72`), the Save
+  Game Editor (memory-card exports, `.psu`), and Edit Script Rewards and Insert Reward at Call Site, which work on
+  the selected script. For Dark Alliance II: Executable Tuning, which makes the PCSX2 cheat file of the
+  three-player mod, Build Three-Player ISO, and the same two script tools (Dark Alliance II's level scripts have
+  Dark Alliance's format and reward commands). Games without tools yet say so.
 - **Edit items** in Executable Tuning's Items tab: every weapon, armour piece, potion, ring and amulet (damage,
   armour, price, weight, slot, stance, models and the 64 property bits, with the game's own damage and price
   formulas previewed), the item models, what each shop sells, material multipliers, the enchant glow and the
@@ -89,22 +89,25 @@ Alliance II files are read with the Dark Alliance formats for now.
   (in all five languages) go in `GTEXT.LMP` and the item card's acid drop in `INVENTRY.LMP`, each saved after the
   executable. "Take Corrosive out" takes all three out again, and the acid glow is one click away.
 - **Add enhancements** on Executable Tuning's Enhancements tab: additions to the game that work with or without
-  three players, each turned on or off by itself. Four spells borrowed from the game's monsters and one feat the
+  three players, each turned on or off by itself. Four spells borrowed from the game's monsters and two feats the
   game has but never offers, each a feat on its hero's level-up screen (5 ranks; price, mana and the values of
-  each rank can be set):
+  each rank can be set; Sorcerer's Blood has a price and 1 to 5 ranks):
   - Xantam's Fire for Adrianna: the beholder Xantam's fire trails, which burn the monsters in their path;
   - Power Attack for Kromlech: the game's own cut feat, finished: casting it readies his weapon, and his next
     melee hits (one to five, by rank) within 10 seconds do double damage. Its icon, HUD line and texts are the
     game's, and its mana is its record's on the Feats & Spells tab;
   - Blade Barrier for Kromlech: Ilivarra's whirling axes, which hit every monster in reach once a second;
   - Antimagic Field for Kromlech: fire, cold, electricity and magic do him no harm while it lasts;
-  - Righteous Might for Kromlech: he grows, his melee hits do more damage and physical hits on him less.
+  - Righteous Might for Kromlech: he grows, his melee hits do more damage and physical hits on him less;
+  - Sorcerer's Blood for Adrianna: the game's own cut passive feat, finished: once she has it, every level she
+    gains gives her 1 more mana for each rank (1 rank, as the game's description says, unless set otherwise; not
+    retroactive). Its texts are the game's; it takes no mana and has no icon.
 
   They go into game code nothing ever runs (about 32 KB of it, the same in the stock executable and every
   three-player build, so three players can still be turned on or off), the borrowed spells' names and
   descriptions (in all five languages) into `GTEXT.LMP` and their HUD icons into `ICONS.LMP`, each saved after
-  the executable. Unticking one puts the game's own code back exactly. A file with the first test version of
-  Kromlech's spells is brought up to date when it is saved, every spell keeping its settings.
+  the executable. Unticking one puts the game's own code back exactly. A file with an earlier test version
+  (Kromlech's spells, Power Attack) is brought up to date when it is saved, every spell keeping its settings.
 - **Pick colours** by clicking a colour box: a glow style's halo or core on the Glow tab, or a player's automap
   marker on the Three Players tab. Drag in the square and the hue bar, type red, green and blue or a `#RRGGBB`
   value, or click a ready-made colour; OK puts the colour in the red, green and blue boxes.

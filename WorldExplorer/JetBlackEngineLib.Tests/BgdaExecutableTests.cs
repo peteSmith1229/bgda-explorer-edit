@@ -123,6 +123,61 @@ public class BgdaExecutableTests
     }
 
     [Test]
+    public void XpTable_HasTheGamesFortyLevels()
+    {
+        var exe = BgdaExecutable.Open(_stockPath);
+        var xp = exe.GetXpTable();
+        Assert.That(xp.Length, Is.EqualTo(40));
+        Assert.That(xp[1], Is.EqualTo(1000), "level 2");
+        Assert.That(xp[15], Is.EqualTo(120000), "level 16, the last the tab used to show");
+        Assert.That(xp[16], Is.EqualTo(136000), "level 17");
+        Assert.That(xp[39], Is.EqualTo(795000), "level 40");
+        Assert.That(exe.GetXpCap(), Is.EqualTo(99999999), "after level 40: what no one reaches");
+
+        xp[20] = 230000;
+        xp[39] = 900000;
+        exe.SetXpTable(xp);
+        var again = ReopenSaved(exe, "xp-forty.72");
+        Assert.That(again.GetXpTable(), Is.EqualTo(xp));
+        Assert.That(again.GetXpCap(), Is.EqualTo(99999999), "the cap stays");
+        var bytes = File.ReadAllBytes(Path.Combine(_workDir, "xp-forty.72"));
+        var changed = Enumerable.Range(0, bytes.Length).Where(i => bytes[i] != _stockBytes[i]).ToList();
+        Assert.That(changed.All(i => i >= BgdaExecutable.XpTableOffset + 20 * 4 && i < BgdaExecutable.XpTableOffset + 40 * 4), Is.True,
+                    "only levels 21 and 40 changed");
+
+        var bad = again.GetXpTable();
+        bad[17] = bad[16];
+        var e = Assert.Throws<ArgumentException>(() => again.SetXpTable(bad));
+        Assert.That(e!.Message, Does.Contain("Level 18"));
+        var over = again.GetXpTable();
+        over[39] = 99999999;
+        e = Assert.Throws<ArgumentException>(() => again.SetXpTable(over));
+        Assert.That(e!.Message, Does.Contain("Level 40"));
+        Assert.That(again.GetXpTable(), Is.EqualTo(xp), "nothing written");
+    }
+
+    [Test]
+    public void XpTable_AFileEditedWhenTheTabShowedSixteenLevels_StillOpens()
+    {
+        // level 16 raised above the game's level 17, as the 16-level tab allowed: the file still opens, the whole table is read,
+        // and saving it as it is says which level is wrong (in the game levels 17 on would come one a kill)
+        var bytes = (byte[])_stockBytes.Clone();
+        BitConverter.GetBytes(150000).CopyTo(bytes, BgdaExecutable.XpTableOffset + 15 * 4);
+        var path = Path.Combine(_workDir, "xp-sixteen.72");
+        File.WriteAllBytes(path, bytes);
+        var exe = BgdaExecutable.Open(path);
+        var xp = exe.GetXpTable();
+        Assert.That(xp[15], Is.EqualTo(150000));
+        Assert.That(xp[16], Is.EqualTo(136000));
+        var e = Assert.Throws<ArgumentException>(() => exe.SetXpTable(xp));
+        Assert.That(e!.Message, Does.Contain("Level 17"));
+        xp[16] = 160000;
+        xp[17] = 170000;
+        exe.SetXpTable(xp);
+        Assert.That(ReopenSaved(exe, "xp-sixteen-fixed.72").GetXpTable(), Is.EqualTo(xp));
+    }
+
+    [Test]
     public void Difficulty_EditThenStock_RestoresTheStockFile()
     {
         var exe = BgdaExecutable.Open(_stockPath);

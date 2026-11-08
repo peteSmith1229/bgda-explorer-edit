@@ -58,7 +58,7 @@
         <TabControl>
             <TabItem Header="XP per Level">
                 <DockPanel Margin="0,2,0,0">
-                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Help}" Text="Total XP required to reach each level. Must start at 0 and strictly increase. Lower values = faster leveling." />
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Help}" Text="Total XP required to reach each level, 1 to 40: the game's highest, because after level 40 it keeps 99,999,999 XP, which no one reaches. Must start at 0 and strictly increase. Lower values = faster leveling." />
                     <DataGrid x:Name="xpGrid" AutoGenerateColumns="False" CanUserAddRows="False"
                               HeadersVisibility="Column">
                         <DataGrid.Columns>

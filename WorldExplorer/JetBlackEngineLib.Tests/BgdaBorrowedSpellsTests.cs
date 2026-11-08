@@ -12,13 +12,13 @@ using System.Text;
 namespace JetBlackEngineLib.Tests;
 
 /// <summary>
-/// The borrowed spells, the Enhancements tab (BgdaExecutable.BorrowedSpells.cs): Xantam's Fire for Adrianna; Power Attack
-/// (the game's own feat), Blade Barrier, Antimagic Field and Righteous Might for Kromlech. On the stock PAL executable in
-/// Test_files (skipped when it is not present), with the Three Players tab switching three players underneath them, and
-/// version 5 (the first test of Kromlech's spells) brought up to date; their names in GTEXT.LMP and their icons in
-/// ICONS.LMP (archives built here). The patch is featpatch.py version 6: the checksums are of the files featpatch.py
-/// writes, and what it does in the game was checked by emulation (test_feats6.py on eleven files: 176 checks on each
-/// with all five; 63 broken copies, all caught on two bases).
+/// The borrowed spells, the Enhancements tab (BgdaExecutable.BorrowedSpells.cs): Xantam's Fire and Sorcerer's Blood (the game's
+/// own feat) for Adrianna; Power Attack (the game's own feat), Blade Barrier, Antimagic Field and Righteous Might for Kromlech.
+/// On the stock PAL executable in Test_files (skipped when it is not present), with the Three Players tab switching three
+/// players underneath them, and versions 6 and 5 (the first tests of Power Attack and of Kromlech's spells) brought up to date;
+/// their names in GTEXT.LMP and their icons in ICONS.LMP (archives built here). The patch is featpatch.py version 7: the
+/// checksums are of the files featpatch.py writes, and what it does in the game was checked by emulation (test_feats7.py on
+/// twelve files: 190 checks on each with all six; 80 broken copies, all caught on two bases).
 /// </summary>
 [TestFixture]
 public class BgdaBorrowedSpellsTests
@@ -27,14 +27,70 @@ public class BgdaBorrowedSpellsTests
     private const string StockMd5 = "34874fe1aaed80fe52ad3911a7f304aa";
 
     /// <summary>
-    /// featpatch.py version 6 on the stock executable: all five at the tested settings, at the test files' (price 0, 4 mana), Kromlech's
-    /// four alone and Power Attack alone.
+    /// featpatch.py version 7 on the stock executable: all six at the tested settings, at the test files' (price 0, 4 mana), Kromlech's
+    /// four alone, Power Attack alone, Sorcerer's Blood alone, and Sorcerer's Blood alone with 3 ranks at price 4.
     /// </summary>
-    private const string AllFiveMd5 = "1c131fd0e186959692c371b61291b66f", TestSettingsMd5 = "253b05b6fbc499290ccfc5b763f93dc5",
-                         KromlechMd5 = "9440349e3ff95df8815c66e8d88d968a", PowerAttackMd5 = "e958f42a2d8ae785988bafc386f0b073";
+    private const string AllSixMd5 = "5d6952d30c679fdcb8e7b735f854ae93", TestSettingsMd5 = "29a2819419b3a32f6115e2361b8c1d5f",
+                         KromlechMd5 = "4b8e139de8d418fe465df7af89f1b89f", PowerAttackMd5 = "c0b04bc478abd9e631b9a219c6e03bfa",
+                         SorcerersMd5 = "8b2258c82551aff67308399041f97a0c", SorcerersThreeRanksMd5 = "e0f183e32138f5d13c79fe06a653c792";
 
-    /// <summary>featpatch.py version 6 (all five) on ADRIANNA26 (the stock file with three players turned on).</summary>
-    private const string ThreePlayersMd5 = "0b779cd88a544c7707b791aa2da7a86c";
+    /// <summary>featpatch.py version 7 (all six) on ADRIANNA26 (the stock file with three players turned on).</summary>
+    private const string ThreePlayersMd5 = "89f4a51f80b49131a0188c6ced04a695";
+
+    /// <summary>
+    /// Version 6 on the stock executable (featpatch.py version 6, all five at its tested settings: MD5 below), as the changes it made:
+    /// {u32 file offset, u32 length, the bytes} runs, zlib, then base64.
+    /// </summary>
+    private const string Version6Md5 = "1c131fd0e186959692c371b61291b66f";
+
+    private const string Version6RunsBase64 =
+        "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";
 
     /// <summary>
     /// Version 5 on the stock executable (featpatch.py version 5, all four at its tested settings: MD5 below), as the changes it made:
@@ -87,24 +143,30 @@ public class BgdaBorrowedSpellsTests
         + "ILS0r8FtW/2JhbYja6vwG2N5X4W3Tu0f7ynHO98MLA7Di1HMnY2im1ZcB9sUJHBjrmufLIHX4cVjDUfktF7hva3EIUjj+ydLHMrfy/M+8csSJz1e"
         + "K31lYgWEBE4Pqg3/u8IZ8MAuVUu8l3v+kyHVP1HwvHqz5gz/y0b1SG0pfM7/zdb23SS1NVlQzxlOZ+q5wGr3ceJbgf8DJ6YW9Q==";
 
-    /// <summary>The words that send the game to it (all five on), and the stretches of the pool it takes.</summary>
+    /// <summary>The words that send the game to it (all six on), and the stretches of the pool it takes.</summary>
     private static readonly int[] Hooks =
     {
-        0x00161EF8, 0x00161F00, 0x00161F08, 0x00167AFC, 0x0016DD44, 0x0017A4BC, 0x0017E52C, 0x0017EA44, 0x0017EAB4, 0x0018331C,
-        0x001B177C, 0x001B1784, 0x0030A104, 0x0030A11C
+        0x00161EF8, 0x00161F00, 0x00161F08, 0x001676E4, 0x00167AFC, 0x0016DD44, 0x0017A4BC, 0x0017B594, 0x0017E52C, 0x0017EA44,
+        0x0017EAB4, 0x0018331C, 0x001B177C, 0x001B1784, 0x0030A104, 0x0030A11C
     };
 
     /// <summary>Xantam's Fire's two (its maker's trail vtable); none of Kromlech's spells needs them.</summary>
     private static readonly int[] XantamOnly = { 0x001B177C, 0x001B1784 };
 
+    /// <summary>Sorcerer's Blood's two: a level gained (FUN_00167390's call in the level-up) and the maximum mana (Willpower's rank there).</summary>
+    private static readonly int[] SorcerersOnly = { 0x001676E4, 0x0017B594 };
+
     private static readonly (int Start, int End)[] Used =
     {
         (0x00102910, 0x00102B70), (0x00102D80, 0x00103000), (0x0010C338, 0x0010C6C8), (0x0010CD50, 0x0010CF3C), (0x00118978, 0x00118D6C),
-        (0x00129320, 0x00129504), (0x00129C48, 0x00129D68), (0x0012A710, 0x0012A878), (0x0012BAE8, 0x0012BE9C), (0x00132D90, 0x00133340)
+        (0x00129320, 0x0012952C), (0x00129C48, 0x00129D78), (0x0012A710, 0x0012A878), (0x0012BAE8, 0x0012BEDC), (0x00132D90, 0x001333A0)
     };
 
     /// <summary>The game's Power Attack record (its mana is the Feats &amp; Spells tab's: 5 in the game).</summary>
     private const int PowerRecordVa = 0x0030E2E0;
+
+    /// <summary>The game's Sorcerer's Blood record (type 24, bit 32).</summary>
+    private const int SorcerersRecordVa = 0x0030E3D0;
 
     private string _stockPath = "";
     private byte[] _stockBytes = Array.Empty<byte>();
@@ -162,14 +224,17 @@ public class BgdaBorrowedSpellsTests
     private static readonly BorrowedSpell[] Kromlech =
         { BorrowedSpell.PowerAttack, BorrowedSpell.BladeBarrier, BorrowedSpell.AntimagicField, BorrowedSpell.RighteousMight };
 
-    /// <summary>The four version 5 had (all but Power Attack).</summary>
+    /// <summary>The four version 5 had (all but Power Attack and Sorcerer's Blood).</summary>
     private static readonly BorrowedSpell[] Version5Spells =
         { BorrowedSpell.XantamFire, BorrowedSpell.BladeBarrier, BorrowedSpell.AntimagicField, BorrowedSpell.RighteousMight };
 
-    /// <summary>The stock executable with version 5 in, as featpatch.py version 5 wrote it.</summary>
-    private byte[] Version5()
+    /// <summary>The five version 6 had (all but Sorcerer's Blood).</summary>
+    private static readonly BorrowedSpell[] Version6Spells = BorrowedSpells.All.Where(s => s != BorrowedSpell.SorcerersBlood).ToArray();
+
+    /// <summary>The stock executable with an earlier version in, as featpatch.py wrote it (its runs, checked by their MD5).</summary>
+    private byte[] Earlier(string runsBase64, string md5)
     {
-        using var packed = new MemoryStream(Convert.FromBase64String(Version5RunsBase64));
+        using var packed = new MemoryStream(Convert.FromBase64String(runsBase64));
         using var unpack = new ZLibStream(packed, CompressionMode.Decompress);
         using var runs = new MemoryStream();
         unpack.CopyTo(runs);
@@ -183,9 +248,13 @@ public class BgdaBorrowedSpellsTests
             at += 8 + length;
         }
 
-        Assert.That(Md5(bytes), Is.EqualTo(Version5Md5));
+        Assert.That(Md5(bytes), Is.EqualTo(md5));
         return bytes;
     }
+
+    private byte[] Version5() => Earlier(Version5RunsBase64, Version5Md5);
+
+    private byte[] Version6() => Earlier(Version6RunsBase64, Version6Md5);
 
     private static Dictionary<BorrowedSpell, BorrowedSpellSettings> Defaults(IEnumerable<BorrowedSpell> spells) =>
         spells.ToDictionary(s => s, s => BorrowedSpells.Info(s).Default);
@@ -206,7 +275,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(exe.GetBorrowedSpellsState(out var detail), Is.EqualTo(BorrowedSpellsState.Off), detail);
         exe.SetBorrowedSpells(Defaults(BorrowedSpells.All));
         var on = Bytes(exe, "on");
-        Assert.That(Md5(on), Is.EqualTo(AllFiveMd5), "the same bytes as featpatch.py");
+        Assert.That(Md5(on), Is.EqualTo(AllSixMd5), "the same bytes as featpatch.py");
         Assert.That(on.Length, Is.EqualTo(_stockBytes.Length), "the file doesn't grow");
         var reopened = OpenBytes(on, "on2");
         Assert.That(reopened.GetBorrowedSpellsState(out detail), Is.EqualTo(BorrowedSpellsState.On), detail);
@@ -229,6 +298,51 @@ public class BgdaBorrowedSpellsTests
         exe.SetBorrowedSpells(Defaults(new[] { BorrowedSpell.PowerAttack }));
         Assert.That(Md5(Bytes(exe, "power")), Is.EqualTo(PowerAttackMd5), "Power Attack alone: featpatch.py --spells powerattack");
         Assert.That(exe.GetBorrowedSpells()[BorrowedSpell.PowerAttack].Equals(BorrowedSpells.Info(BorrowedSpell.PowerAttack).Default), Is.True);
+
+        exe = Stock();
+        exe.SetBorrowedSpells(Defaults(new[] { BorrowedSpell.SorcerersBlood }));
+        Assert.That(Md5(Bytes(exe, "sorcerer")), Is.EqualTo(SorcerersMd5), "Sorcerer's Blood alone: featpatch.py --spells sorcerersblood");
+    }
+
+    [Test]
+    public void SorcerersBlood_UsesTheGamesOwnRecord_AndItsRanksAreASetting()
+    {
+        RequireStock();
+        var info = BorrowedSpells.Info(BorrowedSpell.SorcerersBlood);
+        Assert.That((info.Bit, info.CastType, info.GameFeat, info.Passive, info.HasMana, info.HasValues, info.Hero),
+                    Is.EqualTo((32, 24, true, true, false, false, "Adrianna")));
+        Assert.That((info.Default.Price, info.Default.RankCount, info.Default.Mana), Is.EqualTo((3, 1, 0f)), "one rank at price 3, no mana");
+        Assert.That(Encoding.ASCII.GetString(_stockBytes, SorcerersRecordVa - VaToFile, 15), Is.EqualTo("SorcerersBlood\0"));
+        Assert.That(BorrowedSpellTexts.Of(BorrowedSpell.SorcerersBlood), Is.Empty, "its texts are the game's own");
+        Assert.That(BorrowedSpellTexts.NameKey(BorrowedSpell.SorcerersBlood), Is.EqualTo("SorcerersBlood"));
+        Assert.That(BorrowedSpellIcons.HasOwnIcon(BorrowedSpell.SorcerersBlood), Is.False, "a passive feat has no HUD slot");
+
+        // 3 ranks at price 4: featpatch.py --spells sorcerersblood --sorcerersblood-ranks 3 --sorcerersblood-price 4
+        var three = new BorrowedSpellSettings(4, 0f, Array.Empty<int>(), Array.Empty<int>(), RankCount: 3);
+        var exe = Stock();
+        exe.SetBorrowedSpells(new Dictionary<BorrowedSpell, BorrowedSpellSettings> { [BorrowedSpell.SorcerersBlood] = three });
+        var bytes = Bytes(exe, "sorcerer-3");
+        Assert.That(Md5(bytes), Is.EqualTo(SorcerersThreeRanksMd5));
+        var read = OpenBytes(bytes, "sorcerer-3b").GetBorrowedSpells();
+        Assert.That(read[BorrowedSpell.SorcerersBlood].Equals(three), Is.True, "read back: price 4, 3 ranks");
+        Assert.That(SorcerersOnly.All(va => BitConverter.ToUInt32(bytes, va - VaToFile) != BitConverter.ToUInt32(_stockBytes, va - VaToFile)), Is.True,
+                    "its two hooks");
+        Assert.That(bytes.AsSpan(SorcerersRecordVa - VaToFile, 0x50).SequenceEqual(_stockBytes.AsSpan(SorcerersRecordVa - VaToFile, 0x50)), Is.True,
+                    "the game's record is never written");
+
+        // a record that isn't the game's Sorcerer's Blood any more, or another ability with its bit: refused
+        foreach (var (va, at, value) in new[]
+                 {
+                     (SorcerersRecordVa, 0x00, (byte)'s'), (SorcerersRecordVa, 0x20, (byte)23), (SorcerersRecordVa, 0x4C, (byte)2),
+                     (0x0030E380, 0x4C, (byte)1)                     // Clangeddin's Fist with bit 32 too
+                 })
+        {
+            var changed = (byte[])_stockBytes.Clone();
+            changed[va - VaToFile + at] |= value;
+            var other = OpenBytes(changed, "sorcerer-changed");
+            Assert.That(other.GetBorrowedSpellsState(out var detail), Is.EqualTo(BorrowedSpellsState.Unrecognized), $"0x{va:X8} +0x{at:X2}");
+            Assert.That(detail, Does.Contain("Sorcerer's Blood"));
+        }
     }
 
     [Test]
@@ -273,13 +387,14 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("version 5"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version5Spells));
 
-        // saved with Power Attack added: featpatch.py version 6's file
+        // saved with Power Attack and Sorcerer's Blood added: featpatch.py version 7's file
         var all = new Dictionary<BorrowedSpell, BorrowedSpellSettings>(exe.GetBorrowedSpells())
         {
-            [BorrowedSpell.PowerAttack] = BorrowedSpells.Info(BorrowedSpell.PowerAttack).Default
+            [BorrowedSpell.PowerAttack] = BorrowedSpells.Info(BorrowedSpell.PowerAttack).Default,
+            [BorrowedSpell.SorcerersBlood] = BorrowedSpells.Info(BorrowedSpell.SorcerersBlood).Default
         };
         exe.SetBorrowedSpells(all);
-        Assert.That(Md5(Bytes(exe, "v5-updated")), Is.EqualTo(AllFiveMd5));
+        Assert.That(Md5(Bytes(exe, "v5-updated")), Is.EqualTo(AllSixMd5));
 
         // its own settings (in its data block, where version 5 keeps them) are read and kept
         var custom = (byte[])v5.Clone();
@@ -313,6 +428,57 @@ public class BgdaBorrowedSpellsTests
     }
 
     [Test]
+    public void Version6_IsBroughtUpToDate_KeepingItsSettings()
+    {
+        RequireStock();
+        var v6 = Version6();
+        var exe = OpenBytes(v6, "v6");
+        Assert.That(exe.GetBorrowedSpellsState(out var detail), Is.EqualTo(BorrowedSpellsState.Outdated), detail);
+        Assert.That(detail, Does.Contain("version 6"));
+        AssertSame(exe.GetBorrowedSpells(), Defaults(Version6Spells));
+
+        // saved with Sorcerer's Blood added: featpatch.py version 7's file
+        var all = new Dictionary<BorrowedSpell, BorrowedSpellSettings>(exe.GetBorrowedSpells())
+        {
+            [BorrowedSpell.SorcerersBlood] = BorrowedSpells.Info(BorrowedSpell.SorcerersBlood).Default
+        };
+        exe.SetBorrowedSpells(all);
+        Assert.That(Md5(Bytes(exe, "v6-updated")), Is.EqualTo(AllSixMd5));
+
+        // its own settings (in its data block, where version 6 keeps them) are read and kept
+        var custom = (byte[])v6.Clone();
+        const int data = 0x00132D90 - VaToFile;
+        custom[data + 0x80 + 0x60 + 8 + 0x42] = 2;                          // Power Attack's price (the second entry)
+        custom[data + 0x3E8 + 4] = 17;                                      // Power Attack: 17 hits at rank 4
+        BitConverter.GetBytes(9.5f).CopyTo(custom, data + 0x260 + 0x50 + 0x2C);   // Blade Barrier's mana (the second own record)
+        custom[data + 0x3A0 + 1] = 7;                                       // Blade Barrier's least damage at rank 1
+        BitConverter.GetBytes((ushort)(50 * 12)).CopyTo(custom, data + 0x3C0 + 2 * 5);   // Antimagic Field: 12 s at rank 5
+        custom[data + 0x3D8 + 3] = 77;                                      // Righteous Might: 77 % less at rank 3
+        var read = OpenBytes(custom, "v6-custom").GetBorrowedSpells();
+        Assert.That(read[BorrowedSpell.PowerAttack].Price, Is.EqualTo(2));
+        Assert.That(read[BorrowedSpell.PowerAttack].First[3], Is.EqualTo(17));
+        Assert.That(read[BorrowedSpell.BladeBarrier].Mana, Is.EqualTo(9.5f));
+        Assert.That(read[BorrowedSpell.BladeBarrier].First[0], Is.EqualTo(7));
+        Assert.That(read[BorrowedSpell.AntimagicField].First[4], Is.EqualTo(12));
+        Assert.That(read[BorrowedSpell.RighteousMight].Second[2], Is.EqualTo(77));
+        var updated = OpenBytes(custom, "v6-custom2");
+        updated.SetBorrowedSpells(read);
+        var reread = OpenBytes(Bytes(updated, "v6-custom-saved"), "v6-custom-saved2");
+        Assert.That(reread.GetBorrowedSpellsState(), Is.EqualTo(BorrowedSpellsState.On));
+        AssertSame(reread.GetBorrowedSpells(), read);
+
+        // taken out: the stock file
+        var removed = OpenBytes(v6, "v6-out");
+        removed.RemoveBorrowedSpells();
+        Assert.That(Bytes(removed, "v6-out-saved"), Is.EqualTo(_stockBytes));
+
+        // version 6 with its code changed: not recognised
+        var broken = (byte[])v6.Clone();
+        broken[0x00102910 + 8 - VaToFile] ^= 4;
+        Assert.That(OpenBytes(broken, "v6-broken").GetBorrowedSpellsState(), Is.EqualTo(BorrowedSpellsState.Unrecognized));
+    }
+
+    [Test]
     public void ItChangesOnlyItsHooksAndUnusedCode()
     {
         RequireStock();
@@ -323,19 +489,20 @@ public class BgdaBorrowedSpellsTests
         bool Hook(int va) => Hooks.Any(h => h <= va && va < h + 4);
         Assert.That(changed.All(va => Hook(va) || Used.Any(u => u.Start <= va && va < u.End)), Is.True);
         Assert.That(Hooks.All(va => BitConverter.ToUInt32(bytes, va - VaToFile) != BitConverter.ToUInt32(_stockBytes, va - VaToFile)), Is.True,
-                    "all fourteen hooks");
+                    "all sixteen hooks");
         Assert.That(bytes.AsSpan(0x0030D750 - VaToFile, 0x0030E424 - 0x0030D750).SequenceEqual(_stockBytes.AsSpan(0x0030D750 - VaToFile, 0x0030E424 - 0x0030D750)),
-                    Is.True, "the game's ability table (Power Attack's record among them) is untouched");
+                    Is.True, "the game's ability table (Power Attack's and Sorcerer's Blood's records among them) is untouched");
         Assert.That(bytes.Take(0x100), Is.EqualTo(_stockBytes.Take(0x100)), "the ELF header and program headers are the game's");
         Assert.That(BgdaExecutable.BorrowedSpellsBytes, Is.EqualTo(Used.Sum(u => u.End - u.Start)));
         Assert.That(BgdaExecutable.FeatPoolBytes, Is.EqualTo(32724));
         Assert.That(BgdaExecutable.FeatPoolStretches, Is.EqualTo(61));
 
-        // Kromlech's four alone: Xantam's Fire's two hooks stay the game's
+        // Kromlech's four alone: Xantam's Fire's two hooks and Sorcerer's Blood's two stay the game's
         exe = Stock();
         exe.SetBorrowedSpells(Defaults(Kromlech));
         bytes = Bytes(exe, "where-krom");
-        Assert.That(XantamOnly.All(va => BitConverter.ToUInt32(bytes, va - VaToFile) == BitConverter.ToUInt32(_stockBytes, va - VaToFile)), Is.True);
+        Assert.That(XantamOnly.Concat(SorcerersOnly).All(va => BitConverter.ToUInt32(bytes, va - VaToFile) == BitConverter.ToUInt32(_stockBytes, va - VaToFile)),
+                    Is.True);
     }
 
     [Test]
@@ -389,21 +556,23 @@ public class BgdaBorrowedSpellsTests
             [BorrowedSpell.XantamFire] = new(7, 9.5f, new[] { 4, 0, 10, 255, 1 }, new[] { 9, 0, 200, 255, 2 }),
             [BorrowedSpell.PowerAttack] = new(9, 0f, new[] { 1, 20, 3, 1, 2 }, Array.Empty<int>()),
             [BorrowedSpell.AntimagicField] = new(30, 100f, new[] { 1, 60, 2, 3, 4 }, Array.Empty<int>()),
-            [BorrowedSpell.RighteousMight] = new(0, 0.5f, new[] { 0, 200, 5, 6, 7 }, new[] { 90, 0, 1, 2, 3 })
+            [BorrowedSpell.RighteousMight] = new(0, 0.5f, new[] { 0, 200, 5, 6, 7 }, new[] { 90, 0, 1, 2, 3 }),
+            [BorrowedSpell.SorcerersBlood] = new(7, 0f, Array.Empty<int>(), Array.Empty<int>(), RankCount: 4)
         };
         var exe = Stock();
         exe.SetBorrowedSpells(custom);
         var reopened = OpenBytes(Bytes(exe, "custom"), "custom2");
         AssertSame(reopened.GetBorrowedSpells(), custom);
 
-        // a spell added and two taken out in place, then back to all five at the tested settings
+        // a spell added and two taken out in place, then back to all six at the tested settings
         var changed = new Dictionary<BorrowedSpell, BorrowedSpellSettings>(custom) { [BorrowedSpell.BladeBarrier] = BorrowedSpells.Info(BorrowedSpell.BladeBarrier).Default };
         changed.Remove(BorrowedSpell.XantamFire);
         changed.Remove(BorrowedSpell.PowerAttack);
+        changed[BorrowedSpell.SorcerersBlood] = changed[BorrowedSpell.SorcerersBlood] with { RankCount = 5, Price = 0 };
         reopened.SetBorrowedSpells(changed);
         AssertSame(OpenBytes(Bytes(reopened, "changed"), "changed2").GetBorrowedSpells(), changed);
         reopened.SetBorrowedSpells(Defaults(BorrowedSpells.All));
-        Assert.That(Md5(Bytes(reopened, "custom-back")), Is.EqualTo(AllFiveMd5));
+        Assert.That(Md5(Bytes(reopened, "custom-back")), Is.EqualTo(AllSixMd5));
 
         Assert.That(Enumerable.Range(0, 5).Select(h => BorrowedSpellSettings.RankCost(16, h)), Is.EqualTo(new[] { 16, 17, 19, 21, 25 }));
         Assert.That(Enumerable.Range(0, 5).Select(h => BorrowedSpellSettings.RankCost(10, h)), Is.EqualTo(new[] { 10, 11, 13, 15, 19 }));
@@ -419,6 +588,7 @@ public class BgdaBorrowedSpellsTests
         var pa = BorrowedSpells.Info(BorrowedSpell.PowerAttack).Default;
         var am = BorrowedSpells.Info(BorrowedSpell.AntimagicField).Default;
         var rm = BorrowedSpells.Info(BorrowedSpell.RighteousMight).Default;
+        var sb = BorrowedSpells.Info(BorrowedSpell.SorcerersBlood).Default;
         var bad = new (BorrowedSpell, BorrowedSpellSettings)[]
         {
             (BorrowedSpell.XantamFire, x with { Price = -1 }), (BorrowedSpell.XantamFire, x with { Price = 31 }),
@@ -430,7 +600,11 @@ public class BgdaBorrowedSpellsTests
             (BorrowedSpell.RighteousMight, rm with { First = new[] { 10, 20, 30, 40, 201 } }), (BorrowedSpell.RighteousMight, rm with { Second = new[] { 91, 20, 30, 40, 50 } }),
             (BorrowedSpell.PowerAttack, pa with { Mana = 5f }), (BorrowedSpell.PowerAttack, pa with { First = new[] { 1, 2, 0, 4, 5 } }),
             (BorrowedSpell.PowerAttack, pa with { First = new[] { 1, 2, 3, 4, 21 } }), (BorrowedSpell.PowerAttack, pa with { Second = new[] { 1, 2, 3, 4, 5 } }),
-            (BorrowedSpell.PowerAttack, pa with { Price = 31 })
+            (BorrowedSpell.PowerAttack, pa with { Price = 31 }), (BorrowedSpell.PowerAttack, pa with { RankCount = 3 }),
+            (BorrowedSpell.XantamFire, x with { RankCount = 1 }),
+            (BorrowedSpell.SorcerersBlood, sb with { RankCount = 0 }), (BorrowedSpell.SorcerersBlood, sb with { RankCount = 6 }),
+            (BorrowedSpell.SorcerersBlood, sb with { Mana = 1f }), (BorrowedSpell.SorcerersBlood, sb with { First = new[] { 1 } }),
+            (BorrowedSpell.SorcerersBlood, sb with { Price = 31 }), (BorrowedSpell.SorcerersBlood, sb with { Price = -1 })
         };
         foreach (var (spell, s) in bad)
         {
@@ -485,7 +659,9 @@ public class BgdaBorrowedSpellsTests
         var own = BorrowedSpells.All.Where(s => !BorrowedSpells.Info(s).GameFeat).ToList();
         Assert.That(own.Any(s => BorrowedSpellTexts.HasNames(text, s) || BorrowedSpellTexts.HasAnyName(text, s)), Is.False);
         Assert.That(BorrowedSpellTexts.Of(BorrowedSpell.PowerAttack), Is.Empty, "Power Attack's texts are the game's own");
+        Assert.That(BorrowedSpellTexts.Of(BorrowedSpell.SorcerersBlood), Is.Empty, "and Sorcerer's Blood's");
         Assert.That(BorrowedSpellTexts.NameKey(BorrowedSpell.PowerAttack), Is.EqualTo("powerattack_name"));
+        Assert.That(BorrowedSpellTexts.NameKey(BorrowedSpell.XantamFire), Is.EqualTo("xantamfire_name"));
         BorrowedSpellTexts.AddNames(text, BorrowedSpells.All);
         var saved = GameText.Read(text.ToArray());
         Assert.That(BorrowedSpells.All.All(s => BorrowedSpellTexts.HasNames(saved, s)), Is.True);
@@ -556,7 +732,8 @@ public class BgdaBorrowedSpellsTests
             [BorrowedSpell.AntimagicField] = "c6d39e2cd0b3573358519a201bd9a6d9", [BorrowedSpell.RighteousMight] = "bd6f5fbeff4c9015adc061080c9912a1"
         };
         var own = BorrowedSpells.All.Where(BorrowedSpellIcons.HasOwnIcon).ToList();
-        Assert.That(own, Is.EqualTo(md5.Keys.OrderBy(s => s)), "every spell but Power Attack (the game's icon_powerattack.tex)");
+        Assert.That(own, Is.EqualTo(md5.Keys.OrderBy(s => s)),
+                    "every spell but Power Attack (the game's icon_powerattack.tex) and Sorcerer's Blood (a passive: no HUD slot)");
         Assert.That(BorrowedSpellIcons.EntryName(BorrowedSpell.PowerAttack), Is.EqualTo("icon_powerattack.tex"));
         foreach (var spell in own)
         {
@@ -585,6 +762,7 @@ public class BgdaBorrowedSpellsTests
                     Is.EqualTo(GameArchive.AsLoaded(icons).Select(f => f.Data)), "every other file as it was (Power Attack's the game's own)");
         Assert.That(BorrowedSpellIcons.IsIn(icons, BorrowedSpell.PowerAttack), Is.True);
         Assert.That(BorrowedSpellIcons.AddTo(icons, new[] { BorrowedSpell.PowerAttack }), Is.EqualTo(icons), "Power Attack brings no icon");
+        Assert.That(BorrowedSpellIcons.AddTo(icons, new[] { BorrowedSpell.SorcerersBlood }), Is.EqualTo(icons), "nor Sorcerer's Blood");
         Assert.That(BorrowedSpellIcons.RemoveFrom(icons, new[] { BorrowedSpell.PowerAttack }), Is.EqualTo(icons), "and never takes the game's out");
         foreach (var spell in own)
         {
