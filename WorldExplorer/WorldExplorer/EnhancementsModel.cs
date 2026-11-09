@@ -2,11 +2,12 @@
 // NEW FILE: WorldExplorer/WorldExplorer/EnhancementsModel.cs
 //
 // The Enhancements tab of Executable Tuning (Views/EnhancementsView.xaml): additions to the game that
-// work with or without three players, each turned on or off by itself. Four spells borrowed from the
+// work with or without three players, each turned on or off by itself. Five spells borrowed from the
 // game's monsters and two feats the game has but never offers (BgdaExecutable.BorrowedSpells.cs), one card
-// each: Xantam's Fire and Sorcerer's Blood for Adrianna; Power Attack, Blade Barrier, Antimagic Field and
-// Righteous Might for Kromlech. Each card has its tick box, price, mana (not Power Attack's: its record's,
-// on the Feats & Spells tab) and values by rank; Sorcerer's Blood, a passive, has the number of ranks its
+// each: Xantam's Fire, Sorcerer's Blood and Xantam's Orbs for Adrianna; Power Attack, Blade Barrier,
+// Antimagic Field and Righteous Might for Kromlech. Each card has its tick box, price, mana (not Power
+// Attack's: its record's, on the Feats & Spells tab) and values by rank (Xantam's Orbs: three, the number of
+// orbs with the least and most damage of each); Sorcerer's Blood, a passive, has the number of ranks its
 // entry offers instead of mana and values. The names they need in GTEXT.LMP (the Items tab's copy, so one
 // save writes both tabs' texts) and their icons in ICONS.LMP are shared (Power Attack's and Sorcerer's
 // Blood's are the game's own).
@@ -27,12 +28,12 @@ using WorldExplorer.Infrastructure;
 
 namespace WorldExplorer;
 
-/// <summary>One rank's boxes on a spell's card: one value, or two.</summary>
+/// <summary>One rank's boxes on a spell's card: one value, two, or three (Xantam's Orbs: how many, then least and most damage).</summary>
 public sealed class SpellRankRow : ObservableObject
 {
     private readonly Action _edited;
     private readonly SpellCard _card;
-    private string _first = "", _second = "";
+    private string _first = "", _second = "", _third = "";
 
     internal SpellRankRow(int rank, SpellCard card, Action edited)
     {
@@ -47,6 +48,9 @@ public sealed class SpellRankRow : ObservableObject
 
     public bool HasSecond => _card.Info.HasSecond;
 
+    /// <summary>The row has a third box, before the others (Xantam's Orbs: how many orbs).</summary>
+    public bool HasThird => _card.Info.HasThird;
+
     /// <summary>The card's marks around the boxes ("+10 % − 10 %", "6 s", "4 – 8") and their tooltips.</summary>
     public string FirstPrefix => _card.FirstPrefix;
 
@@ -59,6 +63,10 @@ public sealed class SpellRankRow : ObservableObject
     public string FirstTip => _card.FirstTip;
 
     public string SecondTip => _card.SecondTip;
+
+    public string ThirdSuffix => _card.ThirdSuffix;
+
+    public string ThirdTip => _card.ThirdTip;
 
     public string First
     {
@@ -78,10 +86,20 @@ public sealed class SpellRankRow : ObservableObject
         }
     }
 
-    internal void Fill(int first, int? second)
+    public string Third
+    {
+        get => _third;
+        set
+        {
+            if (SetProperty(ref _third, value)) _edited();
+        }
+    }
+
+    internal void Fill(int first, int? second, int? third = null)
     {
         SetProperty(ref _first, first.ToString(), nameof(First));
         SetProperty(ref _second, second?.ToString() ?? "", nameof(Second));
+        SetProperty(ref _third, third?.ToString() ?? "", nameof(Third));
     }
 }
 
@@ -127,6 +145,12 @@ public sealed class SpellCard : ObservableObject
             "Ilivarra's field: for the rank's time fire, cold, electricity and magic do him no harm (burning, freezing and shocks " +
             "included), and a spell that reaches him bursts into lilac sparks. Weapons still hurt him. Casting it again while it " +
             "runs starts its time again.",
+        BorrowedSpell.XantamOrbs =>
+            "Xantam's third attack: she hurls the rank's number of his glowing orange orbs (one at rank 1, five at rank 5), each " +
+            "at a random point near the middle of the nearest monster in front of her, as Xantam aims his (straight ahead when " +
+            "there is none). They fly as his do, and each bursts on the first thing it touches: a monster takes the orb's damage " +
+            "from her (resistances count, and her kills give her the experience). They never hurt her or the other players. The " +
+            "cast sounds like her Fireball.",
         BorrowedSpell.SorcerersBlood =>
             "The game's own feat, which it never offers, as its description says: \"+1 Mana Point gain per level. This is not " +
             "retroactive.\" Once she has it, every level she gains gives her 1 more mana for each rank (12 in place of 11 at one " +
@@ -146,6 +170,7 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.BladeBarrier => "Damage of each hit, by rank (least to most)",
         BorrowedSpell.AntimagicField => "Seconds it lasts, by rank",
         BorrowedSpell.SorcerersBlood => "",
+        BorrowedSpell.XantamOrbs => "Orbs, and the damage of each (least to most), by rank",
         _ => "Percentage more melee damage and less physical damage taken, by rank"
     };
 
@@ -166,12 +191,21 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.PowerAttack => "How many of his next melee hits on monsters do double damage: 1 to 20 (within 10 seconds of the cast).",
         BorrowedSpell.AntimagicField => "How long the field lasts: 1 to 60 seconds.",
         BorrowedSpell.RighteousMight => "How much more damage his melee hits do: 0 to 200 percent.",
+        BorrowedSpell.XantamOrbs => "The least damage of each orb: 0 to 255.",
         _ => "The least damage: 0 to 255."
     };
 
-    public string SecondTip => Spell == BorrowedSpell.RighteousMight
-        ? "How much less damage physical hits on him do: 0 to 90 percent."
-        : "The most damage: 0 to 255.";
+    public string SecondTip => Spell switch
+    {
+        BorrowedSpell.RighteousMight => "How much less damage physical hits on him do: 0 to 90 percent.",
+        BorrowedSpell.XantamOrbs => "The most damage of each orb: 0 to 255.",
+        _ => "The most damage: 0 to 255."
+    };
+
+    /// <summary>After the third box ("[3] ×  [8] – [12]": three orbs of 8 to 12) and its tooltip.</summary>
+    public string ThirdSuffix => Info.HasThird ? "×" : "";
+
+    public string ThirdTip => Info.HasThird ? $"How many orbs she hurls: {Info.ThirdMin} to {Info.ThirdMax}." : "";
 
     public string DefaultsTip
     {
@@ -186,6 +220,10 @@ public sealed class SpellCard : ObservableObject
             {
                 BorrowedSpell.AntimagicField => string.Join(", ", d.First) + " seconds",
                 BorrowedSpell.RighteousMight => string.Join(", ", d.First.Select((f, r) => $"+{f}/−{d.Second[r]}%")),
+                BorrowedSpell.XantamOrbs => string.Join(", ", d.ThirdValues) + " orbs of " +
+                                            (d.First.Distinct().Count() == 1 && d.Second.Distinct().Count() == 1
+                                                ? $"{d.First[0]}-{d.Second[0]}"
+                                                : string.Join(", ", d.First.Select((f, r) => $"{f}-{d.Second[r]}"))),
                 _ => string.Join(", ", d.First.Select((f, r) => $"{f}-{d.Second[r]}"))
             };
             return $"Price {d.Price}, {NumberText.Format(d.Mana)} mana, and {values}: what featpatch.py writes.";
@@ -275,7 +313,8 @@ public sealed class SpellCard : ObservableObject
         SetProperty(ref _mana, Info.HasMana ? NumberText.Format(s.Mana) : "", nameof(Mana));
         SetProperty(ref _rankCount, s.RankCount.ToString(), nameof(RankCount));
         if (!Info.HasValues) return;
-        for (var r = 0; r < Ranks.Count; r++) Ranks[r].Fill(s.First[r], Info.HasSecond ? s.Second[r] : null);
+        for (var r = 0; r < Ranks.Count; r++)
+            Ranks[r].Fill(s.First[r], Info.HasSecond ? s.Second[r] : null, Info.HasThird ? s.ThirdValues[r] : null);
     }
 
     /// <summary>"1 rank", "3 ranks".</summary>
@@ -320,17 +359,20 @@ public sealed class SpellCard : ObservableObject
 
         var first = new int[Ranks.Count];
         var second = new int[Info.HasSecond ? Ranks.Count : 0];
+        var third = Info.HasThird ? new int[Ranks.Count] : null;
         for (var r = 0; r < Ranks.Count; r++)
         {
             if (!NumberText.TryParseInteger(Ranks[r].First, out first[r]) ||
-                Info.HasSecond && !NumberText.TryParseInteger(Ranks[r].Second, out second[r]))
+                Info.HasSecond && !NumberText.TryParseInteger(Ranks[r].Second, out second[r]) ||
+                third != null && !NumberText.TryParseInteger(Ranks[r].Third, out third[r]))
             {
-                problem = $"{Info.Title}, rank {r + 1}: " + (Info.HasSecond ? "two whole numbers" : "a whole number") + ".";
+                problem = $"{Info.Title}, rank {r + 1}: " +
+                          (third != null ? "three whole numbers" : Info.HasSecond ? "two whole numbers" : "a whole number") + ".";
                 return null;
             }
         }
 
-        var s = new BorrowedSpellSettings(price, (float)mana, first, second);
+        var s = new BorrowedSpellSettings(price, (float)mana, first, second, Third: third);
         problem = s.Problem(Spell);
         return problem == null ? s : null;
     }
@@ -428,7 +470,7 @@ public sealed class EnhancementsModel : ObservableObject
         Reload();
     }
 
-    /// <summary>The six spells' cards: Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood.</summary>
+    /// <summary>The seven spells' cards: Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs.</summary>
     public IReadOnlyList<SpellCard> Spells { get; }
 
     public SpellCard Card(BorrowedSpell spell) => Spells[(int)spell];
@@ -638,7 +680,7 @@ public sealed class EnhancementsModel : ObservableObject
             var used = WillBeIn.Count > 0 ? BgdaExecutable.BorrowedSpellsBytes : 0;
             return $"New feats go into game code that nothing ever runs: {BgdaExecutable.FeatPoolStretches} stretches, " +
                    $"{BgdaExecutable.FeatPoolBytes:N0} bytes, the same in the stock executable and every three-player build. " +
-                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all six); " : "") +
+                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all seven); " : "") +
                    $"{BgdaExecutable.FeatPoolBytes - used:N0} bytes are free for more.";
         }
     }

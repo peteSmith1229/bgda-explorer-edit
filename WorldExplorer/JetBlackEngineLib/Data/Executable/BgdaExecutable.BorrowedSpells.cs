@@ -1,9 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // NEW FILE: WorldExplorer/JetBlackEngineLib/Data/Executable/BgdaExecutable.BorrowedSpells.cs
 //
-// BORROWED SPELLS (the Enhancements tab): four spells the heroes learn from the game's monsters and two feats
+// BORROWED SPELLS (the Enhancements tab): five spells the heroes learn from the game's monsters and two feats
 // the game has but never offers, each a feat on a hero's level-up screen, each turned on or off by itself:
 //   Xantam's Fire for Adrianna    the beholder Xantam's fire trails, which burn the monsters in their path;
+//   Xantam's Orbs for Adrianna    the beholder's third attack: the rank's number of his glowing orbs (one at rank
+//                                 1, up to five at rank 5) at the nearest monster in front of her, each 8-12
+//                                 damage to the first monster it touches;
 //   Sorcerer's Blood for Adrianna the game's own cut feat, passive: each level she gains once she has it gives
 //                                 her 1 more mana a rank ("+1 Mana Point gain per level. This is not
 //                                 retroactive."); 1 rank by default, up to 5;
@@ -12,7 +15,7 @@
 //   Blade Barrier for Kromlech    Ilivarra's nine whirling axes: once a second every monster in reach is hit;
 //   Antimagic Field for Kromlech  Ilivarra's field: fire, cold, electricity and magic do him no harm;
 //   Righteous Might for Kromlech  Ilivarra's might: he grows, his weapon hits do more damage and take less.
-// It is featpatch.py version 7, written from the data in BgdaFeatPatch.cs (generated from that script), so
+// It is featpatch.py version 8, written from the data in BgdaFeatPatch.cs (generated from that script), so
 // the bytes are the ones tested in the emulator.
 //
 // POWER ATTACK is the game's: its ability record (0x0030E2E0, bit 34, cast type 18, 5 mana), its grant, its
@@ -29,14 +32,22 @@
 // maximum mana is the game's plus that total. Its list entry goes after Xantam's Fire in her list. It needs
 // nothing in GTEXT.LMP or ICONS.LMP (a passive has no HUD slot).
 //
+// XANTAM'S ORBS are Xantam's DodgeBalls (his third attack; vtable 0x0031C3C8, built by the game's own constructor
+// FUN_001E8320), flying and bursting as his do, but with a vtable copy whose touch hurts monsters only, once an orb,
+// through the game's hit function from her (resistances count, her kills give her the experience); his hurt anyone
+// for 10, players too, with no experience. Its cast case (type 35) aims each orb as Xantam aims his, at a random
+// point within 20 of the middle of the nearest monster in front of her (straight ahead when there is none). Its name,
+// description and icon go in GTEXT.LMP and ICONS.LMP as the other borrowed spells'; its HUD line is the game's own
+// "Damage: %d-%d" (each orb's). Its list entry goes after Sorcerer's Blood in her list.
+//
 // WHERE IT GOES. The pool: 61 stretches of the game's own code that nothing ever runs (unused library
 // functions and leftover routines, 32,724 bytes; see featpool.py). They are the same addresses and bytes
 // in the stock executable and in every three-player build, the game's own segment loads them, and no
-// other patch WorldExplorer knows writes there. The patch takes 7,416 bytes of it: its data block at
-// 0x00132D90, its code in ten pieces and four vtable copies. The code is the same whichever spells are
-// on; only the hooks of the spells that are on are written (16 words when all six are), and the data
-// block says which ones are. Nothing else changes: no program header, no start-up copy, the same file
-// length.
+// other patch WorldExplorer knows writes there. The patch takes 8,492 bytes of it: its data block at
+// 0x00132D90, its code in ten pieces, five vtable copies and its cast table (35 types). The code is the
+// same whichever spells are on; only the hooks of the spells that are on are written (16 words when all
+// seven are), and the data block says which ones are. Nothing else changes: no program header, no
+// start-up copy, the same file length.
 //
 // SO IT NEEDS NO THREE-PLAYER BUILD, and the Three Players tab can turn three players on or off
 // underneath it: the three-player patch never touches these bytes, and the code finds the class lists
@@ -45,21 +56,23 @@
 // as well: Righteous Might and Power Attack hook the instruction before the melee hit's call, which
 // Corrosive changes.
 //
-// STATES. Off: the hooks and the pool are the game's. On: version 7 is in, with the spells its data
-// block names. Outdated: version 6 (power-attack-test1: the five without Sorcerer's Blood), version 5
-// (kromlech-spells-test1: the four borrowed spells), or Xantam's Fire alone as the fourth or third test
-// version (test4: in the pool; test3: a 12 KB spell area copied into low memory at start-up); saving takes
-// it out and puts version 7 in, every spell it had with its settings. Unrecognized: anything else (earlier
-// test versions, or another patch in those places).
+// STATES. Off: the hooks and the pool are the game's. On: version 8 is in, with the spells its data
+// block names. Outdated: version 7 (sorcerers-blood-test1: the six without Xantam's Orbs), version 6
+// (power-attack-test1: the five without Sorcerer's Blood either), version 5 (kromlech-spells-test1: the
+// four borrowed spells of then), or Xantam's Fire alone as the fourth or third test version (test4: in the
+// pool; test3: a 12 KB spell area copied into low memory at start-up); saving takes it out and puts version
+// 8 in, every spell it had with its settings. Unrecognized: anything else (earlier test versions, or
+// another patch in those places).
 //
 // SETTINGS (the data block; the code reads them while the game runs): each spell's level-up price
 // (0-30, priced as the game prices its own feats: from 5 on a rank costs price + rank^1.6, so 16 gives
 // 16, 17, 19, 21 and 25; below 5, (rank + 1) x price; 0 makes every rank free), the mana a cast takes (not
-// Power Attack's: its record's; Sorcerer's Blood has none), and two values or one by rank: Xantam's Fire
-// and Blade Barrier the least and most damage of a burn or a hit, Power Attack the hits it doubles,
-// Antimagic Field its seconds, Righteous Might the percentage more damage his weapon hits do and the
-// percentage less weapon hits on him do. Sorcerer's Blood has the number of ranks its entry offers (1-5;
-// each adds 1 mana a level) in their place.
+// Power Attack's: its record's; Sorcerer's Blood has none), and up to three values by rank: Xantam's Fire
+// and Blade Barrier the least and most damage of a burn or a hit, Xantam's Orbs the least and most damage
+// of each orb and the number of orbs (1-10), Power Attack the hits it doubles, Antimagic Field its seconds,
+// Righteous Might the percentage more damage his weapon hits do and the percentage less weapon hits on him
+// do. Sorcerer's Blood has the number of ranks its entry offers (1-5; each adds 1 mana a level) in their
+// place.
 //
 // THE GAME'S FILES. GTEXT.LMP needs each borrowed spell's name and description (and two HUD lines;
 // BorrowedSpellTexts, in the five languages), or the level-up screen and the HUD show NF:<name>_name.
@@ -87,16 +100,17 @@ public enum BorrowedSpell
     BladeBarrier,
     AntimagicField,
     RighteousMight,
-    SorcerersBlood
+    SorcerersBlood,
+    XantamOrbs
 }
 
 public enum BorrowedSpellsState
 {
     /// <summary>The game's code and the free pool: the spells can be put in.</summary>
     Off,
-    /// <summary>Version 7 is in: which spells, and their settings, can be read and changed.</summary>
+    /// <summary>Version 8 is in: which spells, and their settings, can be read and changed.</summary>
     On,
-    /// <summary>Version 6 (the five without Sorcerer's Blood) or 5 (the four borrowed spells), or Xantam's Fire alone as the fourth or third test version: saving brings it to version 7.</summary>
+    /// <summary>Version 7 (the six without Xantam's Orbs), 6 (the five without Sorcerer's Blood either) or 5 (the four borrowed spells of then), or Xantam's Fire alone as the fourth or third test version: saving brings it to version 8.</summary>
     Outdated,
     /// <summary>Neither: an earlier test version, or another patch where it goes.</summary>
     Unrecognized
@@ -107,15 +121,19 @@ public enum BorrowedSpellsState
 /// by rank mean and the values they may take, and its defaults (what featpatch.py writes). <paramref name="GameFeat"/>: the
 /// game's own feat (Power Attack, Sorcerer's Blood), whose ability record (and so its mana), icon and texts are the game's.
 /// <paramref name="Passive"/>: a passive feat (Sorcerer's Blood), no cast and no values by rank; the number of ranks its entry
-/// offers is its setting instead.
+/// offers is its setting instead. <paramref name="ThirdName"/>: a third value by rank (Xantam's Orbs: the number of orbs).
 /// </summary>
 public sealed record BorrowedSpellInfo(
     BorrowedSpell Spell, string Title, string Hero, string After, int Bit, int CastType,
     string Values, string FirstName, int FirstMin, int FirstMax, string? SecondName, int SecondMin, int SecondMax,
-    bool Range, BorrowedSpellSettings Default, bool GameFeat = false, bool Passive = false)
+    bool Range, BorrowedSpellSettings Default, bool GameFeat = false, bool Passive = false,
+    string? ThirdName = null, int ThirdMin = 0, int ThirdMax = 0)
 {
     /// <summary>The spell has two values by rank (damage least and most, or more and less).</summary>
     public bool HasSecond => SecondName != null;
+
+    /// <summary>The spell has a third value by rank (Xantam's Orbs: how many orbs).</summary>
+    public bool HasThird => ThirdName != null;
 
     /// <summary>The spell has values by rank (every one but Sorcerer's Blood).</summary>
     public bool HasValues => !Passive;
@@ -129,12 +147,17 @@ public sealed record BorrowedSpellInfo(
 /// Blood: a passive), and its values by rank (ranks 1-5): Xantam's Fire and Blade Barrier the least (<see cref="First"/>) and
 /// most (<see cref="Second"/>) damage, Power Attack the hits it doubles and Antimagic Field the seconds (<see cref="First"/>;
 /// <see cref="Second"/> empty), Righteous Might the percentage more damage (<see cref="First"/>) and less damage taken
-/// (<see cref="Second"/>); Sorcerer's Blood none (both empty). <see cref="RankCount"/>: the ranks its list entry offers, 5 for
-/// every spell but Sorcerer's Blood, whose setting it is (1-5; each rank adds 1 mana a level).
+/// (<see cref="Second"/>); Xantam's Orbs the least (<see cref="First"/>) and most (<see cref="Second"/>) damage of each orb and
+/// how many orbs (<see cref="Third"/>); Sorcerer's Blood none (all empty). <see cref="RankCount"/>: the ranks its list entry
+/// offers, 5 for every spell but Sorcerer's Blood, whose setting it is (1-5; each rank adds 1 mana a level). <see cref="Third"/>
+/// is null (none) for every spell but Xantam's Orbs.
 /// </summary>
 public sealed record BorrowedSpellSettings(int Price, float Mana, IReadOnlyList<int> First, IReadOnlyList<int> Second,
-                                           int RankCount = 5)
+                                           int RankCount = 5, IReadOnlyList<int>? Third = null)
 {
+    /// <summary>The third values (empty when the spell has none).</summary>
+    public IReadOnlyList<int> ThirdValues => Third ?? Array.Empty<int>();
+
     public const int Ranks = 5, MaxPrice = 30, MaxRankCount = 5;
     public const float MaxMana = 100f;
 
@@ -158,13 +181,14 @@ public sealed record BorrowedSpellSettings(int Price, float Mana, IReadOnlyList<
         if (info.Passive)
         {
             if (RankCount is < 1 or > MaxRankCount) return $"{info.Title}: its level-up entry offers 1 to {MaxRankCount} ranks.";
-            if (First is null || First.Count != 0 || Second is null || Second.Count != 0)
+            if (First is null || First.Count != 0 || Second is null || Second.Count != 0 || ThirdValues.Count != 0)
                 return $"{info.Title}: it has no values by rank.";
             return null;
         }
 
         if (RankCount != Ranks) return $"{info.Title}: its level-up entry offers {Ranks} ranks.";
-        if (First is null || First.Count != Ranks || Second is null || Second.Count != (info.HasSecond ? Ranks : 0))
+        if (First is null || First.Count != Ranks || Second is null || Second.Count != (info.HasSecond ? Ranks : 0) ||
+            ThirdValues.Count != (info.HasThird ? Ranks : 0))
             return $"{info.Title}: {info.Values} is given for each of the {Ranks} ranks.";
         for (var r = 0; r < Ranks; r++)
         {
@@ -174,6 +198,8 @@ public sealed record BorrowedSpellSettings(int Price, float Mana, IReadOnlyList<
             if (Second[r] < info.SecondMin || Second[r] > info.SecondMax)
                 return $"{info.Title}, rank {r + 1}: {info.SecondName} is {info.SecondMin} to {info.SecondMax}.";
             if (info.Range && First[r] > Second[r]) return $"{info.Title}, rank {r + 1}: the least damage is more than the most.";
+            if (info.HasThird && (ThirdValues[r] < info.ThirdMin || ThirdValues[r] > info.ThirdMax))
+                return $"{info.Title}, rank {r + 1}: {info.ThirdName} is {info.ThirdMin} to {info.ThirdMax}.";
         }
 
         return null;
@@ -181,12 +207,12 @@ public sealed record BorrowedSpellSettings(int Price, float Mana, IReadOnlyList<
 
     public bool Equals(BorrowedSpellSettings? other) =>
         other is not null && Price == other.Price && Mana.Equals(other.Mana) && RankCount == other.RankCount &&
-        First.SequenceEqual(other.First) && Second.SequenceEqual(other.Second);
+        First.SequenceEqual(other.First) && Second.SequenceEqual(other.Second) && ThirdValues.SequenceEqual(other.ThirdValues);
 
-    public override int GetHashCode() => HashCode.Combine(Price, Mana, First.Count, Second.Count, RankCount);
+    public override int GetHashCode() => HashCode.Combine(Price, Mana, First.Count, Second.Count, RankCount, ThirdValues.Count);
 }
 
-/// <summary>The six spells: what each is, its defaults (what featpatch.py writes) and the test files' settings.</summary>
+/// <summary>The seven spells: what each is, its defaults (what featpatch.py writes) and the test files' settings.</summary>
 public static class BorrowedSpells
 {
     /// <summary>Every spell, in the order of <see cref="BorrowedSpell"/> (the data block's).</summary>
@@ -194,7 +220,7 @@ public static class BorrowedSpells
         new[]
         {
             BorrowedSpell.XantamFire, BorrowedSpell.PowerAttack, BorrowedSpell.BladeBarrier, BorrowedSpell.AntimagicField,
-            BorrowedSpell.RighteousMight, BorrowedSpell.SorcerersBlood
+            BorrowedSpell.RighteousMight, BorrowedSpell.SorcerersBlood, BorrowedSpell.XantamOrbs
         };
 
     private static readonly BorrowedSpellInfo[] Infos =
@@ -216,7 +242,11 @@ public static class BorrowedSpells
             new BorrowedSpellSettings(12, 15f, new[] { 10, 20, 30, 40, 50 }, new[] { 10, 20, 30, 40, 50 })),
         new(BorrowedSpell.SorcerersBlood, "Sorcerer's Blood", "Adrianna", "her own feats and Xantam's Fire", 32, 24,
             "nothing", "", 0, 0, null, 0, 0, false,
-            new BorrowedSpellSettings(3, 0f, Array.Empty<int>(), Array.Empty<int>(), RankCount: 1), GameFeat: true, Passive: true)
+            new BorrowedSpellSettings(3, 0f, Array.Empty<int>(), Array.Empty<int>(), RankCount: 1), GameFeat: true, Passive: true),
+        new(BorrowedSpell.XantamOrbs, "Xantam's Orbs", "Adrianna", "her own feats, Xantam's Fire and Sorcerer's Blood", 46, 35,
+            "the number of orbs and the damage of each", "the least damage", 0, 255, "the most damage", 0, 255, true,
+            new BorrowedSpellSettings(12, 10f, new[] { 8, 8, 8, 8, 8 }, new[] { 12, 12, 12, 12, 12 }, Third: new[] { 1, 2, 3, 4, 5 }),
+            ThirdName: "the number of orbs", ThirdMin: 1, ThirdMax: 10)
     };
 
     public static BorrowedSpellInfo Info(BorrowedSpell spell) => Infos[(int)spell];
@@ -237,7 +267,7 @@ public static class BorrowedSpells
 /// </summary>
 public static class BorrowedSpellTexts
 {
-    /// <summary>The keys and texts of <paramref name="spell"/> in each language (0 English ... 4 Spanish): what gtext_feats5.py writes (none for Power Attack and Sorcerer's Blood).</summary>
+    /// <summary>The keys and texts of <paramref name="spell"/> in each language (0 English ... 4 Spanish): what gtext_feats8.py writes (none for Power Attack and Sorcerer's Blood).</summary>
     public static IReadOnlyList<(int Language, string Key, string Text)> Of(BorrowedSpell spell)
     {
         var key = BorrowedSpells.Data(spell).Key;
@@ -277,8 +307,8 @@ public static class BorrowedSpellTexts
 
 /// <summary>
 /// The spells' HUD icons in ICONS.LMP (icon_xantamfire.tex, icon_bladebarrier.tex, icon_antimagicfield.tex,
-/// icon_righteousmight.tex). Power Attack's, icon_powerattack.tex, is the game's own: never added or taken out. Sorcerer's
-/// Blood, a passive feat, has no HUD slot and no icon.
+/// icon_righteousmight.tex, icon_xantamorbs.tex). Power Attack's, icon_powerattack.tex, is the game's own: never added or taken
+/// out. Sorcerer's Blood, a passive feat, has no HUD slot and no icon.
 /// </summary>
 public static class BorrowedSpellIcons
 {
@@ -298,6 +328,7 @@ public static class BorrowedSpellIcons
         BorrowedSpell.BladeBarrier => "icon_whirlwind.tex (Whirlwind Attack's)",
         BorrowedSpell.AntimagicField => "icon_protection.tex (Fire Shield's)",
         BorrowedSpell.SorcerersBlood => "none (a passive feat has no HUD slot)",
+        BorrowedSpell.XantamOrbs => "icon_fireball.tex (Fireball's)",
         _ => "icon_powerattack.tex (Power Attack's)"
     };
 
@@ -324,7 +355,7 @@ public static class BorrowedSpellIcons
 
     /// <summary>
     /// ICONS.LMP with the icons of <paramref name="spells"/> added where the game finds them (where each name sorts; when the
-    /// directory is full every file first moves on by 0x80): icons_lmp5.py's result, byte for byte. An icon that is in already
+    /// directory is full every file first moves on by 0x80): icons_lmp8.py's result, byte for byte. An icon that is in already
     /// is left as it is, and Power Attack and Sorcerer's Blood bring none (the game's is used; a passive needs none).
     /// </summary>
     public static byte[] AddTo(byte[] icons, IEnumerable<BorrowedSpell> spells)
@@ -386,6 +417,9 @@ public partial class BgdaExecutable
         new[] { FeatPatch.Pool[^1].End, FeatPatch.AbilityTableEndVa + 4, FeatPatch.GameCastTableVa + 4 * FeatPatch.GameCastTypes }
             .Concat(FeatPatch.Checks.Select(c => c.Va + 4))
             .Concat(FeatPatch.Hooks.Select(h => h.Va + 4))
+            .Concat(FeatPatch.V7Hooks.Select(h => h.Va + 4))
+            .Concat(FeatPatch.V7Code.Select(c => c.Va + c.Length))
+            .Concat(FeatPatch.V7VTables.Select(v => v.GameVa + FeatPatch.VTableSize))
             .Concat(FeatPatch.V6Hooks.Select(h => h.Va + 4))
             .Concat(FeatPatch.V6Code.Select(c => c.Va + c.Length))
             .Concat(FeatPatch.V6VTables.Select(v => v.GameVa + FeatPatch.VTableSize))
@@ -451,7 +485,7 @@ public partial class BgdaExecutable
         return SpellsOf((int)ReadU32(FeatDataAt(FeatPatch.SpellsAt)));
     }
 
-    /// <summary>The spells version 7 says it has (its data block's mask), or null when the file doesn't have version 7's mark.</summary>
+    /// <summary>The spells version 8 says it has (its data block's mask), or null when the file doesn't have version 8's mark.</summary>
     private List<BorrowedSpell>? CurrentSpells() => MarkedSpells(FeatPatch.Version);
 
     /// <summary>
@@ -478,18 +512,23 @@ public partial class BgdaExecutable
         return Convert.ToHexString(sha.GetHashAndReset()).ToLowerInvariant() == sha256 ? spells : null;
     }
 
+    /// <summary>Version 7 (the six, without Xantam's Orbs): see <see cref="EarlierSpells"/>.</summary>
+    private List<BorrowedSpell>? V7Spells() =>
+        EarlierSpells(FeatPatch.V7Version, new[] { BorrowedSpell.XantamOrbs }, FeatPatch.V7Hooks, FeatPatch.V7Code,
+                      FeatPatch.V7CodeSha256, FeatPatch.V7VTables);
+
     /// <summary>Version 6 (the five spells, without Sorcerer's Blood): see <see cref="EarlierSpells"/>.</summary>
     private List<BorrowedSpell>? V6Spells() =>
-        EarlierSpells(FeatPatch.V6Version, new[] { BorrowedSpell.SorcerersBlood }, FeatPatch.V6Hooks, FeatPatch.V6Code,
-                      FeatPatch.V6CodeSha256, FeatPatch.V6VTables);
+        EarlierSpells(FeatPatch.V6Version, new[] { BorrowedSpell.SorcerersBlood, BorrowedSpell.XantamOrbs }, FeatPatch.V6Hooks,
+                      FeatPatch.V6Code, FeatPatch.V6CodeSha256, FeatPatch.V6VTables);
 
     /// <summary>Version 5 (the four borrowed spells, without Power Attack): see <see cref="EarlierSpells"/>.</summary>
     private List<BorrowedSpell>? V5Spells() =>
-        EarlierSpells(FeatPatch.V5Version, new[] { BorrowedSpell.PowerAttack, BorrowedSpell.SorcerersBlood }, FeatPatch.V5Hooks,
-                      FeatPatch.V5Code, FeatPatch.V5CodeSha256, FeatPatch.V5VTables);
+        EarlierSpells(FeatPatch.V5Version, new[] { BorrowedSpell.PowerAttack, BorrowedSpell.SorcerersBlood, BorrowedSpell.XantamOrbs },
+                      FeatPatch.V5Hooks, FeatPatch.V5Code, FeatPatch.V5CodeSha256, FeatPatch.V5VTables);
 
     /// <summary>
-    /// Off, On, Outdated (version 6 or 5, or Xantam's Fire alone as the fourth or third test version: updated on save) or
+    /// Off, On, Outdated (version 7, 6 or 5, or Xantam's Fire alone as the fourth or third test version: updated on save) or
     /// Unrecognized; <paramref name="detail"/> says what was found, in a sentence.
     /// </summary>
     public BorrowedSpellsState GetBorrowedSpellsState(out string detail)
@@ -505,9 +544,10 @@ public partial class BgdaExecutable
         {
             var mask = FeatMask(spells);
             var hooks = FeatPatch.Hooks.All(h => ReadU32(FileOffset(h.Va)) == ((h.Spells & mask) != 0 ? h.Patched : h.Game));
-            if (spells.Count > 0 && hooks && code.All(c => BytesAre(c.Va, c.Bytes)) && FeatPatch.VTables.All(v => BytesAre(v.Va, FeatVTable(v))))
+            if (spells.Count > 0 && hooks && code.All(c => BytesAre(c.Va, c.Bytes)) && FeatPatch.VTables.All(v => BytesAre(v.Va, FeatVTable(v))) &&
+                BytesAre(FeatPatch.CastTableVa, FeatCastTable(spells)))
             {
-                detail = $"In (version 7, in game code nothing runs): {Names(spells)}. It works with or without three players.";
+                detail = $"In (version 8, in game code nothing runs): {Names(spells)}. It works with or without three players.";
                 return BorrowedSpellsState.On;
             }
 
@@ -515,31 +555,38 @@ public partial class BgdaExecutable
             return BorrowedSpellsState.Unrecognized;
         }
 
+        if (V7Spells() is { } seven)
+        {
+            detail = $"In as version 7 (the first test of Sorcerer's Blood): {Names(seven)}. Saving brings it to version 8, which " +
+                     "adds Xantam's Orbs for Adrianna; every spell keeps its settings.";
+            return BorrowedSpellsState.Outdated;
+        }
+
         if (V6Spells() is { } six)
         {
-            detail = $"In as version 6 (the first test of Power Attack): {Names(six)}. Saving brings it to version 7, which adds " +
-                     "Sorcerer's Blood for Adrianna; every spell keeps its settings.";
+            detail = $"In as version 6 (the first test of Power Attack): {Names(six)}. Saving brings it to version 8, which adds " +
+                     "Sorcerer's Blood and Xantam's Orbs for Adrianna; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V5Spells() is { } old)
         {
-            detail = $"In as version 5 (the first test of Kromlech's spells): {Names(old)}. Saving brings it to version 7, which adds " +
-                     "Power Attack for Kromlech and Sorcerer's Blood for Adrianna; every spell keeps its settings.";
+            detail = $"In as version 5 (the first test of Kromlech's spells): {Names(old)}. Saving brings it to version 8, which adds " +
+                     "Power Attack for Kromlech, and Sorcerer's Blood and Xantam's Orbs for Adrianna; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V4Present(v4Code))
         {
-            detail = "Xantam's Fire is in as the fourth test version (Adrianna's spell alone). Saving brings it to version 7, which " +
-                     "also has Sorcerer's Blood and Kromlech's spells; its price, mana and damage are kept.";
+            detail = "Xantam's Fire is in as the fourth test version (Adrianna's spell alone). Saving brings it to version 8, which " +
+                     "also has Sorcerer's Blood, Xantam's Orbs and Kromlech's spells; its price, mana and damage are kept.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V3Present())
         {
             detail = "Xantam's Fire is in as the third test version (its spell area, which only a three-player build loads). " +
-                     "Saving brings it to version 7, which works with or without three players; its price, mana and damage are kept.";
+                     "Saving brings it to version 8, which works with or without three players; its price, mana and damage are kept.";
             return BorrowedSpellsState.Outdated;
         }
 
@@ -639,12 +686,16 @@ public partial class BgdaExecutable
         _data.AsSpan(FeatPatch.V3AreaFile, 4).SequenceEqual(FeatMark) && ReadU32(FeatPatch.V3AreaFile + 4) == 3 &&
         FeatPatch.V3Hooks.All(h => ReadU32(FileOffset(h.Va)) == h.Patched);
 
-    /// <summary>Where a version's data block keeps the settings (version 7's, 6's and 5's entries are where the others' are).</summary>
+    /// <summary>Where a version's data block keeps the settings (version 8's, 7's, 6's and 5's entries are where the others' are).</summary>
     private sealed record FeatLayout(int Entries, int Abilities, int BarrierMin, int BarrierMax, int FieldFrames, int MightDamage,
                                      int MightDefence, int PowerHits);
 
     private static readonly FeatLayout CurrentLayout = new(FeatPatch.EntriesAt, FeatPatch.AbilitiesAt, FeatPatch.BarrierDamageMinAt,
         FeatPatch.BarrierDamageMaxAt, FeatPatch.FieldFramesAt, FeatPatch.MightDamageAt, FeatPatch.MightDefenceAt, FeatPatch.PowerHitsAt);
+
+    private static readonly FeatLayout V7Layout = new(FeatPatch.V7EntriesAt, FeatPatch.V7AbilitiesAt, FeatPatch.V7BarrierDamageMinAt,
+        FeatPatch.V7BarrierDamageMaxAt, FeatPatch.V7FieldFramesAt, FeatPatch.V7MightDamageAt, FeatPatch.V7MightDefenceAt,
+        FeatPatch.V7PowerHitsAt);
 
     private static readonly FeatLayout V6Layout = new(FeatPatch.V6EntriesAt, FeatPatch.V6AbilitiesAt, FeatPatch.V6BarrierDamageMinAt,
         FeatPatch.V6BarrierDamageMaxAt, FeatPatch.V6FieldFramesAt, FeatPatch.V6MightDamageAt, FeatPatch.V6MightDefenceAt,
@@ -654,7 +705,7 @@ public partial class BgdaExecutable
         FeatPatch.V5BarrierDamageMaxAt, FeatPatch.V5FieldFramesAt, FeatPatch.V5MightDamageAt, FeatPatch.V5MightDefenceAt, -1);
 
     /// <summary>
-    /// The spells in the file and their settings (On; Outdated: version 6's or 5's spells, or Xantam's Fire's), or none (Off,
+    /// The spells in the file and their settings (On; Outdated: version 7's, 6's or 5's spells, or Xantam's Fire's), or none (Off,
     /// Unrecognized). Power Attack's mana is 0: its record's is the Feats &amp; Spells tab's. Sorcerer's Blood's is 0 too: it
     /// is passive.
     /// </summary>
@@ -662,6 +713,8 @@ public partial class BgdaExecutable
     {
         var found = new Dictionary<BorrowedSpell, BorrowedSpellSettings>();
         var state = GetBorrowedSpellsState(out _);
+        if (state == BorrowedSpellsState.Outdated && V7Spells() is { } seven)
+            return ReadAll(seven, V7Layout);
         if (state == BorrowedSpellsState.Outdated && V6Spells() is { } six)
             return ReadAll(six, V6Layout);
         if (state == BorrowedSpellsState.Outdated && V5Spells() is { } old)
@@ -716,6 +769,9 @@ public partial class BgdaExecutable
                 Array.Empty<int>()),
             BorrowedSpell.SorcerersBlood => new BorrowedSpellSettings(price, 0f, Array.Empty<int>(), Array.Empty<int>(),
                                                                       _data[FeatDataAt(entry + FeatPatch.EntryRanksAt)]),
+            BorrowedSpell.XantamOrbs => new BorrowedSpellSettings(price, mana, ByRank(FeatDataAt(FeatPatch.OrbsDamageMinAt)),
+                                                                  ByRank(FeatDataAt(FeatPatch.OrbsDamageMaxAt)),
+                                                                  Third: ByRank(FeatDataAt(FeatPatch.OrbsCountAt))),
             _ => new BorrowedSpellSettings(price, mana, ByRank(FeatDataAt(layout.MightDamage)), ByRank(FeatDataAt(layout.MightDefence)))
         };
     }
@@ -724,7 +780,7 @@ public partial class BgdaExecutable
     private int[] ByRank(int at) => Enumerable.Range(1, BorrowedSpellSettings.Ranks).Select(r => (int)_data[at + r]).ToArray();
 
     /// <summary>
-    /// Puts in, updates (Outdated: to version 7), changes or takes out the borrowed spells so that exactly
+    /// Puts in, updates (Outdated: to version 8), changes or takes out the borrowed spells so that exactly
     /// <paramref name="spells"/> are in, with their settings (none: <see cref="RemoveBorrowedSpells"/>). Throws
     /// <see cref="ArgumentException"/> on bad settings and <see cref="InvalidOperationException"/> when the state is
     /// Unrecognized; nothing is changed then.
@@ -764,14 +820,14 @@ public partial class BgdaExecutable
         }
 
         FeatDataBlock(spells).CopyTo(_data, FeatDataAt(0));
+        FeatCastTable(spells.Keys).CopyTo(_data, FileOffset(FeatPatch.CastTableVa));
         var mask = FeatMask(spells.Keys);
         foreach (var (va, game, patched, need) in FeatPatch.Hooks) WriteInt(FileOffset(va), (int)((need & mask) != 0 ? patched : game));
     }
 
     /// <summary>
-    /// The data block for <paramref name="spells"/>, as featpatch.py's data_block makes it (the game's cast table from this file):
-    /// a list entry for each, in the order of <see cref="BorrowedSpells.All"/>, an ability record for each but Power Attack and
-    /// Sorcerer's Blood, and a cast case for each but Sorcerer's Blood.
+    /// The data block for <paramref name="spells"/>, as featpatch.py's data_block makes it: a list entry for each, in the order of
+    /// <see cref="BorrowedSpells.All"/>, an ability record for each but Power Attack and Sorcerer's Blood, and each one's tables.
     /// </summary>
     private byte[] FeatDataBlock(IReadOnlyDictionary<BorrowedSpell, BorrowedSpellSettings> spells)
     {
@@ -781,9 +837,6 @@ public partial class BgdaExecutable
         BitConverter.GetBytes(on.Count).CopyTo(block, FeatPatch.CountAt);
         BitConverter.GetBytes(own).CopyTo(block, FeatPatch.AbilityCountAt);
         BitConverter.GetBytes(FeatMask(on)).CopyTo(block, FeatPatch.SpellsAt);
-        var table = new uint[FeatPatch.CastTypes];
-        for (var t = 0; t < table.Length; t++)
-            table[t] = t < FeatPatch.GameCastTypes ? ReadU32(FileOffset(FeatPatch.GameCastTableVa + 4 * t)) : FeatPatch.CastDefault;
         var record = 0;
         for (var i = 0; i < on.Count; i++)
         {
@@ -794,7 +847,6 @@ public partial class BgdaExecutable
             Convert.FromBase64String(data.EntryBase64).CopyTo(block, entry);
             block[entry + FeatPatch.EntryPriceAt] = (byte)s.Price;
             block[entry + FeatPatch.EntryRanksAt] = (byte)s.RankCount;
-            if (data.HasCast) table[data.CastType - 1] = data.Cast;
             var ability = -1;
             if (data.OwnRecord)
             {
@@ -807,16 +859,21 @@ public partial class BgdaExecutable
             {
                 case BorrowedSpell.XantamFire:
                 case BorrowedSpell.BladeBarrier:
+                case BorrowedSpell.XantamOrbs:
                     // the ability record's damage: the HUD's line until the first cast (the cast then writes the rank's into the slot)
                     BitConverter.GetBytes((ushort)s.First[0]).CopyTo(block, ability + FeatPatch.AbilityDamageAt);
                     BitConverter.GetBytes((ushort)s.Second[0]).CopyTo(block, ability + FeatPatch.AbilityDamageAt + 2);
-                    var (min, max) = spell == BorrowedSpell.XantamFire
-                        ? (FeatPatch.XantamDamageMinAt, FeatPatch.XantamDamageMaxAt)
-                        : (FeatPatch.BarrierDamageMinAt, FeatPatch.BarrierDamageMaxAt);
+                    var (min, max) = spell switch
+                    {
+                        BorrowedSpell.XantamFire => (FeatPatch.XantamDamageMinAt, FeatPatch.XantamDamageMaxAt),
+                        BorrowedSpell.BladeBarrier => (FeatPatch.BarrierDamageMinAt, FeatPatch.BarrierDamageMaxAt),
+                        _ => (FeatPatch.OrbsDamageMinAt, FeatPatch.OrbsDamageMaxAt)
+                    };
                     for (var r = 0; r < BorrowedSpellSettings.Ranks; r++)
                     {
                         block[min + r + 1] = (byte)s.First[r];
                         block[max + r + 1] = (byte)s.Second[r];
+                        if (spell == BorrowedSpell.XantamOrbs) block[FeatPatch.OrbsCountAt + r + 1] = (byte)s.ThirdValues[r];
                     }
 
                     break;
@@ -838,8 +895,31 @@ public partial class BgdaExecutable
             }
         }
 
-        for (var t = 0; t < table.Length; t++) BitConverter.GetBytes(table[t]).CopyTo(block, FeatPatch.CastTableAt + 4 * t);
         return block;
+    }
+
+    /// <summary>
+    /// The cast table for <paramref name="spells"/> (its own piece of the pool), as featpatch.py's cast_table makes it: the game's
+    /// 23 cases from this file, the default for the rest, and the case of each spell that is on but Sorcerer's Blood (a passive).
+    /// The state checks it as it checks the code: a table that isn't this one is not WorldExplorer's.
+    /// </summary>
+    private byte[] FeatCastTable(IEnumerable<BorrowedSpell> spells)
+    {
+        var table = new byte[4 * FeatPatch.CastTypes];
+        for (var t = 0; t < FeatPatch.CastTypes; t++)
+        {
+            var word = t < FeatPatch.GameCastTypes ? ReadU32(FileOffset(FeatPatch.GameCastTableVa + 4 * t)) : FeatPatch.CastDefault;
+            BitConverter.GetBytes(word).CopyTo(table, 4 * t);
+        }
+
+        var on = spells.ToHashSet();
+        foreach (var spell in BorrowedSpells.All.Where(on.Contains))
+        {
+            var data = BorrowedSpells.Data(spell);
+            if (data.HasCast) BitConverter.GetBytes(data.Cast).CopyTo(table, 4 * (data.CastType - 1));
+        }
+
+        return table;
     }
 
     /// <summary>
@@ -869,13 +949,21 @@ public partial class BgdaExecutable
         foreach (var (a, b) in FeatPatch.Pool) PoolOriginal(a, b).CopyTo(_data.AsSpan(FileOffset(a)));
     }
 
-    /// <summary>Takes out the earlier version that is in (Outdated): version 6 or 5, or the fourth or third test version.</summary>
+    /// <summary>Takes out the earlier version that is in (Outdated): version 7, 6 or 5, or the fourth or third test version.</summary>
     private void RemoveOutdated()
     {
-        if (V6Spells() != null) RemoveV6();
+        if (V7Spells() != null) RemoveV7();
+        else if (V6Spells() != null) RemoveV6();
         else if (V5Spells() != null) RemoveV5();
         else if (V3Present()) RemoveV3();
         else RemoveV4();
+    }
+
+    /// <summary>Takes version 7 out: the game's words back at its hooks, the game's bytes back in the pool.</summary>
+    private void RemoveV7()
+    {
+        foreach (var (va, game, _, _) in FeatPatch.V7Hooks) WriteInt(FileOffset(va), (int)game);
+        RestorePool();
     }
 
     /// <summary>Takes version 6 out: the game's words back at its hooks, the game's bytes back in the pool.</summary>

@@ -23,8 +23,8 @@
 // off offers to put the game's own cutscenes back when one with player 3 needs ADRIANNA26.
 //
 // Enhancements (Views/EnhancementsView, EnhancementsModel): additions that work with or without
-// three players, each on or off by itself. The borrowed spells (Xantam's Fire and Sorcerer's Blood for
-// Adrianna; Power Attack, Blade Barrier, Antimagic Field and Righteous Might for Kromlech) go into game
+// three players, each on or off by itself. The borrowed spells (Xantam's Fire, Sorcerer's Blood and
+// Xantam's Orbs for Adrianna; Power Attack, Blade Barrier, Antimagic Field and Righteous Might for Kromlech) go into game
 // code nothing runs (BgdaExecutable.BorrowedSpells.cs); they are written before the Three Players tab's
 // change, so that can switch three players underneath them. Their names go in GTEXT.LMP (the Items tab's
 // copy, one save for both) and their icons in ICONS.LMP (found like GTEXT.LMP), saved after the
