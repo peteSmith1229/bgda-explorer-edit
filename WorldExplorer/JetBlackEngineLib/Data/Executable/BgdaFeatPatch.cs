@@ -1,29 +1,33 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // GENERATED FILE: WorldExplorer/JetBlackEngineLib/Data/Executable/BgdaFeatPatch.cs
-// by make_worldexplorer_feats6.py from featpatch.py version 6 (and featpool.py, featpatch_v5.py, featpatch_v4.py,
-// featpatch_v3.py, gtext_feats5.py and the icons in ICONS.LMP). Don't edit by hand: run the script again.
+// by make_worldexplorer_feats7.py from featpatch.py version 7 (and featpool.py, featpatch_v6.py, featpatch_v5.py,
+// featpatch_v4.py, featpatch_v3.py, gtext_feats5.py and the icons in ICONS.LMP). Don't edit by hand: run the script again.
 //
 // The feats patch as data: four spells borrowed from the game's monsters (Xantam's Fire for Adrianna; Blade Barrier,
-// Antimagic Field and Righteous Might for Kromlech) and Power Attack for Kromlech (the game's own feat, which it never
-// offers), each on or off by itself, in game code nothing runs (the pool), so they need no three-player build and
-// WorldExplorer can turn three players on or off underneath them.
+// Antimagic Field and Righteous Might for Kromlech) and two feats the game has but never offers (Sorcerer's Blood for
+// Adrianna, Power Attack for Kromlech), each on or off by itself, in game code nothing runs (the pool), so they need no
+// three-player build and WorldExplorer can turn three players on or off underneath them.
 // ═══════════════════════════════════════════════════════════════════════════════
 namespace JetBlackEngineLib.Data.Executable;
 
 /// <summary>One spell of the patch: its bit in <see cref="FeatPatch.SpellsAt"/>'s mask, hero class, feat bit, cast type,
-/// cast code, ability name, icon, and its level-up list entry ({class, 0, entry}) and ability record with the default settings
-/// (Power Attack: none, and no icon: the game's own record and icon are the ones it uses).</summary>
+/// cast code (0: none, Sorcerer's Blood, a passive), ability name, icon, and its level-up list entry ({class, 0, entry}) and
+/// ability record with the default settings (Power Attack and Sorcerer's Blood: none, and no icon: the game's own record, and
+/// Power Attack's icon, are the ones they use).</summary>
 internal sealed record SpellPatchData(string Key, int Mask, int HeroClass, int Bit, int CastType, uint Cast, string Name,
                                       string IconName, string EntryBase64, string AbilityBase64, string IconBase64)
 {
-    /// <summary>The spell has its own ability record in the data block (every one but Power Attack, whose record is the game's).</summary>
+    /// <summary>The spell has its own ability record in the data block (every one but Power Attack and Sorcerer's Blood, whose records are the game's).</summary>
     public bool OwnRecord => AbilityBase64.Length > 0;
+
+    /// <summary>The spell has a cast case in the data block's cast table (every one but Sorcerer's Blood, a passive).</summary>
+    public bool HasCast => Cast != 0;
 }
 
-/// <summary>featpatch.py version 6 as data (see BgdaExecutable.BorrowedSpells.cs).</summary>
+/// <summary>featpatch.py version 7 as data (see BgdaExecutable.BorrowedSpells.cs).</summary>
 internal static class FeatPatch
 {
-    public const int Version = 6;
+    public const int Version = 7;
 
     /// <summary>
     /// The pool: 61 stretches of the game's own code that nothing runs (32,724 bytes), the same addresses and bytes
@@ -248,14 +252,14 @@ internal static class FeatPatch
     public const string PoolOriginalSha256 = "61d9c74b8a8f6a052479a3505c8458611f8b9ff67bfbd76018a2e7b8a48b36ce";
 
     /// <summary>How much of the pool the patch takes: its data block, its code and its four vtable copies.</summary>
-    public const int PoolUsedBytes = 7200;
+    public const int PoolUsedBytes = 7416;
 
-    /// <summary>The code (5,232 bytes in 10 pieces over the pool's stretches): the same whichever spells are on.</summary>
+    /// <summary>The code (5,352 bytes in 10 pieces over the pool's stretches): the same whichever spells are on.</summary>
     public static readonly (int Va, string Base64)[] Code =
     {
         (0x00102910, "PACIjAcAABUAAAAAOACJjAgAKoUMACuNISCKAAgAYAEDAAUkMP+9J6AAsP+oALH/sACy/7gAs//AALT/yAC//yGAgAAMABGNAQAYJFoAIBIhIAAC"
-            + "EAApjhAACa4UACmOFAAJrhgAKY4YAAmuEwASPJAtUiYcACDGvANBxgAAAUYcAADmOrUEDCEgAAIhQAAAIVAAAkgASZX9/wslAwBrLQIAYBHoAykl"
-            + "MPgpJUgASaUBAAglCQALKfb/YBUMAEolEwASPJAtUibIpIiPtANJjjUAIBEAAAAAGwAJARBQAAAxAEAVAAAAABwAAMa4A0HGAAABRhAAAcaBCABG"
+            + "EAApjhAACa4UACmOFAAJrhgAKY4YAAmuEwASPJAtUiYcACDGHARBxgAAAUYcAADmOrUEDCEgAAIhQAAAIVAAAkgASZX9/wslAwBrLQIAYBHoAykl"
+            + "MPgpJUgASaUBAAglCQALKfb/YBUMAEolEwASPJAtUibIpIiPFARJjjUAIBEAAAAAGwAJARBQAAAxAEAVAAAAABwAAMYYBEHGAAABRhAAAcaBCABG"
             + "AACi54AIAEYQAKLnFAABxoEIAEYEAKLngAgARhQAoucYAAHGgQgARggAoueACABGGACi5yEgoAMQAKUnIACmJ+IiBAwgAAcktAASkrUAE5IgALQn"
             + "AACEjhQAgBAEAJQm/P+REAAAAAAMAIiMNAAIMRAACST3/wkVAAAAACEoIAIhMEACIThgAgEACDyghgg1IUgAACFQAAACAAs8Dn4EDAgAazXr/wAQ"
             + "AAAAAEAACI7IpImPKsAJASEgAAKgALDfqACx37AAst+4ALPfwAC038gAv9+O/wAX0AC9JwgA4AMAAAAA"),
@@ -264,13 +268,13 @@ internal static class FeatPatch
             + "GFhrAjQAjJYhYIsBAGQMAANkDABIAKyvzMMEDCEggAEoAMHGAgABRhAAgsYAEABGUACg56bDBAxIAKSPKADBxgIAAUYUAILGABAARlQAoOdYALTn"
             + "BLsEDGAABCQiAEAQTACirwAQk0SgEIBGgD4BPAAIgUSCEAFGIADMxkITFUaAPwE8AHCBRCQAz8YCEBZGJAAARgAACUQATAkAA0wJACEgQABQAKUn"
             + "SACmjyE44AIhQIAClMQGDCFQAABMAKKPEwAIPCCTCCU4AEisXABJjAUAIBEAAAAADAApjQIAIBGAAAglOAAorb7/ABABABAmYAC9Jz2KBQgCAAIk"
-            + "0P+9JwAAv/8IAKT/EACl/xgAsP8gALH/EwAQPJAtECYhiAAAQEERACFACAIIAKTflusEDAAEBSUKAEAUgEARACFACAI0BQWNlusEDAgApN8EAEAU"
-            + "AAAAAAgApN+W6wQMEACl3wIAQBAhSAAAOABJjIBAEQAhQAgCKAUJrQEAMSYDACgq5/8AFQAAAAAcAAiOAQAIMQoAABEIAKTflusEDGAABSYIAEAU"
+            + "0P+9JwAAv/8IAKT/EACl/xgAsP8gALH/EwAQPJAtECYhiAAAQEERACFACAIIAKTflusEDGAEBSUKAEAUgEARACFACAKUBQWNlusEDAgApN8EAEAU"
+            + "AAAAAAgApN+W6wQMEACl3wIAQBAhSAAAOABJjIBAEQAhQAgCiAUJrQEAMSYDACgq5/8AFQAAAAAcAAiOAQAIMQoAABEIAKTflusEDGAABSYIAEAU"
             + "CACk3zEABTyW6wQM8KmlJAMAQBQIAKTflusEDBAApd8AAL/fGACw3yAAsd8IAOADMAC9Jw=="),
         (0x0010C338, "wP+9JzAAv/8QALD/GACx/yAAsv8hgIAAIYigACGQwAAQACiOAACorxQAKI4EAKivGAAojggAqK8hIAACISigAyEwAABWLAQMITgAABMACDwQvQgl"
-            + "OAAIrjwAAK4MAAiOAQAINQwACK4TABk8kC05JxwAIMa8AyHHAAABRhwAAObIpIiPIUASAUAACK7//wgkRAAIrjwABCYhKCACIGwFDCEwIAKyJQQM"
+            + "OAAIrjwAAK4MAAiOAQAINQwACK4TABk8kC05JxwAIMYcBCHHAAABRhwAAObIpIiPIUASAUAACK7//wgkRAAIrjwABCYhKCACIGwFDCEwIAKyJQQM"
             + "ISAAAiFAAAAhSAAAIVAAAkgASaU0Qgw8AwALKQYAYBUAAAAA8EEMPAYACykCAGAVAAAAAHBBDDxMAEytnKSLjxkADTwNZq01GFhtAW48DTxf8601"
-            + "IVhtAZyki68CbAsAUABNpVVVKSUBAAglCQALKef/YBUMAEolMAAEPHB5hCSXrwQMISgAAjAAv98QALDfGACx3yAAst8IAOADQAC9J8ikiI8KAAkk"
+            + "IVhtAZyki68CbAsAUABNpVVVKSUBAAglCQALKef/YBUMAEolMAAEPHB5hCSnrwQMISgAAjAAv98QALDfGACx3yAAst8IAOADQAC9J8ikiI8KAAkk"
             + "GgAJARBAAABKAAAVUACKjEgAQBEAAAAADABLjUUAYBEAAAAAYP+9J5AAv/9gALD/aACx/3AAsv94ALP/gAC0/yGAgAAhiGABZK8EDJACJI5IAHKQ"
             + "UABzkBMACDyQLQglHAAAxhAAAcaBCABGAACi54AIAEYQAKLnFAABxoEIAEYEAKLngAgARhQAouc0AADFGAABxoEIAEYIAKLngAgARhgAouchIKAD"
             + "EAClJyAApifiIgQMEAAHJCAAtCcAAISOFACAEAQAlCb8/5EQDACIjDQACDEQAAkk+P8JFQBACTyAAomsISggAiEwQAIhOGACAQAIPKCGCDUhSAAA"
@@ -278,48 +282,49 @@ internal static class FeatPatch
             + "IACz/96KBQwAAAAAFgAIPHwrCY2UKwqNAlwJAAM8DCQsAGwVAlwKAGokDCQpAGwVAEwJAABUCgADVAoAIZgqARMAEDyQLRAmDAARjoAAEiYgACAS"
             + "AAAAAAAASI4EAAktGQAgESFQYAIIFgskGFgLASFQSwFEAAw8RU6MNSFwAAA/AA0kAABPjQYA7BEAAAAAAQDOJfv/zRVYAEolCgAAEAAAAAAIAFgm"
             + "FgAZJAAAD4///zknAABPrQQAGCf7/yAXBABKJQAATK3//zEm4P8AEGAAUiYAAL/fCACw3xAAsd8YALLfIACz3wgA4AMwAL0n"),
-        (0x0010CD50, "oP+9JyAAsP8oALH/MACy/zgAtOc8ALXnQAC250gAv/8hgIAAPAAIjjsAABEAAAAADAARjTgAIBIhIKAAl68EDCEoAALMwwQMNAAkhiBBATwACIFE"
+        (0x0010CD50, "oP+9JyAAsP8oALH/MACy/zgAtOc8ALXnQAC250gAv/8hgIAAPAAIjjsAABEAAAAADAARjTgAIBIhIKAAp68EDCEoAALMwwQMNAAkhiBBATwACIFE"
             + "AgUBRqbDBAw0ACSGIEEBPAAIgURCBQFGKAASJJykiI8ZAAk8DWYpNRhACQFuPAk8X/MpNSFACQGcpIivAyQIAMzDBAwcAKSvHAABxgIAAUYQAAHG"
             + "AAABRoAFFEamwwQMHACkjxwAAcYCAAFGFAABxgAAAUYAABVGAAC25wQAoOcYAADG8EIBPAAIgUQAAAFGCACg5xAAoK8UAKCvGACgrysABDyI7oQk"
             + "ISigAxAApifSPwUMAGCARP//UibX/0AWAAAAACAAsN8oALHfMACy3zgAtMc8ALXHQAC2x0gAv98IAOADYAC9J+D/vScAALD/CACx/xAAv/8hgIAA"
             + "IYigABAACDzwKgglOAAIriEgAAIxAAU8VDMEDNAQpSQ8AAiODAAAEQAAAAAMAAmNBwAgEUQACo4FAEAVPAArjf3/DDz//4w1JFhsATwAK61mbAUM"
             + "PAAEJjwABCaMIAQMAgAFJCEgAAI2LQQMISgAAAEAKDIhIAACAACw3wgAsd8QAL/fAwAAESAAvScauQQIAAAAAAgA4AMAAAAA"),
-        (0x00118978, "CQCDECAAASQJAIEQIQABJBIAgRAiAAEkKgCBEAAAAABV+QUIAAAAAE35BQgAAAAAISDAAgAIBTRzrwQMPCgFABMACDyQLQglIUACAaADEpGoAxGR"
-            + "1/kFCDEABDzw/70nISDAAgAQBTRzrwQMPCgFABMACDyQLQglQEgCACFICQHAAymVGQApJTIACiQbACoBEkgAAAAAqa8TAAQ8UuwEDPAxhCQhKEAA"
-            + "AACpjwBgiUQgY4BGAGiARBAAvSfR+QUIISCgA/D/vSchIMACACAFNHOvBAw8KAUAEwAIPJAtCCUhQAIB0AMJkQAAqa/YAwmRBACprxMABDxS7AQM"
-            + "EDKEJCEoQAAAAKmPAGCJRCBjgEYEAKmPAGiJRGBrgEYQAL0n0fkFCCEgoAMhKEACkAJMjgQAjS1BAKARgGAMABMADTyQLa0lIXCsAZAFz40lAOAR"
-            + "yKSYj6AF2Y0jyDgD//85J/ADuI0ryDgDHQAgEwwAmIwQABgzGwAAE///7yWQBc+tQDAGAEA4BwDA/70nAAC//wgApP8QAKb/GACn/yAAqP8oAKn/"
-            + "MACq/zEABDz4lYQkl68EDCEoQAIAAL/fCACk3xAApt8YAKffIACo3ygAqd8wAKrfQAC9JwIAABAhKEACkAXArZACTI6AYAwAEwANPJAtrSUhcKwB"
-            + "YAXPjQ8A4BFwBdiNCAAZLwwAIBMhwLgB0AMYk2QAGCdkABkkGFjYADIAayUaAHkBEjAAABhY+AAyAGslGgB5ARI4AAAIAOADAAAAAED/vSewAL//"
+        (0x00118978, "CQCDECAAASQJAIEQIQABJBIAgRAiAAEkKgCBEAAAAABV+QUIAAAAAE35BQgAAAAAISDAAgAIBTRzrwQMPCgFABMACDyQLQglIUACAQAEEpEIBBGR"
+            + "1/kFCDEABDzw/70nISDAAgAQBTRzrwQMPCgFABMACDyQLQglQEgCACFICQEgBCmVGQApJTIACiQbACoBEkgAAAAAqa8TAAQ8UuwEDFAyhCQhKEAA"
+            + "AACpjwBgiUQgY4BGAGiARBAAvSfR+QUIISCgA/D/vSchIMACACAFNHOvBAw8KAUAEwAIPJAtCCUhQAIBMAQJkQAAqa84BAmRBACprxMABDxS7AQM"
+            + "cDKEJCEoQAAAAKmPAGCJRCBjgEYEAKmPAGiJRGBrgEYQAL0n0fkFCCEgoAMhKEACkAJMjgQAjS1BAKARgGAMABMADTyQLa0lIXCsAfAFz40lAOAR"
+            + "yKSYjwAG2Y0jyDgD//85J1AEuI0ryDgDHQAgEwwAmIwQABgzGwAAE///7yXwBc+tQDAGAEA4BwDA/70nAAC//wgApP8QAKb/GACn/yAAqP8oAKn/"
+            + "MACq/zEABDz4lYQkp68EDCEoQAIAAL/fCACk3xAApt8YAKffIACo3ygAqd8wAKrfQAC9JwIAABAhKEAC8AXArZACTI6AYAwAEwANPJAtrSUhcKwB"
+            + "wAXPjQ8A4BHQBdiNCAAZLwwAIBMhwLgBMAQYk2QAGCdkABkkGFjYADIAayUaAHkBEjAAABhY+AAyAGslGgB5ARI4AAAIAOADAAAAAED/vSewAL//"
             + "LADAxhAAgcaBCABGAACi54AIAEYQAKLnFACBxoEIAEYEAKLngAgARhQAoucYAIHGgQgARggAoueACABGGACi5yEgoAMQAKUnIACmJ+IiBAwgAAck"
             + "AACkxgQApcYsAMbGgjEGRoAxBkYhEAAAIAC5JwAAKI8eAAARBAA5J/z/FBEAAAAADAAJjTQAKTEQAAok9/8qFQAAAAAQAADFEACBxgEAAUYUAALF"
             + "FACBxoEQAUbCAARGQhAFRsAYAUYACIBENhgBRur/AUUAAAAAAgAARoIQAkYAAAJGNAAGRuT/AEUAAAAAhgEARuH/ABAhEAABsAC/3wgA4APAAL0n"
-            + "EwAWPJAt1iaQAoSOABAFNHOvBAw8KAUAQEACACFAyALAAxKVkAKIjgQACS0dACARgEAIACG4yAJQBemODQAgEQAAAAAMADCNCgAAEgAAAADIpIiP"
-            + "IUASAUAACK4hIAACMAAFPFQzBAw4e6UkDQAAEAAAAAAEuwQMUAAEJAkAQBAhgEAAISBAACEogAISpwQMITBAAlAF5CYhKAACIGwFDCEwAAI9igUI"
+            + "EwAWPJAt1iaQAoSOABAFNHOvBAw8KAUAQEACACFAyAIgBBKVkAKIjgQACS0dACARgEAIACG4yAKwBemODQAgEQAAAAAMADCNCgAAEgAAAADIpIiP"
+            + "IUASAUAACK4hIAACMAAFPFQzBAw4e6UkDQAAEAAAAAAEuwQMUAAEJAkAQBAhgEAAISBAACEogAISpwQMITBAArAF5CYhKAACIGwFDCEwAAI9igUI"
             + "AgACJA=="),
-        (0x00129420, "EwAIPJAtCCUQAAmNYAIKJQYAIBEAAAAASABL3QUAZBH//ykl+v8AEFAASiWO7QUIAAAAAOA4DCQYYKwAKgANPICJrSUhaKwBMAGu3SR4xAEiAOAV"
+        (0x00129420, "EwAIPJAtCCUQAAmNwAIKJQYAIBEAAAAASABL3QUAZBH//ykl+v8AEFAASiWO7QUIAAAAAOA4DCQYYKwAKgANPICJrSUhaKwBMAGu3SR4xAEiAOAV"
             + "uDO4JQ8AGSQgAAKH//8DJAUAQxD//zkn+/8gF1AAGCcIAOADAAAAACEQAAAhGEIBAABjjCEIAgMAACOsBABCJCgAQyj5/2AUAAAAACgAQ4UoAAOn"
-            + "LAACJCEYQgEAAGOMIQgCAwAAI6wEAEIkRABDKPn/YBQAAAAASABD3UgAA/8lcMQBMAGu/QgA4AMAAAAA"),
+            + "LAACJCEYQgEAAGOMIQgCAwAAI6wEAEIkRABDKPn/YBQAAAAASABD3UgAA/8lcMQBMAGu/QgA4AMAAAAAIwEokgYAABEAAAAAwAAgxgAIiERgCIBG"
+            + "AAABRsAAIOZSqgUIAAAAAA=="),
         (0x00129C48, "wP+9JzAAv/8QALD/GACx/yAAsv8hgIAAIYigACGQwAAQACiOAACorxQAKI4EAKivGAAojggAqK8hIAACISigAyEwAABWLAQMITgAAAwACI4BAAg1"
             + "DAAIrsikiI8hQBIBQAAIrhAACDzwKgglOAAIrjwAAK48ACiOAgAJPCRQCQFEAAquJUAJATwAKK4cACDGIEEBPAAIgUQAAAFGHAAA5jwABCYhKCAC"
-            + "IGwFDCEwIAKyJQQMISAAAiEgAAIwAAU8VDMEDDh7pSQwAL/fEACw3xgAsd8gALLfCADgA0AAvScqAAE82F0hNCMIQQAMACEsAwAgFAAAAAAIAOAD"
-            + "AABEjCoAATzYXSE0IwhBABMABDy4MoQkISCBAAgA4AMAAISM"),
-        (0x0012A710, "kAKMjAQAjS0xAKARgGAMABMADTyQLa0lIXCsAWAFz40PAOARDQD4MA0AABMBALgoCwAAF3AF2I0IABkvCAAgEyHAuAHYAxiTZAAZJCPAOAMYwLgA"
-            + "MgAYJxoAGQMSKAAAUAXPjRoA4BGgBfgwGAAAE8ikmI+ABdmNI8gZAwoAOS8TACAXDADvjREA4BGABdit0P+9JwAAv/8IAKT/EACl/xgApv8gAKf/"
+            + "IGwFDCEwIAKyJQQMISAAAiEgAAIwAAU8VDMEDDh7pSQwAL/fEACw3xgAsd8gALLfCADgA0AAvSfw/70nAAC//zQBCI4BAAgxDAAAEWgzCY4KACAR"
+            + "AQAFNJACJI1SqgUMPCgFACMBCJIhQAIBAAEJLf8ACiQKQEkBIwEIogAAv9/knAUIEAC9Jw=="),
+        (0x0012A710, "kAKMjAQAjS0xAKARgGAMABMADTyQLa0lIXCsAcAFz40PAOARDQD4MA0AABMBALgoCwAAF9AF2I0IABkvCAAgEyHAuAE4BBiTZAAZJCPAOAMYwLgA"
+            + "MgAYJxoAGQMSKAAAsAXPjRoA4BGgBfgwGAAAE8ikmI/gBdmNI8gZAwoAOS8TACAXDADvjREA4BHgBdit0P+9JwAAv/8IAKT/EACl/xgApv8gAKf/"
             + "ISDgATAABTxUMwQMMDulJAAAv98IAKTfEACl3xgApt8gAKffMAC9J/6YBQgAAAAA4P+9JwAAsP8IALH/EAC//yGAgAAhiKAAEwAIPBC9CCU4AAiu"
-            + "ISAAAjEABDyAXoQkl68EDCEoAAI8AAiOAwAAEQAAAABmbAUMPAAEJjwABCaMIAQMAgAFJCEgAAI2LQQMISgAAAEAKDIhIAACAACw3wgAsd8QAL/f"
+            + "ISAAAjEABDyAXoQkp68EDCEoAAI8AAiOAwAAEQAAAABmbAUMPAAEJjwABCaMIAQMAgAFJCEgAAI2LQQMISgAAAEAKDIhIAACAACw3wgAsd8QAL/f"
             + "AwAAESAAvScauQQIAAAAAAgA4AMAAAAA"),
-        (0x0012BAE8, "EwAWPJAt1iaQAoSOAAgFNHOvBAw8KAUAIUDCAqADEpGoAxORvAmqjyYAUqUoAFOlkAKIjgQACS0iACARgEAIACG4yAJABemOEAAgEQAAAAAMADCN"
-            + "DQAAEgAAAADIpIiPsAPJjiFACQFAAAiutAASorUAE6IwAAQ8cHmEJJevBAwhKAACDwAAEAAAAAAEuwQMwAAEJAsAQBAhgEAAISBAACEogALOMAQM"
-            + "sAPGjrQAEqK1ABOiQAXkJiEoAAIgbAUMITAAAj2KBQgCAAIkEwAWPJAt1iaQAoSOACAFNHOvBAw8KAUAIZBAAJACiI4EAAktJwAgEYBACAAhuMgC"
-            + "cAXyruAD045gBemOEQAgEQAAAAAMADCNDgAAEgAAAADIpIiPIUgTAUQACa5IAADGSEIBPAAIgUQCAAFGJAAARgAACkQjUAoBQAAKrg0AABAAAAAA"
-            + "BLsEDFAABCQNAEAQIYBAACEgQAAhKIACKoMHDCEwYAJgBeQmISgAAiBsBQwhMAACMAAEPCh5hCSXrwQMISiAAj2KBQgCAAIkkAKMjAQAjS0fAKAR"
-            + "gGAMABMADTyQLa0lIXCsAWAFz40ZAOARAAAAAAwA740WAOARAAAAAEgA4MXkA6HFAgABRoA/ATwACIFEAAABRuD/vScAAL//CACw/xAAtOchgIAA"
+        (0x0012BAE8, "EwAWPJAt1iaQAoSOAAgFNHOvBAw8KAUAIUDCAgAEEpEIBBORvAmqjyYAUqUoAFOlkAKIjgQACS0iACARgEAIACG4yAKgBemOEAAgEQAAAAAMADCN"
+            + "DQAAEgAAAADIpIiPEATJjiFACQFAAAiutAASorUAE6IwAAQ8cHmEJKevBAwhKAACDwAAEAAAAAAEuwQMwAAEJAsAQBAhgEAAISBAACEogALOMAQM"
+            + "EATGjrQAEqK1ABOioAXkJiEoAAIgbAUMITAAAj2KBQgCAAIkEwAWPJAt1iaQAoSOACAFNHOvBAw8KAUAIZBAAJACiI4EAAktJwAgEYBACAAhuMgC"
+            + "0AXyrkAE047ABemOEQAgEQAAAAAMADCNDgAAEgAAAADIpIiPIUgTAUQACa5IAADGSEIBPAAIgUQCAAFGJAAARgAACkQjUAoBQAAKrg0AABAAAAAA"
+            + "BLsEDFAABCQNAEAQIYBAACEgQAAhKIACKoMHDCEwYALABeQmISgAAiBsBQwhMAACMAAEPCh5hCSnrwQMISiAAj2KBQgCAAIkkAKMjAQAjS0fAKAR"
+            + "gGAMABMADTyQLa0lIXCsAcAFz40ZAOARAAAAAAwA740WAOARAAAAAEgA4MVEBKHFAgABRoA/ATwACIFEAAABRuD/vScAAL//CACw/xAAtOchgIAA"
             + "aAEUxgIAFEa8cAUMaAEA5mgBFOYAAL/fCACw3xAAtMcIAOADIAC9J7xwBQgAAAAA"),
         (0x0012BD90, "8P+9JwAAv/9SqgUMAAQFPAEAQygLEGMABgBDKAUAASQKECMAEwADPJAtYyQhGGIAAAC/3wgA4AMQAL0n8P+9JwAAv/9SqgUMAAAAAAEAQygLEGMA"
-            + "BgBDKAUAASQKECMAAAC/3wgA4AMQAL0nkAKEjgQABTRzrwQMPCgFAJACiI4EAAktDwAgEYBACAATAA08kC2tJSFwqAEhSKIB6AMpkZAFya3IpIqP"
-            + "8AOrjSFQSwGgBcqtMAAEPFh5hCSXrwQMISiAAj2KBQgCAAIk4P+9JwAAv/8IAKX/ISiAADIABDwS6gQMGEqEJCEgQAAIAKXfgD8BPABggUTQyQcM"
-            + "AAAAAAAAv98IAOADIAC9Jw==")
+            + "BgBDKAUAASQKECMAAAC/3wgA4AMQAL0nkAKEjgQABTRzrwQMPCgFAJACiI4EAAktDwAgEYBACAATAA08kC2tJSFwqAEhSKIBSAQpkfAFya3IpIqP"
+            + "UASrjSFQSwEABsqtMAAEPFh5hCSnrwQMISiAAj2KBQgCAAIkKgABPNhdITQjCEEADAAhLAMAIBQAAAAACADgAwAARIwqAAE82F0hNCMIQQATAAQ8"
+            + "GDOEJCEggQAIAOADAACEjOD/vScAAL//CACl/yEogAAyAAQ8EuoEDBhKhCQhIEAACACl34A/ATwAYIFE0MkHDAAAAAAAAL/fCADgAyAAvSc=")
     };
 
     /// <summary>
@@ -338,13 +343,13 @@ internal static class FeatPatch
     public const int VTableSize = 0x80;
 
     /// <summary>The data block.</summary>
-    public const int DataVa = 0x00132D90, DataSize = 0x5B0, VersionAt = 4, CountAt = 0xC, AbilityCountAt = 0x10,
-                     SpellsAt = 0x1C, EntriesAt = 0x80, EntryStride = 0x60, AbilitiesAt = 0x260,
-                     AbilityStride = 0x50, EntryPriceAt = 0x4A, AbilityManaAt = 0x2C, AbilityDamageAt = 0x26,
-                     XantamDamageMinAt = 0x48, XantamDamageMaxAt = 0x50, BarrierDamageMinAt = 0x3A0,
-                     BarrierDamageMaxAt = 0x3A8, FieldFramesAt = 0x3C0, MightDamageAt = 0x3D0,
-                     MightDefenceAt = 0x3D8, PowerHitsAt = 0x3E8, PowerFramesAt = 0x3F0,
-                     CastTableAt = 0x4A0, CastTypes = 34, GameCastTypes = 23;
+    public const int DataVa = 0x00132D90, DataSize = 0x610, VersionAt = 4, CountAt = 0xC, AbilityCountAt = 0x10,
+                     SpellsAt = 0x1C, EntriesAt = 0x80, EntryStride = 0x60, AbilitiesAt = 0x2C0,
+                     AbilityStride = 0x50, EntryPriceAt = 0x4A, EntryRanksAt = 0x49, AbilityManaAt = 0x2C, AbilityDamageAt = 0x26,
+                     XantamDamageMinAt = 0x48, XantamDamageMaxAt = 0x50, BarrierDamageMinAt = 0x400,
+                     BarrierDamageMaxAt = 0x408, FieldFramesAt = 0x420, MightDamageAt = 0x430,
+                     MightDefenceAt = 0x438, PowerHitsAt = 0x448, PowerFramesAt = 0x450,
+                     CastTableAt = 0x500, CastTypes = 34, GameCastTypes = 23;
 
     /// <summary>Power Attack's time: its doubled hits must come within this many frames of the cast (10 s).</summary>
     public const int PowerFrames = 500;
@@ -352,6 +357,14 @@ internal static class FeatPatch
     /// <summary>The game's Power Attack record (the one its grant copies): its name, cast type and feat bit are checked.</summary>
     public const int PowerRecordVa = 0x0030E2E0;
     public const string PowerRecordName = "powerattack";
+
+    /// <summary>
+    /// The game's Sorcerer's Blood record (type 24: its grant only sets the bit): its name, cast type and feat bit are checked, and
+    /// that no other ability has its bit. Each level she gains with the feat adds her rank to a total in her record, at
+    /// <see cref="SorcerersTotalAt"/> (its last rank byte), and her maximum mana is the game's plus that total.
+    /// </summary>
+    public const int SorcerersRecordVa = 0x0030E3D0, SorcerersTotalAt = 0x123;
+    public const string SorcerersRecordName = "SorcerersBlood";
 
     /// <summary>The game's own cast table (its first 23 entries go into the data block's) and its default case.</summary>
     public const int GameCastTableVa = 0x00307BC0;
@@ -362,7 +375,7 @@ internal static class FeatPatch
     /// records, the cast table): every spell's own settings at their defaults, the names of the icons, the HUD lines' keys.
     /// </summary>
     public const string DataCommonBase64 =
-        "RkVBVAYAAAAAAAAAAAAAAAAAAACwBQAAxMUQAAAAAACamZk/AAAAQAAAwEEAALRDAIA7RQAAAEIAAwMFBQUAAAAAAAAAAQAAAAEBAgIDAAAAAgME"
+        "RkVBVAcAAAAAAAAAAAAAAAAAAAAQBgAAxMUQAAAAAACamZk/AAAAQAAAwEEAALRDAIA7RQAAAEIAAwMFBQUAAAAAAAAAAQAAAAEBAgIDAAAAAgME"
         + "BQYAAAAAAAAAAAAAaWNvbl94YW50YW1maXJlLnRleAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -373,13 +386,14 @@ internal static class FeatPatch
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-        + "AAAAAAAEBggKDAAAAAgKDRAUAAD0AQAAMgAAAAAAoEEAACBBAADIAPoALAFeAZABAAAAAAAKFB4oMgAAAAoUHigyAAD0AQAAmpmZPgABAgMEBQAA"
-        + "9AEAAAAAAAAAAAAAAAAAAGljb25fYmxhZGViYXJyaWVyLnRleAAAAAAAAAAAAAAAaWNvbl9hbnRpbWFnaWNmaWVsZC50ZXgAAAAAAAAAAABpY29u"
-        + "X3JpZ2h0ZW91c21pZ2h0LnRleAAAAAAAAAAAAGFudGltYWdpY2ZpZWxkX2h1ZAAAAAAAAAAAAAAAAAAAcmlnaHRlb3VzbWlnaHRfaHVkAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-        + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIKowAPCpMAB4qjAA"
+        + "AAAAAAAAAAAAAAAAAAAAAAAEBggKDAAAAAgKDRAUAAD0AQAAMgAAAAAAoEEAACBBAADIAPoALAFeAZABAAAAAAAKFB4oMgAAAAoUHigyAAD0AQAA"
+        + "mpmZPgABAgMEBQAA9AEAAAAAAAAAAAAAAAAAAGljb25fYmxhZGViYXJyaWVyLnRleAAAAAAAAAAAAAAAaWNvbl9hbnRpbWFnaWNmaWVsZC50ZXgA"
+        + "AAAAAAAAAABpY29uX3JpZ2h0ZW91c21pZ2h0LnRleAAAAAAAAAAAAGFudGltYWdpY2ZpZWxkX2h1ZAAAAAAAAAAAAAAAAAAAcmlnaHRlb3VzbWln"
+        + "aHRfaHVkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-        + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
+        + "IKowAPCpMAB4qjAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
 
     /// <summary>The spells, in the order the data block lists the ones that are on (the order of BorrowedSpell).</summary>
     public static readonly SpellPatchData[] Spells =
@@ -576,22 +590,29 @@ internal static class FeatPatch
             + "5nyoAFfKecQSSR/E/ubw4ad0dcZWunUgrnp11UlNdWzIAYpsirfht7m3tbe1t7lgxLfwLze38LeSt/C3qrfwtze38LfwdKcAsOb+AOtJEgB5ylcA"
             + "yOEAAUnEAE2u1QB6ViAAur76dGD+TyC31G/Nt6yktbfWZI3N+tqNbE+g4MRvI+Dhjbdgt563kbeRt563YLeNYLe3jbc2t+C3n7eNt7e3jbe1pKwA"
             + "zW/UACBP/gB0+r4Aby8AI0/hAKD6bADa1s0AZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==")
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="),
+        new("sorcerersblood", 0x20, 1, 32, 24, 0x00000000, "SorcerersBlood", "",
+            "AQAAAAAAAABTb3JjZXJlcnNCbG9vZAAAAAAAAAAAAAAAAAAAAAAAAFNvcmNlcmVyc0Jsb29kRGVzYwAAAAAAAAAAAAAAAAAAAAEDAAAAAAAAAAAA"
+            + "AQAAAAAAAAAAAAAA",
+            "",
+            "")
     };
 
     /// <summary>The hooks: where, the game's word, the patch's word, and the spells (mask) any one of which needs it.</summary>
     public static readonly (int Va, uint Game, uint Patched, int Spells)[] Hooks =
     {
-        (0x00161EF8, 0x2C830017, 0x2C830022, 0x1F),
-        (0x00161F00, 0x3C020030, 0x3C020013, 0x1F),
-        (0x00161F08, 0x24427BC0, 0x24423230, 0x1F),
+        (0x00161EF8, 0x2C830017, 0x2C830022, 0x3F),
+        (0x00161F00, 0x3C020030, 0x3C020013, 0x3F),
+        (0x00161F08, 0x24427BC0, 0x24423290, 0x3F),
+        (0x001676E4, 0x0C05AA52, 0x0C04A541, 0x20),
         (0x00167AFC, 0x0240282D, 0x0C0462A8, 0x18),
-        (0x0016DD44, 0x0C04EB96, 0x0C040BC9, 0x1F),
-        (0x0017A4BC, 0x0C05ED8E, 0x0C04A508, 0x1F),
+        (0x0016DD44, 0x0C04EB96, 0x0C040BC9, 0x3F),
+        (0x0017A4BC, 0x0C05ED8E, 0x0C04A508, 0x3F),
+        (0x0017B594, 0x0C059CE4, 0x0C04A74A, 0x20),
         (0x0017E52C, 0x14830009, 0x0804625E, 0xE),
-        (0x0017EA44, 0x8C440000, 0x0C04A74A, 0xE),
-        (0x0017EAB4, 0x8C440000, 0x0C04A74A, 0xE),
-        (0x0018331C, 0x0C058ADE, 0x0C043171, 0x1F),
+        (0x0017EA44, 0x8C440000, 0x0C04AF97, 0xE),
+        (0x0017EAB4, 0x8C440000, 0x0C04AF97, 0xE),
+        (0x0018331C, 0x0C058ADE, 0x0C043171, 0x3F),
         (0x001B177C, 0x3C030031, 0x8E230038, 0x1),
         (0x001B1784, 0x24636798, 0x24630080, 0x1),
         (0x0030A104, 0x001663F8, 0x0012A710, 0xC),
@@ -612,6 +633,15 @@ internal static class FeatPatch
         (0x00161F14, 0x00800008),
         (0x001628F0, 0x24020002),
         (0x001628F4, 0xA282032A),
+        (0x001673DC, 0x00448821),
+        (0x001673E0, 0x8E233368),
+        (0x001676A4, 0x3C050010),
+        (0x001676E0, 0x46010000),
+        (0x001676E8, 0xE62000C0),
+        (0x001676EC, 0x00021880),
+        (0x001676F0, 0xC62000C0),
+        (0x00167708, 0x46010000),
+        (0x00167710, 0xE62000C0),
         (0x00167AF4, 0x016F3821),
         (0x00167AF8, 0x0280202D),
         (0x00167B00, 0x018F3021),
@@ -623,6 +653,13 @@ internal static class FeatPatch
         (0x0016DD4C, 0x8C430038),
         (0x0016DD60, 0xAE030028),
         (0x0017A4C0, 0xDC440048),
+        (0x0017B3C4, 0x00828021),
+        (0x0017B4B0, 0xA2030055),
+        (0x0017B598, 0x00000000),
+        (0x0017B5B4, 0xC60000A8),
+        (0x0017B5B8, 0xC60100C0),
+        (0x0017B5BC, 0xE60000A4),
+        (0x0017B5C0, 0xE60100BC),
         (0x0017E520, 0x00051400),
         (0x0017E524, 0x2403000E),
         (0x0017E528, 0x00022403),
@@ -707,8 +744,8 @@ internal static class FeatPatch
 
     /// <summary>
     /// Version 5 (kromlech-spells-test1: Xantam's Fire and Kromlech's three, without Power Attack): its hooks (and which of its
-    /// spells need each, the same masks as version 6's), its code's pieces with their SHA-256 and its vtable copies, and where
-    /// its data block keeps the settings (its mask, Xantam's Fire's damage and the entries' prices where version 6 has them).
+    /// spells need each, the same masks as version 7's), its code's pieces with their SHA-256 and its vtable copies, and where
+    /// its data block keeps the settings (its mask, Xantam's Fire's damage and the entries' prices where version 7 has them).
     /// </summary>
     public const int V5Version = 5, V5EntriesAt = 0x80, V5AbilitiesAt = 0x200,
                      V5BarrierDamageMinAt = 0x340, V5BarrierDamageMaxAt = 0x348, V5FieldFramesAt = 0x360,
@@ -746,6 +783,50 @@ internal static class FeatPatch
         (0x00118BB0, 0x00316718, new (int, uint)[] {  }),
         (0x00118C30, 0x00316798, new (int, uint)[] { (0x24, 0x0010C480), (0x3C, 0x0012E418) }),
         (0x0012BC50, 0x0031B650, new (int, uint)[] { (0x0C, 0x0012A7DC), (0x24, 0x00102910) }),
+        (0x00102AF0, 0x0031B5D0, new (int, uint)[] { (0x0C, 0x0010CE8C) })
+    };
+
+    /// <summary>
+    /// Version 6 (power-attack-test1: the five spells, without Sorcerer's Blood): its hooks (and which of its spells need each,
+    /// the same masks as version 7's), its code's pieces with their SHA-256 and its vtable copies, and where its data block keeps
+    /// the settings (its mask, its entries and Xantam's Fire's damage where version 7 has them; the rest 0x60 earlier).
+    /// </summary>
+    public const int V6Version = 6, V6EntriesAt = 0x80, V6AbilitiesAt = 0x260,
+                     V6BarrierDamageMinAt = 0x3A0, V6BarrierDamageMaxAt = 0x3A8, V6FieldFramesAt = 0x3C0,
+                     V6MightDamageAt = 0x3D0, V6MightDefenceAt = 0x3D8, V6PowerHitsAt = 0x3E8;
+
+    public static readonly (int Va, uint Game, uint Patched, int Spells)[] V6Hooks =
+    {
+        (0x00161EF8, 0x2C830017, 0x2C830022, 0x1F),
+        (0x00161F00, 0x3C020030, 0x3C020013, 0x1F),
+        (0x00161F08, 0x24427BC0, 0x24423230, 0x1F),
+        (0x00167AFC, 0x0240282D, 0x0C0462A8, 0x18),
+        (0x0016DD44, 0x0C04EB96, 0x0C040BC9, 0x1F),
+        (0x0017A4BC, 0x0C05ED8E, 0x0C04A508, 0x1F),
+        (0x0017E52C, 0x14830009, 0x0804625E, 0xE),
+        (0x0017EA44, 0x8C440000, 0x0C04A74A, 0xE),
+        (0x0017EAB4, 0x8C440000, 0x0C04A74A, 0xE),
+        (0x0018331C, 0x0C058ADE, 0x0C043171, 0x1F),
+        (0x001B177C, 0x3C030031, 0x8E230038, 0x1),
+        (0x001B1784, 0x24636798, 0x24630080, 0x1),
+        (0x0030A104, 0x001663F8, 0x0012A710, 0xC),
+        (0x0030A11C, 0x0015C2F0, 0x0012BC80, 0x8)
+    };
+
+    public static readonly (int Va, int Length)[] V6Code =
+    {
+        (0x00102910, 0x1E0), (0x00102D80, 0x280), (0x0010C338, 0x390), (0x0010CD50, 0x1EC),
+        (0x00118978, 0x3F4), (0x00129420, 0xE4), (0x00129C48, 0x120), (0x0012A710, 0x168),
+        (0x0012BAE8, 0x228), (0x0012BD90, 0x10C)
+    };
+
+    public const string V6CodeSha256 = "1d9676d681991d4d1a0c436ee8a2d820ad0031d8f9ad5f9f66f37f7a014b92c8";
+
+    public static readonly (int Va, int GameVa, (int At, uint Word)[] Words)[] V6VTables =
+    {
+        (0x00129320, 0x00316718, new (int, uint)[] {  }),
+        (0x001293A0, 0x00316798, new (int, uint)[] { (0x24, 0x0010C480), (0x3C, 0x0012E418) }),
+        (0x0012BD10, 0x0031B650, new (int, uint)[] { (0x0C, 0x0012A7E8), (0x24, 0x00102910) }),
         (0x00102AF0, 0x0031B5D0, new (int, uint)[] { (0x0C, 0x0010CE8C) })
     };
 
@@ -802,7 +883,7 @@ internal static class FeatPatch
         (0x0016DD44, 0x0C04EB96, 0x0C035A03)
     };
 
-    /// <summary>The spells' names, descriptions and HUD lines (0 English, 1 French, 2 German, 3 Italian, 4 Spanish), as gtext_feats5.py writes them.</summary>
+    /// <summary>The spells' names, descriptions and HUD lines (0 English, 1 French, 2 German, 3 Italian, 4 Spanish), as gtext_feats5.py writes them (none for Power Attack and Sorcerer's Blood: the game's own).</summary>
     public static readonly (string Spell, int Language, string Key, string Text)[] Texts =
     {
         ("xantam", 0, "xantamfire_name", "Xantam's Fire"),
