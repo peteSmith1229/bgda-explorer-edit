@@ -5,8 +5,9 @@
 // the game has but never offers, each a feat on a hero's level-up screen, each turned on or off by itself:
 //   Xantam's Fire for Adrianna    the beholder Xantam's fire trails, which burn the monsters in their path;
 //   Xantam's Orbs for Adrianna    the beholder's third attack: the rank's number of his glowing orbs (one at rank
-//                                 1, up to five at rank 5) at the nearest monster in front of her, each 8-12
-//                                 damage to the first monster it touches;
+//                                 1, up to five at rank 5) in a fan whose middle goes at the nearest monster in
+//                                 front of her, each 8-12 damage to the first monster it touches, or breaking the
+//                                 barrel, crate or pot it touches;
 //   Sorcerer's Blood for Adrianna the game's own cut feat, passive: each level she gains once she has it gives
 //                                 her 1 more mana a rank ("+1 Mana Point gain per level. This is not
 //                                 retroactive."); 1 rank by default, up to 5;
@@ -15,7 +16,7 @@
 //   Blade Barrier for Kromlech    Ilivarra's nine whirling axes: once a second every monster in reach is hit;
 //   Antimagic Field for Kromlech  Ilivarra's field: fire, cold, electricity and magic do him no harm;
 //   Righteous Might for Kromlech  Ilivarra's might: he grows, his weapon hits do more damage and take less.
-// It is featpatch.py version 8, written from the data in BgdaFeatPatch.cs (generated from that script), so
+// It is featpatch.py version 9, written from the data in BgdaFeatPatch.cs (generated from that script), so
 // the bytes are the ones tested in the emulator.
 //
 // POWER ATTACK is the game's: its ability record (0x0030E2E0, bit 34, cast type 18, 5 mana), its grant, its
@@ -33,17 +34,19 @@
 // nothing in GTEXT.LMP or ICONS.LMP (a passive has no HUD slot).
 //
 // XANTAM'S ORBS are Xantam's DodgeBalls (his third attack; vtable 0x0031C3C8, built by the game's own constructor
-// FUN_001E8320), flying and bursting as his do, but with a vtable copy whose touch hurts monsters only, once an orb,
-// through the game's hit function from her (resistances count, her kills give her the experience); his hurt anyone
-// for 10, players too, with no experience. Its cast case (type 35) aims each orb as Xantam aims his, at a random
-// point within 20 of the middle of the nearest monster in front of her (straight ahead when there is none). Its name,
-// description and icon go in GTEXT.LMP and ICONS.LMP as the other borrowed spells'; its HUD line is the game's own
+// FUN_001E8320), flying and bursting as his do, but with a vtable copy whose touch hurts monsters and breakable
+// things only (barrels, crates, pots, baskets and pallets: flag 8, which the game's hit function breaks), once an
+// orb, through the game's hit function from her (resistances count, her kills give her the experience); never a
+// player. His hurt anyone for 10, players too, with no experience. Its cast case (type 35) sends them in a fan, 12
+// degrees apart, whose middle goes at the middle of the nearest monster in front of her (straight ahead when there
+// is none), from a point 32 behind her hand, so they are apart from the moment they appear. Its name, description
+// and icon go in GTEXT.LMP and ICONS.LMP as the other borrowed spells'; its HUD line is the game's own
 // "Damage: %d-%d" (each orb's). Its list entry goes after Sorcerer's Blood in her list.
 //
 // WHERE IT GOES. The pool: 61 stretches of the game's own code that nothing ever runs (unused library
 // functions and leftover routines, 32,724 bytes; see featpool.py). They are the same addresses and bytes
 // in the stock executable and in every three-player build, the game's own segment loads them, and no
-// other patch WorldExplorer knows writes there. The patch takes 8,492 bytes of it: its data block at
+// other patch WorldExplorer knows writes there. The patch takes 8,560 bytes of it: its data block at
 // 0x00132D90, its code in ten pieces, five vtable copies and its cast table (35 types). The code is the
 // same whichever spells are on; only the hooks of the spells that are on are written (16 words when all
 // seven are), and the data block says which ones are. Nothing else changes: no program header, no
@@ -56,13 +59,13 @@
 // as well: Righteous Might and Power Attack hook the instruction before the melee hit's call, which
 // Corrosive changes.
 //
-// STATES. Off: the hooks and the pool are the game's. On: version 8 is in, with the spells its data
-// block names. Outdated: version 7 (sorcerers-blood-test1: the six without Xantam's Orbs), version 6
-// (power-attack-test1: the five without Sorcerer's Blood either), version 5 (kromlech-spells-test1: the
-// four borrowed spells of then), or Xantam's Fire alone as the fourth or third test version (test4: in the
-// pool; test3: a 12 KB spell area copied into low memory at start-up); saving takes it out and puts version
-// 8 in, every spell it had with its settings. Unrecognized: anything else (earlier test versions, or
-// another patch in those places).
+// STATES. Off: the hooks and the pool are the game's. On: version 9 is in, with the spells its data
+// block names. Outdated: version 8 (xantam-orbs-test1: all seven, the orbs aimed with a random scatter),
+// version 7 (sorcerers-blood-test1: the six without Xantam's Orbs), version 6 (power-attack-test1: the five
+// without Sorcerer's Blood either), version 5 (kromlech-spells-test1: the four borrowed spells of then), or
+// Xantam's Fire alone as the fourth or third test version (test4: in the pool; test3: a 12 KB spell area
+// copied into low memory at start-up); saving takes it out and puts version 9 in, every spell it had with its
+// settings. Unrecognized: anything else (earlier test versions, or another patch in those places).
 //
 // SETTINGS (the data block; the code reads them while the game runs): each spell's level-up price
 // (0-30, priced as the game prices its own feats: from 5 on a rank costs price + rank^1.6, so 16 gives
@@ -108,9 +111,9 @@ public enum BorrowedSpellsState
 {
     /// <summary>The game's code and the free pool: the spells can be put in.</summary>
     Off,
-    /// <summary>Version 8 is in: which spells, and their settings, can be read and changed.</summary>
+    /// <summary>Version 9 is in: which spells, and their settings, can be read and changed.</summary>
     On,
-    /// <summary>Version 7 (the six without Xantam's Orbs), 6 (the five without Sorcerer's Blood either) or 5 (the four borrowed spells of then), or Xantam's Fire alone as the fourth or third test version: saving brings it to version 8.</summary>
+    /// <summary>Version 8 (all seven, the orbs aimed with a random scatter), 7 (the six without Xantam's Orbs), 6 (the five without Sorcerer's Blood either) or 5 (the four borrowed spells of then), or Xantam's Fire alone as the fourth or third test version: saving brings it to version 9.</summary>
     Outdated,
     /// <summary>Neither: an earlier test version, or another patch where it goes.</summary>
     Unrecognized
@@ -417,6 +420,9 @@ public partial class BgdaExecutable
         new[] { FeatPatch.Pool[^1].End, FeatPatch.AbilityTableEndVa + 4, FeatPatch.GameCastTableVa + 4 * FeatPatch.GameCastTypes }
             .Concat(FeatPatch.Checks.Select(c => c.Va + 4))
             .Concat(FeatPatch.Hooks.Select(h => h.Va + 4))
+            .Concat(FeatPatch.V8Hooks.Select(h => h.Va + 4))
+            .Concat(FeatPatch.V8Code.Select(c => c.Va + c.Length))
+            .Concat(FeatPatch.V8VTables.Select(v => v.GameVa + FeatPatch.VTableSize))
             .Concat(FeatPatch.V7Hooks.Select(h => h.Va + 4))
             .Concat(FeatPatch.V7Code.Select(c => c.Va + c.Length))
             .Concat(FeatPatch.V7VTables.Select(v => v.GameVa + FeatPatch.VTableSize))
@@ -485,7 +491,7 @@ public partial class BgdaExecutable
         return SpellsOf((int)ReadU32(FeatDataAt(FeatPatch.SpellsAt)));
     }
 
-    /// <summary>The spells version 8 says it has (its data block's mask), or null when the file doesn't have version 8's mark.</summary>
+    /// <summary>The spells version 9 says it has (its data block's mask), or null when the file doesn't have version 9's mark.</summary>
     private List<BorrowedSpell>? CurrentSpells() => MarkedSpells(FeatPatch.Version);
 
     /// <summary>
@@ -512,6 +518,11 @@ public partial class BgdaExecutable
         return Convert.ToHexString(sha.GetHashAndReset()).ToLowerInvariant() == sha256 ? spells : null;
     }
 
+    /// <summary>Version 8 (all seven, the orbs aimed with a random scatter): see <see cref="EarlierSpells"/>.</summary>
+    private List<BorrowedSpell>? V8Spells() =>
+        EarlierSpells(FeatPatch.V8Version, Array.Empty<BorrowedSpell>(), FeatPatch.V8Hooks, FeatPatch.V8Code,
+                      FeatPatch.V8CodeSha256, FeatPatch.V8VTables);
+
     /// <summary>Version 7 (the six, without Xantam's Orbs): see <see cref="EarlierSpells"/>.</summary>
     private List<BorrowedSpell>? V7Spells() =>
         EarlierSpells(FeatPatch.V7Version, new[] { BorrowedSpell.XantamOrbs }, FeatPatch.V7Hooks, FeatPatch.V7Code,
@@ -528,7 +539,7 @@ public partial class BgdaExecutable
                       FeatPatch.V5Hooks, FeatPatch.V5Code, FeatPatch.V5CodeSha256, FeatPatch.V5VTables);
 
     /// <summary>
-    /// Off, On, Outdated (version 7, 6 or 5, or Xantam's Fire alone as the fourth or third test version: updated on save) or
+    /// Off, On, Outdated (version 8, 7, 6 or 5, or Xantam's Fire alone as the fourth or third test version: updated on save) or
     /// Unrecognized; <paramref name="detail"/> says what was found, in a sentence.
     /// </summary>
     public BorrowedSpellsState GetBorrowedSpellsState(out string detail)
@@ -547,7 +558,7 @@ public partial class BgdaExecutable
             if (spells.Count > 0 && hooks && code.All(c => BytesAre(c.Va, c.Bytes)) && FeatPatch.VTables.All(v => BytesAre(v.Va, FeatVTable(v))) &&
                 BytesAre(FeatPatch.CastTableVa, FeatCastTable(spells)))
             {
-                detail = $"In (version 8, in game code nothing runs): {Names(spells)}. It works with or without three players.";
+                detail = $"In (version 9, in game code nothing runs): {Names(spells)}. It works with or without three players.";
                 return BorrowedSpellsState.On;
             }
 
@@ -555,30 +566,37 @@ public partial class BgdaExecutable
             return BorrowedSpellsState.Unrecognized;
         }
 
+        if (V8Spells() is { } eight)
+        {
+            detail = $"In as version 8 (the first test of Xantam's Orbs): {Names(eight)}. Saving brings it to version 9, which " +
+                     "fans the orbs out and lets them break barrels and crates; every spell keeps its settings.";
+            return BorrowedSpellsState.Outdated;
+        }
+
         if (V7Spells() is { } seven)
         {
-            detail = $"In as version 7 (the first test of Sorcerer's Blood): {Names(seven)}. Saving brings it to version 8, which " +
+            detail = $"In as version 7 (the first test of Sorcerer's Blood): {Names(seven)}. Saving brings it to version 9, which " +
                      "adds Xantam's Orbs for Adrianna; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V6Spells() is { } six)
         {
-            detail = $"In as version 6 (the first test of Power Attack): {Names(six)}. Saving brings it to version 8, which adds " +
+            detail = $"In as version 6 (the first test of Power Attack): {Names(six)}. Saving brings it to version 9, which adds " +
                      "Sorcerer's Blood and Xantam's Orbs for Adrianna; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V5Spells() is { } old)
         {
-            detail = $"In as version 5 (the first test of Kromlech's spells): {Names(old)}. Saving brings it to version 8, which adds " +
+            detail = $"In as version 5 (the first test of Kromlech's spells): {Names(old)}. Saving brings it to version 9, which adds " +
                      "Power Attack for Kromlech, and Sorcerer's Blood and Xantam's Orbs for Adrianna; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V4Present(v4Code))
         {
-            detail = "Xantam's Fire is in as the fourth test version (Adrianna's spell alone). Saving brings it to version 8, which " +
+            detail = "Xantam's Fire is in as the fourth test version (Adrianna's spell alone). Saving brings it to version 9, which " +
                      "also has Sorcerer's Blood, Xantam's Orbs and Kromlech's spells; its price, mana and damage are kept.";
             return BorrowedSpellsState.Outdated;
         }
@@ -586,7 +604,7 @@ public partial class BgdaExecutable
         if (V3Present())
         {
             detail = "Xantam's Fire is in as the third test version (its spell area, which only a three-player build loads). " +
-                     "Saving brings it to version 8, which works with or without three players; its price, mana and damage are kept.";
+                     "Saving brings it to version 9, which works with or without three players; its price, mana and damage are kept.";
             return BorrowedSpellsState.Outdated;
         }
 
@@ -686,12 +704,20 @@ public partial class BgdaExecutable
         _data.AsSpan(FeatPatch.V3AreaFile, 4).SequenceEqual(FeatMark) && ReadU32(FeatPatch.V3AreaFile + 4) == 3 &&
         FeatPatch.V3Hooks.All(h => ReadU32(FileOffset(h.Va)) == h.Patched);
 
-    /// <summary>Where a version's data block keeps the settings (version 8's, 7's, 6's and 5's entries are where the others' are).</summary>
+    /// <summary>
+    /// Where a version's data block keeps the settings (version 9's, 8's, 7's, 6's and 5's entries are where the others' are;
+    /// the orbs' tables are versions 9's and 8's alone).
+    /// </summary>
     private sealed record FeatLayout(int Entries, int Abilities, int BarrierMin, int BarrierMax, int FieldFrames, int MightDamage,
-                                     int MightDefence, int PowerHits);
+                                     int MightDefence, int PowerHits, int OrbsCount = -1, int OrbsMin = -1, int OrbsMax = -1);
 
     private static readonly FeatLayout CurrentLayout = new(FeatPatch.EntriesAt, FeatPatch.AbilitiesAt, FeatPatch.BarrierDamageMinAt,
-        FeatPatch.BarrierDamageMaxAt, FeatPatch.FieldFramesAt, FeatPatch.MightDamageAt, FeatPatch.MightDefenceAt, FeatPatch.PowerHitsAt);
+        FeatPatch.BarrierDamageMaxAt, FeatPatch.FieldFramesAt, FeatPatch.MightDamageAt, FeatPatch.MightDefenceAt, FeatPatch.PowerHitsAt,
+        FeatPatch.OrbsCountAt, FeatPatch.OrbsDamageMinAt, FeatPatch.OrbsDamageMaxAt);
+
+    private static readonly FeatLayout V8Layout = new(FeatPatch.V8EntriesAt, FeatPatch.V8AbilitiesAt, FeatPatch.V8BarrierDamageMinAt,
+        FeatPatch.V8BarrierDamageMaxAt, FeatPatch.V8FieldFramesAt, FeatPatch.V8MightDamageAt, FeatPatch.V8MightDefenceAt,
+        FeatPatch.V8PowerHitsAt, FeatPatch.V8OrbsCountAt, FeatPatch.V8OrbsDamageMinAt, FeatPatch.V8OrbsDamageMaxAt);
 
     private static readonly FeatLayout V7Layout = new(FeatPatch.V7EntriesAt, FeatPatch.V7AbilitiesAt, FeatPatch.V7BarrierDamageMinAt,
         FeatPatch.V7BarrierDamageMaxAt, FeatPatch.V7FieldFramesAt, FeatPatch.V7MightDamageAt, FeatPatch.V7MightDefenceAt,
@@ -705,7 +731,7 @@ public partial class BgdaExecutable
         FeatPatch.V5BarrierDamageMaxAt, FeatPatch.V5FieldFramesAt, FeatPatch.V5MightDamageAt, FeatPatch.V5MightDefenceAt, -1);
 
     /// <summary>
-    /// The spells in the file and their settings (On; Outdated: version 7's, 6's or 5's spells, or Xantam's Fire's), or none (Off,
+    /// The spells in the file and their settings (On; Outdated: version 8's, 7's, 6's or 5's spells, or Xantam's Fire's), or none (Off,
     /// Unrecognized). Power Attack's mana is 0: its record's is the Feats &amp; Spells tab's. Sorcerer's Blood's is 0 too: it
     /// is passive.
     /// </summary>
@@ -713,6 +739,8 @@ public partial class BgdaExecutable
     {
         var found = new Dictionary<BorrowedSpell, BorrowedSpellSettings>();
         var state = GetBorrowedSpellsState(out _);
+        if (state == BorrowedSpellsState.Outdated && V8Spells() is { } eight)
+            return ReadAll(eight, V8Layout);
         if (state == BorrowedSpellsState.Outdated && V7Spells() is { } seven)
             return ReadAll(seven, V7Layout);
         if (state == BorrowedSpellsState.Outdated && V6Spells() is { } six)
@@ -769,9 +797,9 @@ public partial class BgdaExecutable
                 Array.Empty<int>()),
             BorrowedSpell.SorcerersBlood => new BorrowedSpellSettings(price, 0f, Array.Empty<int>(), Array.Empty<int>(),
                                                                       _data[FeatDataAt(entry + FeatPatch.EntryRanksAt)]),
-            BorrowedSpell.XantamOrbs => new BorrowedSpellSettings(price, mana, ByRank(FeatDataAt(FeatPatch.OrbsDamageMinAt)),
-                                                                  ByRank(FeatDataAt(FeatPatch.OrbsDamageMaxAt)),
-                                                                  Third: ByRank(FeatDataAt(FeatPatch.OrbsCountAt))),
+            BorrowedSpell.XantamOrbs => new BorrowedSpellSettings(price, mana, ByRank(FeatDataAt(layout.OrbsMin)),
+                                                                  ByRank(FeatDataAt(layout.OrbsMax)),
+                                                                  Third: ByRank(FeatDataAt(layout.OrbsCount))),
             _ => new BorrowedSpellSettings(price, mana, ByRank(FeatDataAt(layout.MightDamage)), ByRank(FeatDataAt(layout.MightDefence)))
         };
     }
@@ -780,7 +808,7 @@ public partial class BgdaExecutable
     private int[] ByRank(int at) => Enumerable.Range(1, BorrowedSpellSettings.Ranks).Select(r => (int)_data[at + r]).ToArray();
 
     /// <summary>
-    /// Puts in, updates (Outdated: to version 8), changes or takes out the borrowed spells so that exactly
+    /// Puts in, updates (Outdated: to version 9), changes or takes out the borrowed spells so that exactly
     /// <paramref name="spells"/> are in, with their settings (none: <see cref="RemoveBorrowedSpells"/>). Throws
     /// <see cref="ArgumentException"/> on bad settings and <see cref="InvalidOperationException"/> when the state is
     /// Unrecognized; nothing is changed then.
@@ -949,14 +977,22 @@ public partial class BgdaExecutable
         foreach (var (a, b) in FeatPatch.Pool) PoolOriginal(a, b).CopyTo(_data.AsSpan(FileOffset(a)));
     }
 
-    /// <summary>Takes out the earlier version that is in (Outdated): version 7, 6 or 5, or the fourth or third test version.</summary>
+    /// <summary>Takes out the earlier version that is in (Outdated): version 8, 7, 6 or 5, or the fourth or third test version.</summary>
     private void RemoveOutdated()
     {
-        if (V7Spells() != null) RemoveV7();
+        if (V8Spells() != null) RemoveV8();
+        else if (V7Spells() != null) RemoveV7();
         else if (V6Spells() != null) RemoveV6();
         else if (V5Spells() != null) RemoveV5();
         else if (V3Present()) RemoveV3();
         else RemoveV4();
+    }
+
+    /// <summary>Takes version 8 out: the game's words back at its hooks, the game's bytes back in the pool.</summary>
+    private void RemoveV8()
+    {
+        foreach (var (va, game, _, _) in FeatPatch.V8Hooks) WriteInt(FileOffset(va), (int)game);
+        RestorePool();
     }
 
     /// <summary>Takes version 7 out: the game's words back at its hooks, the game's bytes back in the pool.</summary>

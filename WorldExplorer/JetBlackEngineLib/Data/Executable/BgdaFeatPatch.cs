@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // GENERATED FILE: WorldExplorer/JetBlackEngineLib/Data/Executable/BgdaFeatPatch.cs
-// by make_worldexplorer_feats8.py from featpatch.py version 8 (and featpool.py, featpatch_v7.py, featpatch_v6.py,
+// by make_worldexplorer_feats9.py from featpatch.py version 9 (and featpool.py, featpatch_v8.py, featpatch_v7.py, featpatch_v6.py,
 // featpatch_v5.py, featpatch_v4.py, featpatch_v3.py, gtext_feats8.py and the icons in ICONS.LMP). Don't edit by hand: run
 // the script again.
 //
@@ -25,10 +25,10 @@ internal sealed record SpellPatchData(string Key, int Mask, int HeroClass, int B
     public bool HasCast => Cast != 0;
 }
 
-/// <summary>featpatch.py version 8 as data (see BgdaExecutable.BorrowedSpells.cs).</summary>
+/// <summary>featpatch.py version 9 as data (see BgdaExecutable.BorrowedSpells.cs).</summary>
 internal static class FeatPatch
 {
-    public const int Version = 8;
+    public const int Version = 9;
 
     /// <summary>
     /// The pool: 61 stretches of the game's own code that nothing runs (32,724 bytes), the same addresses and bytes
@@ -253,88 +253,88 @@ internal static class FeatPatch
     public const string PoolOriginalSha256 = "61d9c74b8a8f6a052479a3505c8458611f8b9ff67bfbd76018a2e7b8a48b36ce";
 
     /// <summary>How much of the pool the patch takes: its data block, its code, its five vtable copies and its cast table.</summary>
-    public const int PoolUsedBytes = 8492;
+    public const int PoolUsedBytes = 8560;
 
-    /// <summary>The code (6,112 bytes in 10 pieces over the pool's stretches): the same whichever spells are on.</summary>
+    /// <summary>The code (6,172 bytes in 10 pieces over the pool's stretches): the same whichever spells are on.</summary>
     public static readonly (int Va, string Base64)[] Code =
     {
-        (0x00102910, "wP+9JxMAFjyQLdYmkAKEjgBABTTWrwQMPCgFACFAwgIIBRKREAUJkRgFCpEgAKmvJACqr/wJq48mAGmlKABqpTAABDz4M4QkDbQEDCEogAIHpQQM"
-            + "AAAAACG4QAAgBdTGJAXVxiGAAAAqQBICYwAAEQAAAADrswQMAAAAACgAoOfrswQMAAAAACwAoOcoAKHHgggBRsIAAEaAEANGgD8BPAAYgUQ0GAJG"
-            + "8v8BRQAAAAALAOASAAAAABAA4MYUAOHGGADixiAA48YAPwE8ACCBRMIYBEaAEANGCAAAEAAAAACAAKDHAACjxgAAA0aEAKHHBACjxkAIA0aIAKLH"
-            + "KACjx8IYFUYAAANGLACjx8IYFUZACANGgACjxwEAA0aEAKPHQQgDRogAo8eBEANGEACg5xQAoecYAKLnwgAARgIJAUbAGARGAhECRgAYBEaAPwE8"
-            + "ABiBRDQAA0YJAABFAAAAAAAAoMYEAKHGABCARBAAoOcUAKHnGACi52FHATwAAIFEBAAARsOgAEYQAKDHAgADRhAAoOcUAKDHAgADRhQAoOcYAKDH"
-            + "AgADRhgAoOcEuwQMYAAEJA8AQBAwAKKvISBAAIAApSchMIACyKAHDBAApycwAKKPEwAIPMDOCCU4AEisIACpj1QASawkAKmPWABJrFwAQKyc/wAQ"
-            + "AQAQJkAAvSc9igUIAgACJJAChI4EAAU01q8EDDwoBQCQAoiOBAAJLQ8AIBGAQAgAEwANPJAtrSUhcKgBIUiiAfgEKZEgBsmtyKSKjwAFq40hUEsB"
-            + "MAbKrTAABDxYeYQkDbQEDCEogAI9igUIAgACJA=="),
-        (0x00102D80, "PACIjAcAABUAAAAAOACJjAgAKoUMACuNISCKAAgAYAEDAAUkMP+9J6AAsP+oALH/sACy/7gAs//AALT/yAC//yGAgAAMABGNAQAYJFoAIBIhIAAC"
+        (0x00102910, "PACIjAcAABUAAAAAOACJjAgAKoUMACuNISCKAAgAYAEDAAUkMP+9J6AAsP+oALH/sACy/7gAs//AALT/yAC//yGAgAAMABGNAQAYJFoAIBIhIAAC"
             + "EAApjhAACa4UACmOFAAJrhgAKY4YAAmuEwASPJAtUiYcACDGzARBxgAAAUYcAADmOrUEDCEgAAIhQAAAIVAAAkgASZX9/wslAwBrLQIAYBHoAykl"
             + "MPgpJUgASaUBAAglCQALKfb/YBUMAEolEwASPJAtUibIpIiPxARJjjUAIBEAAAAAGwAJARBQAAAxAEAVAAAAABwAAMbIBEHGAAABRhAAAcaBCABG"
             + "AACi54AIAEYQAKLnFAABxoEIAEYEAKLngAgARhQAoucYAAHGgQgARggAoueACABGGACi5yEgoAMQAKUnIACmJ+IiBAwgAAcktAASkrUAE5IgALQn"
             + "AACEjhQAgBAEAJQm/P+REAAAAAAMAIiMNAAIMRAACST3/wkVAAAAACEoIAIhMEACIThgAgEACDyghgg1IUgAACFQAAACAAs8Dn4EDAgAazXr/wAQ"
-            + "AAAAAEAACI7IpImPKsAJASEgAAKgALDfqACx37AAst+4ALPfwAC038gAv9+O/wAX0AC9JwgA4AMAAAAA4P+9JwAAsP8IALH/EAC//yGAgAAhiKAA"
-            + "EwAIPEDOCCU4AAiuISAAAjEABDyAXoQkDbQEDCEoAAI8AAiOAwAAEQAAAABmbAUMPAAEJjwABCaMIAQMAgAFJCEgAAI2LQQMISgAAAEAKDIhIAAC"
-            + "AACw3wgAsd8QAL/fAwAAESAAvScauQQIAAAAAAgA4AMAAAAA"),
-        (0x0010C338, "oP+9JxMAFjyQLdYmx68EDJAChI44AHKQQABzkEgAaJBQAGmQHAqqjyYASKUoAEmlIbgAAAQAYBIAAAAAB6UEDAAAAAAhuEAAGACUxgQAYBIAAAAA"
+            + "AAAAAEAACI7IpImPKsAJASEgAAKgALDfqACx37AAst+4ALPfwAC038gAv9+O/wAX0AC9JwgA4AMAAAAA"),
+        (0x00102D80, "oP+9JxMAFjyQLdYmzLMEDJAChI44AHKQQABzkEgAaJBQAGmQHAqqjyYASKUoAEmlIbgAAAQAYBIAAAAADaUEDAAAAAAhuEAAGACUxgQAYBIAAAAA"
             + "AKiARAsAABAwANbGyKSIjwMACDEDAAktCkAJAIBACAArAAk80PEpJSFIKAEAADXFEAA2xSGAAAAqQBICQQAAEQAAAABASBAA//9KJiOYKgFABgsk"
             + "GFhrAjQAjJYhYIsBAGQMAANkDABIAKyvzMMEDCEggAEoAMHGAgABRhAAgsYAEABGUACg56bDBAxIAKSPKADBxgIAAUYUAILGABAARlQAoOdYALTn"
             + "BLsEDGAABCQiAEAQTACirwAQk0SgEIBGgD4BPAAIgUSCEAFGIADMxkITFUaAPwE8AHCBRCQAz8YCEBZGJAAARgAACUQATAkAA0wJACEgQABQAKUn"
             + "SACmjyE44AIhQIAClMQGDCFQAABMAKKPEwAIPFCcCCU4AEisXABJjAUAIBEAAAAADAApjQIAIBGAAAglOAAorb7/ABABABAmYAC9Jz2KBQgCAAIk"
-            + "CwCDECAAASQLAIEQIQABJB8AgRAiAAEkNwCBECMAASQQAIEQAAAAAFX5BQgAAAAATfkFCAAAAAAhIMACAAgFNNavBAw8KAUAEwAIPJAtCCUhQAIB"
-            + "sAQSkbgEEZHX+QUIMQAEPCEgwAIAQAU01q8EDDwoBQATAAg8kC0IJSFAAgEQBRKRGAURkdf5BQgxAAQ88P+9JyEgwAIAEAU01q8EDDwoBQATAAg8"
-            + "kC0IJUBIAgAhSAkB0AQplRkAKSUyAAokGwAqARJIAAAAAKmvEwAEPFLsBAwYM4QkIShAAAAAqY8AYIlEIGOARgBogEQQAL0n0fkFCCEgoAPw/70n"
-            + "ISDAAgAgBTTWrwQMPCgFABMACDyQLQglIUACAeAECZEAAKmv6AQJkQQAqa8TAAQ8UuwEDCwzhCQhKEAAAACpjwBgiUQgY4BGBACpjwBoiURga4BG"
-            + "EAC9J9H5BQghIKADkAKMjAQAjS0fAKARgGAMABMADTyQLa0lIXCsAfAFz40ZAOARAAAAAAwA740WAOARAAAAAEgA4MX0BKHFAgABRoA/ATwACIFE"
-            + "AAABRuD/vScAAL//CACw/xAAtOchgIAAaAEUxgIAFEa8cAUMaAEA5mgBFOYAAL/fCACw3xAAtMcIAOADIAC9J7xwBQgAAAAA"),
-        (0x0010CD50, "wP+9JzAAv/8QALD/GACx/yAAsv8hgIAAIYigACGQwAAQACiOAACorxQAKI4EAKivGAAojggAqK8hIAACISigAyEwAABWLAQMITgAABMACDxAzggl"
+            + "kAKMjAQAjS0xAKARgGAMABMADTyQLa0lIXCsAfgFz40PAOARDQD4MA0AABMBALgoCwAAFwgG2I0IABkvCAAgEyHAuAHoBBiTZAAZJCPAOAMYwLgA"
+            + "MgAYJxoAGQMSKAAA6AXPjRoA4BGgBfgwGAAAE8ikmI8YBtmNI8gZAwoAOS8TACAXDADvjREA4BEYBtit0P+9JwAAv/8IAKT/EACl/xgApv8gAKf/"
+            + "ISDgATAABTwBYwQMMDulJAAAv98IAKTfEACl3xgApt8gAKffMAC9J/6YBQgAAAAA"),
+        (0x0010C338, "wP+9JxMAFjyQLdYmkAKEjgBABTTbswQMPCgFACFAwgIIBRKREAUJkRgFCpEgAKmvJACqr/wJq48mAGmlKABqpTAABDz4M4Qk9L0EDCEogAINpQQM"
+            + "AAAAAAsAQBAAAAAAEABAxBQAQcQYAELEIABDxAA/ATwAIIFEwhgERoAQA0YIAAAQAAAAAIAAoMcAAKPGAAADRoQAoccEAKPGQAgDRogAoseAAKPH"
+            + "AQADRoQAo8dBCANGiACjx4EQA0YQAKDnFACh5xgAoufCAABGAgkBRsAYBEYCEQJGABgERoA/ATwAGIFENAADRgkAAEUAAAAAAACgxgQAocYAEIBE"
+            + "EACg5xQAoecYAKLnYUcBPAAAgUQEAABGIAXUxsOgAEYQAKDHAgADRhAAoOcUAKHHQggDRhQAoecYAKLHghADRhgAoucsBcPGgx0URiQF1MYoBdXG"
+            + "//9QJgoAABoAAAAAwgAURgIJFUbAGARGAgkURkIBFUZBIAVGBhgARvb/ABD//xAmKACg5ywAoechgAAAKkASAjoAABEAAAAAKACgxywAoccwAKDn"
+            + "NACh5xgAosc4AKLnEACix4EAAkaCEBZGgACjx4AQA0YAAKLnFACix4EIAkaCEBZGhACjx4AQA0YEAKLniACixwgAoucEuwQMYAAEJA8AQBA8AKKv"
+            + "ISBAACEooAMhMIACyKAHDDAApyc8AKKPEwAIPEDOCCU4AEisIACpj1QASawkAKmPWABJrFwAQKwoAKDHLAChx8IAFEYCCRVGwRgERgIBFUZCCRRG"
+            + "QCAFRgYYAEbCABRGAgkVRsEYBEYCARVGQgkURkAgBUYoAKPnLACh58X/ABABABAmQAC9Jz2KBQgCAAIk0P+9JwAAv/8IALD/EACx/xgAsv8gALP/"
+            + "3ooFDAAAAAAWAAg8fCsJjZQrCo0CXAkAAzwMJCwAbBUCXAoAaiQMJCkAbBUATAkAAFQKAANUCgAhmCoBEwAQPJAtECYMABGOgAASJiAAIBIAAAAA"
+            + "AABIjgQACS0ZACARIVBgAggWCyQYWAsBIVBLAUQADDxFTow1IXAAAD8ADSQAAE+NBgDsEQAAAAABAM4l+//NFVgASiUKAAAQAAAAAAgAWCYWABkk"
+            + "AAAPj///OScAAE+tBAAYJ/v/IBcEAEolAABMrf//MSbg/wAQYABSJgAAv98IALDfEACx3xgAst8gALPfCADgAzAAvSc="),
+        (0x0010CD50, "CwCDECAAASQLAIEQIQABJB8AgRAiAAEkNwCBECMAASQQAIEQAAAAAFX5BQgAAAAATfkFCAAAAAAhIMACAAgFNNuzBAw8KAUAEwAIPJAtCCUhQAIB"
+            + "sAQSkbgEEZHX+QUIMQAEPCEgwAIAQAU027MEDDwoBQATAAg8kC0IJSFAAgEQBRKRGAURkdf5BQgxAAQ88P+9JyEgwAIAEAU027MEDDwoBQATAAg8"
+            + "kC0IJUBIAgAhSAkB0AQplRkAKSUyAAokGwAqARJIAAAAAKmvEwAEPFLsBAwgM4QkIShAAAAAqY8AYIlEIGOARgBogEQQAL0n0fkFCCEgoAPw/70n"
+            + "ISDAAgAgBTTbswQMPCgFABMACDyQLQglIUACAeAECZEAAKmv6AQJkQQAqa8TAAQ8UuwEDDQzhCQhKEAAAACpjwBgiUQgY4BGBACpjwBoiURga4BG"
+            + "EAC9J9H5BQghIKAD4P+9JwAAsP8IALH/EAC//yGAgAAhiKAAEwAIPMDNCCU4AAiuISAAAjEABDyAXoQk9L0EDCEoAAI8AAiOAwAAEQAAAABmbAUM"
+            + "PAAEJjwABCaMIAQMAgAFJCEgAAI2LQQMISgAAAEAKDIhIAACAACw3wgAsd8QAL/fAwAAESAAvScauQQIAAAAAAgA4AMAAAAA"),
+        (0x00118978, "wP+9JzAAv/8QALD/GACx/yAAsv8hgIAAIYigACGQwAAQACiOAACorxQAKI4EAKivGAAojggAqK8hIAACISigAyEwAABWLAQMITgAABMACDzAzQgl"
             + "OAAIrjwAAK4MAAiOAQAINQwACK4TABk8kC05JxwAIMbMBCHHAAABRhwAAObIpIiPIUASAUAACK7//wgkRAAIrjwABCYhKCACIGwFDCEwIAKyJQQM"
             + "ISAAAiFAAAAhSAAAIVAAAkgASaU0Qgw8AwALKQYAYBUAAAAA8EEMPAYACykCAGAVAAAAAHBBDDxMAEytnKSLjxkADTwNZq01GFhtAW48DTxf8601"
-            + "IVhtAZyki68CbAsAUABNpVVVKSUBAAglCQALKef/YBUMAEolMAAEPHB5hCQNtAQMISgAAjAAv98QALDfGACx3yAAst8IAOADQAC9J+D/vScAALD/"
-            + "CACx/xAAv/8hgIAAIYigABMACDzAzQglOAAIriEgAAIxAAU8r2IEDNAQpSQ8AAiODAAAEQAAAAAMAAmNBwAgEUQACo4FAEAVPAArjf3/DDz//4w1"
-            + "JFhsATwAK61mbAUMPAAEJjwABCaMIAQMAgAFJCEgAAI2LQQMISgAAAEAKDIhIAACAACw3wgAsd8QAL/fAwAAESAAvScauQQIAAAAAAgA4AMAAAAA"),
-        (0x00118978, "yKSIjwoACSQaAAkBEEAAAEoAABVQAIqMSABAEQAAAAAMAEuNRQBgEQAAAABg/70nkAC//2AAsP9oALH/cACy/3gAs/+AALT/IYCAACGIYAHHrwQM"
-            + "kAIkjkgAcpBQAHOQEwAIPJAtCCUcAADGEAABxoEIAEYAAKLngAgARhAAoucUAAHGgQgARgQAoueACABGFACi5zQAAMUYAAHGgQgARggAoueACABG"
-            + "GACi5yEgoAMQAKUnIACmJ+IiBAwQAAckIAC0JwAAhI4UAIAQBACUJvz/kRAMAIiMNAAIMRAACST4/wkVAEAJPIACiawhKCACITBAAiE4YAIBAAg8"
-            + "oIYINSFIAAAhUAAAAwALPA5+BAxgAGs16/8AEAAAAAAhIAACkAC/32AAsN9oALHfcACy33gAs9+AALTfoAC9J+bDBggAAAAAoP+9JyAAsP8oALH/"
-            + "MACy/zgAtOc8ALXnQAC250gAv/8hgIAAPAAIjjsAABEAAAAADAARjTgAIBIhIKAADbQEDCEoAALMwwQMNAAkhiBBATwACIFEAgUBRqbDBAw0ACSG"
-            + "IEEBPAAIgURCBQFGKAASJJykiI8ZAAk8DWYpNRhACQFuPAk8X/MpNSFACQGcpIivAyQIAMzDBAwcAKSvHAABxgIAAUYQAAHGAAABRoAFFEamwwQM"
-            + "HACkjxwAAcYCAAFGFAABxgAAAUYAABVGAAC25wQAoOcYAADG8EIBPAAIgUQAAAFGCACg5xAAoK8UAKCvGACgrysABDyI7oQkISigAxAApifSPwUM"
-            + "AGCARP//UibX/0AWAAAAACAAsN8oALHfMACy3zgAtMc8ALXHQAC2x0gAv98IAOADYAC9JyEoQAKQAkyOBACNLUEAoBGAYAwAEwANPJAtrSUhcKwB"
-            + "IAbPjSUA4BHIpJiPMAbZjSPIOAP//zknAAW4jSvIOAMdACATDACYjBAAGDMbAAAT///vJSAGz61AMAYAQDgHAMD/vScAAL//CACk/xAApv8YAKf/"
-            + "IACo/ygAqf8wAKr/MQAEPPiVhCQNtAQMIShAAgAAv98IAKTfEACm3xgAp98gAKjfKACp3zAAqt9AAL0nAgAAECEoQAIgBsCtkAJMjoBgDAATAA08"
-            + "kC2tJSFwrAHwBc+NDwDgEQAG2I0IABkvDAAgEyHAuAHgBBiTZAAYJ2QAGSQYWNgAMgBrJRoAeQESMAAAGFj4ADIAayUaAHkBEjgAAAgA4AMAAAAA"
-            + "8P+9JwAAv/80AQiOAQAIMQwAABFoMwmOCgAgEQEABTSQAiSNUqoFDDwoBQAjAQiSIUACAQABCS3/AAokCkBJASMBCKIAAL/f5JwFCBAAvSc="),
-        (0x00129318, "0P+9JwAAv/8IALD/EACx/xgAsv8gALP/3ooFDAAAAAAWAAg8fCsJjZQrCo0CXAkAAzwMJCwAbBUCXAoAaiQMJCkAbBUATAkAAFQKAANUCgAhmCoB"
-            + "EwAQPJAtECYMABGOgAASJiAAIBIAAAAAAABIjgQACS0ZACARIVBgAggWCyQYWAsBIVBLAUQADDxFTow1IXAAAD8ADSQAAE+NBgDsEQAAAAABAM4l"
-            + "+//NFVgASiUKAAAQAAAAAAgAWCYWABkkAAAPj///OScAAE+tBAAYJ/v/IBcEAEolAABMrf//MSbg/wAQYABSJgAAv98IALDfEACx3xgAst8gALPf"
-            + "CADgAzAAvSdA/70nsAC//ywAwMYQAIHGgQgARgAAoueACABGEACi5xQAgcaBCABGBACi54AIAEYUAKLnGACBxoEIAEYIAKLngAgARhgAouchIKAD"
-            + "EAClJyAApifiIgQMIAAHJAAApMYEAKXGLADGxoIxBkaAMQZGIRAAACAAuScAACiPHgAAEQQAOSf8/xQRAAAAAAwACY00ACkxEAAKJPf/KhUAAAAA"
-            + "EAAAxRAAgcYBAAFGFAACxRQAgcaBEAFGwgAERkIQBUbAGAFGAAiARDYYAUbq/wFFAAAAAAIAAEaCEAJGAAACRjQABkbk/wBFAAAAAIYBAEbh/wAQ"
-            + "IRAAAbAAv98IAOADwAC9Jw=="),
-        (0x00129D50, "IwEokgYAABEAAAAAwAAgxgAIiERgCIBGAAABRsAAIOZSqgUIAAAAAA=="),
+            + "IVhtAZyki68CbAsAUABNpVVVKSUBAAglCQALKef/YBUMAEolMAAEPHB5hCT0vQQMISgAAjAAv98QALDfGACx3yAAst8IAOADQAC9J8ikiI8KAAkk"
+            + "GgAJARBAAABKAAAVUACKjEgAQBEAAAAADABLjUUAYBEAAAAAYP+9J5AAv/9gALD/aACx/3AAsv94ALP/gAC0/yGAgAAhiGABzLMEDJACJI5IAHKQ"
+            + "UABzkBMACDyQLQglHAAAxhAAAcaBCABGAACi54AIAEYQAKLnFAABxoEIAEYEAKLngAgARhQAouc0AADFGAABxoEIAEYIAKLngAgARhgAouchIKAD"
+            + "EAClJyAApifiIgQMEAAHJCAAtCcAAISOFACAEAQAlCb8/5EQDACIjDQACDEQAAkk+P8JFQBACTyAAomsISggAiEwQAIhOGACAQAIPKCGCDUhSAAA"
+            + "IVAAAAMACzwOfgQMYABrNev/ABAAAAAAISAAApAAv99gALDfaACx33AAst94ALPfgAC036AAvSfmwwYIAAAAAKD/vScgALD/KACx/zAAsv84ALTn"
+            + "PAC150AAtudIAL//IYCAADwACI47AAARAAAAAAwAEY04ACASISCgAPS9BAwhKAACzMMEDDQAJIYgQQE8AAiBRAIFAUamwwQMNAAkhiBBATwACIFE"
+            + "QgUBRigAEiScpIiPGQAJPA1mKTUYQAkBbjwJPF/zKTUhQAkBnKSIrwMkCADMwwQMHACkrxwAAcYCAAFGEAABxgAAAUaABRRGpsMEDBwApI8cAAHG"
+            + "AgABRhQAAcYAAAFGAAAVRgAAtucEAKDnGAAAxvBCATwACIFEAAABRggAoOcQAKCvFACgrxgAoK8rAAQ8iO6EJCEooAMQAKYn0j8FDABggET//1Im"
+            + "1/9AFgAAAAAgALDfKACx3zAAst84ALTHPAC1x0AAtsdIAL/fCADgA2AAvScjASiSBgAAEQAAAADAACDGAAiIRGAIgEYAAAFGwAAg5lKqBQgAAAAA"),
+        (0x00129318, "IShAApACTI4EAI0tQQCgEYBgDAATAA08kC2tJSFwrAEoBs+NJQDgEcikmI84BtmNI8g4A///OScABbiNK8g4Ax0AIBMMAJiMEAAYMxsAABP//+8l"
+            + "KAbPrUAwBgBAOAcAwP+9JwAAv/8IAKT/EACm/xgAp/8gAKj/KACp/zAAqv8xAAQ8+JWEJPS9BAwhKEACAAC/3wgApN8QAKbfGACn3yAAqN8oAKnf"
+            + "MACq30AAvScCAAAQIShAAigGwK2QAkyOgGAMABMADTyQLa0lIXCsAfgFz40PAOARCAbYjQgAGS8MACATIcC4AeAEGJNkABgnZAAZJBhY2AAyAGsl"
+            + "GgB5ARIwAAAYWPgAMgBrJRoAeQESOAAACADgAwAAAABA/70nsAC//ywAwMYQAIHGgQgARgAAoueACABGEACi5xQAgcaBCABGBACi54AIAEYUAKLn"
+            + "GACBxoEIAEYIAKLngAgARhgAouchIKADEAClJyAApifiIgQMIAAHJAAApMYEAKXGLADGxoIxBkaAMQZGIRAAACAAuScAACiPHgAAEQQAOSf8/xQR"
+            + "AAAAAAwACY00ACkxEAAKJPf/KhUAAAAAEAAAxRAAgcYBAAFGFAACxRQAgcaBEAFGwgAERkIQBUbAGAFGAAiARDYYAUbq/wFFAAAAAAIAAEaCEAJG"
+            + "AAACRjQABkbk/wBFAAAAAIYBAEbh/wAQIRAAAbAAv98IAOADwAC9Jw=="),
         (0x0012A710, "EwAIPJAtCCUQAAmNIAMKJQYAIBEAAAAASABL3QUAZBH//ykl+v8AEFAASiWO7QUIAAAAAOA4DCQYYKwAKgANPICJrSUhaKwBMAGu3SR4xAEiAOAV"
             + "uDO4JQ8AGSQgAAKH//8DJAUAQxD//zkn+/8gF1AAGCcIAOADAAAAACEQAAAhGEIBAABjjCEIAgMAACOsBABCJCgAQyj5/2AUAAAAACgAQ4UoAAOn"
-            + "LAACJCEYQgEAAGOMIQgCAwAAI6wEAEIkRABDKPn/YBQAAAAASABD3UgAA/8lcMQBMAGu/QgA4AMAAAAAEwAWPJAt1iaQAoSOABAFNNavBAw8KAUA"
-            + "QEACACFAyALQBBKVkAKIjgQACS0dACARgEAIACG4yALgBemODQAgEQAAAAAMADCNCgAAEgAAAADIpIiPIUASAUAACK4hIAACMAAFPK9iBAw4e6Uk"
-            + "DQAAEAAAAAAEuwQMUAAEJAkAQBAhgEAAISBAACEogALzrgQMITBAAuAF5CYhKAACIGwFDCEwAAI9igUIAgACJA=="),
-        (0x0012BAE8, "0P+9JwAAv/8IAKT/EACl/xgAsP8gALH/EwAQPJAtECYhiAAAAEERAMBIEQAhQAkBIUAIAggApN+W6wQMKAUFJQoAQBSAQBEAIUAIAsAFBY2W6wQM"
-            + "CACk3wQAQBQAAAAACACk35brBAwQAKXfAgBAECFIAAA4AEmMgEARACFACAKwBQmtAQAxJgQAKCrl/wAVAAAAABwACI4BAAgxCgAAEQgApN+W6wQM"
+            + "LAACJCEYQgEAAGOMIQgCAwAAI6wEAEIkRABDKPn/YBQAAAAASABD3UgAA/8lcMQBMAGu/QgA4AMAAAAAEwAWPJAt1iaQAoSOABAFNNuzBAw8KAUA"
+            + "QEACACFAyALQBBKVkAKIjgQACS0dACARgEAIACG4yALoBemODQAgEQAAAAAMADCNCgAAEgAAAADIpIiPIUASAUAACK4hIAACMAAFPAFjBAw4e6Uk"
+            + "DQAAEAAAAAAEuwQMUAAEJAkAQBAhgEAAISBAACEogALzrgQMITBAAugF5CYhKAACIGwFDCEwAAI9igUIAgACJA=="),
+        (0x0012BAE8, "0P+9JwAAv/8IAKT/EACl/xgAsP8gALH/EwAQPJAtECYhiAAAAEERAMBIEQAhQAkBIUAIAggApN+W6wQMMAUFJQoAQBSAQBEAIUAIAsgFBY2W6wQM"
+            + "CACk3wQAQBQAAAAACACk35brBAwQAKXfAgBAECFIAAA4AEmMgEARACFACAK4BQmtAQAxJgQAKCrl/wAVAAAAABwACI4BAAgxCgAAEQgApN+W6wQM"
             + "YAAFJggAQBQIAKTfMQAFPJbrBAzwqaUkAwBAFAgApN+W6wQMEACl3wAAv98YALDfIACx3wgA4AMwAL0nwP+9JzAAv/8QALD/GACx/yAAsv8hgIAA"
-            + "IYigACGQwAAQACiOAACorxQAKI4EAKivGAAojggAqK8hIAACISigAyEwAABWLAQMITgAAAwACI4BAAg1DAAIrsikiI8hQBIBQAAIrhMACDzAzQgl"
+            + "IYigACGQwAAQACiOAACorxQAKI4EAKivGAAojggAqK8hIAACISigAyEwAABWLAQMITgAAAwACI4BAAg1DAAIrsikiI8hQBIBQAAIrhAACDzwKggl"
             + "OAAIrjwAAK48ACiOAgAJPCRQCQFEAAquJUAJATwAKK4cACDGIEEBPAAIgUQAAAFGHAAA5jwABCYhKCACIGwFDCEwIAKyJQQMISAAAiEgAAIwAAU8"
-            + "r2IEDDh7pSQwAL/fEACw3xgAsd8gALLfCADgA0AAvSeQAoyMBACNLTEAoBGAYAwAEwANPJAtrSUhcKwB8AXPjQ8A4BENAPgwDQAAEwEAuCgLAAAX"
-            + "AAbYjQgAGS8IACATIcC4AegEGJNkABkkI8A4AxjAuAAyABgnGgAZAxIoAADgBc+NGgDgEaAF+DAYAAATyKSYjxAG2Y0jyBkDCgA5LxMAIBcMAO+N"
-            + "EQDgERAG2K3Q/70nAAC//wgApP8QAKX/GACm/yAAp/8hIOABMAAFPK9iBAwwO6UkAAC/3wgApN8QAKXfGACm3yAAp98wAL0n/pgFCAAAAAATABY8"
-            + "kC3WJpAChI4ACAU01q8EDDwoBQAhQMICsAQSkbgEE5G8CaqPJgBSpSgAU6WQAoiOBAAJLSIAIBGAQAgAIbjIAtAF6Y4QACARAAAAAAwAMI0NAAAS"
-            + "AAAAAMikiI/ABMmOIUAJAUAACK60ABKitQATojAABDxweYQkDbQEDCEoAAIPAAAQAAAAAAS7BAzAAAQkCwBAECGAQAAhIEAAISiAAlQzBAzABMaO"
-            + "tAASorUAE6LQBeQmISgAAiBsBQwhMAACPYoFCAIAAiQTABY8kC3WJpAChI4AIAU01q8EDDwoBQAhkEAAkAKIjgQACS0nACARgEAIACG4yAIABvKu"
-            + "8ATTjvAF6Y4RACARAAAAAAwAMI0OAAASAAAAAMikiI8hSBMBRAAJrkgAAMZIQgE8AAiBRAIAAUYkAABGAAAKRCNQCgFAAAquDQAAEAAAAAAEuwQM"
-            + "UAAEJA0AQBAhgEAAISBAACEogAIqgwcMITBgAvAF5CYhKAACIGwFDCEwAAIwAAQ8KHmEJA20BAwhKIACPYoFCAIAAiTw/70nAAC//1KqBQwABAU8"
-            + "AQBDKAsQYwAGAEMoBQABJAoQIwATAAM8kC1jJCEYYgAAAL/fCADgAxAAvSfw/70nAAC//1KqBQwAAAAAAQBDKAsQYwAGAEMoBQABJAoQIwAAAL/f"
-            + "CADgAxAAvSc="),
-        (0x0012CF40, "XACIjBcAABUMAKmMNAApMRAACiQTACoVPACLjAIAYBEhYAAADABsjQEACCRcAIis9AEIJEQAiKxUAIaMWACHjCEgoAAhKIABAQAIPKCGCDUhSAAA"
-            + "IVAAAAMACzwOfgQIQAFrNQgA4AMAAAAAnKSIjxkACTwNZik1GEAJAW48CTxf8yk1IUAJAZykiK8CRAgAAACIRCAAgEYAOAE8AAiBRAIAAUaAPwE8"
-            + "AAiBRAgA4AMBAAFGKgABPNhdITQjCEEAEAAhLAMAIBQAAAAACADgAwAARIwqAAE82F0hNCMIQQATAAQ8QDOEJCEggQAIAOADAACEjOD/vScAAL//"
-            + "CACl/yEogAAyAAQ8EuoEDBhKhCQhIEAACACl34A/ATwAYIFE0MkHDAAAAAAAAL/fCADgAyAAvSc=")
+            + "AWMEDDh7pSQwAL/fEACw3xgAsd8gALLfCADgA0AAvScTABY8kC3WJpAChI4ACAU027MEDDwoBQAhQMICsAQSkbgEE5G8CaqPJgBSpSgAU6WQAoiO"
+            + "BAAJLSIAIBGAQAgAIbjIAtgF6Y4QACARAAAAAAwAMI0NAAASAAAAAMikiI/ABMmOIUAJAUAACK60ABKitQATojAABDxweYQk9L0EDCEoAAIPAAAQ"
+            + "AAAAAAS7BAzAAAQkCwBAECGAQAAhIEAAISiAAl5iBAzABMaOtAASorUAE6LYBeQmISgAAiBsBQwhMAACPYoFCAIAAiQTABY8kC3WJpAChI4AIAU0"
+            + "27MEDDwoBQAhkEAAkAKIjgQACS0nACARgEAIACG4yAIIBvKu8ATTjvgF6Y4RACARAAAAAAwAMI0OAAASAAAAAMikiI8hSBMBRAAJrkgAAMZIQgE8"
+            + "AAiBRAIAAUYkAABGAAAKRCNQCgFAAAquDQAAEAAAAAAEuwQMUAAEJA0AQBAhgEAAISBAACEogAIqgwcMITBgAvgF5CYhKAACIGwFDCEwAAIwAAQ8"
+            + "KHmEJPS9BAwhKIACPYoFCAIAAiTg/70nAACw/wgAsf8QAL//IYCAACGIoAAQAAg88CoIJTgACK4hIAACMQAFPAFjBAzQEKUkPAAIjgwAABEAAAAA"
+            + "DAAJjQcAIBFEAAqOBQBAFTwAK439/ww8//+MNSRYbAE8ACutZmwFDDwABCY8AAQmjCAEDAIABSQhIAACNi0EDCEoAAABACgyISAAAgAAsN8IALHf"
+            + "EAC/3wMAABEgAL0nGrkECAAAAAAIAOADAAAAAJACjIwEAI0tHwCgEYBgDAATAA08kC2tJSFwrAH4Bc+NGQDgEQAAAAAMAO+NFgDgEQAAAABIAODF"
+            + "9AShxQIAAUaAPwE8AAiBRAAAAUbg/70nAAC//wgAsP8QALTnIYCAAGgBFMYCABRGvHAFDGgBAOZoARTmAAC/3wgAsN8QALTHCADgAyAAvSe8cAUI"
+            + "AAAAAA=="),
+        (0x0012CEC0, "XACIjBgAABUMAKmMJAAqMRUAQBUYAC0xEwCgETwAi4wCAGARIWAAAAwAbI0BAAgkXACIrPQBCCREAIisVACGjFgAh4whIKAAISiAAQEACDyghgg1"
+            + "IUgAACFQAAADAAs8Dn4ECEABazUIAOADAAAAAPD/vScAAL//UqoFDAAEBTwBAEMoCxBjAAYAQygFAAEkChAjABMAAzyQLWMkIRhiAAAAv98IAOAD"
+            + "EAC9J/D/vScAAL//UqoFDAAAAAABAEMoCxBjAAYAQygFAAEkChAjAAAAv98IAOADEAC9J5AChI4EAAU027MEDDwoBQCQAoiOBAAJLQ8AIBGAQAgA"
+            + "EwANPJAtrSUhcKgBIUiiAfgEKZEoBsmtyKSKjwAFq40hUEsBOAbKrTAABDxYeYQk9L0EDCEogAI9igUIAgACJPD/vScAAL//NAEIjgEACDEMAAAR"
+            + "aDMJjgoAIBEBAAU0kAIkjVKqBQw8KAUAIwEIkiFAAgEAAQkt/wAKJApASQEjAQiiAAC/3+ScBQgQAL0n"),
+        (0x0012F790, "KgABPNhdITQjCEEAEAAhLAMAIBQAAAAACADgAwAARIwqAAE82F0hNCMIQQATAAQ8SDOEJCEggQAIAOADAACEjOD/vScAAL//CACl/yEogAAyAAQ8"
+            + "EuoEDBhKhCQhIEAACACl34A/ATwAYIFE0MkHDAAAAAAAAL/fCADgAyAAvSc=")
     };
 
     /// <summary>
@@ -345,23 +345,30 @@ internal static class FeatPatch
     public static readonly (int Va, int GameVa, (int At, uint Word)[] Words)[] VTables =
     {
         (0x00129C50, 0x00316718, new (int, uint)[] {  }),
-        (0x00129CD0, 0x00316798, new (int, uint)[] { (0x24, 0x00118978), (0x3C, 0x0012E418) }),
-        (0x0012CE40, 0x0031B650, new (int, uint)[] { (0x0C, 0x00102F60), (0x24, 0x00102D80) }),
-        (0x0012CDC0, 0x0031B5D0, new (int, uint)[] { (0x0C, 0x0010CE98) }),
-        (0x0012CEC0, 0x0031C3C8, new (int, uint)[] { (0x3C, 0x0012CF40) })
+        (0x00129CD0, 0x00316798, new (int, uint)[] { (0x24, 0x00118AC0), (0x3C, 0x0012E418) }),
+        (0x0012CDC0, 0x0031B650, new (int, uint)[] { (0x0C, 0x0010CEAC), (0x24, 0x00102910) }),
+        (0x00102AF0, 0x0031B5D0, new (int, uint)[] { (0x0C, 0x0012BE44) }),
+        (0x0012CE40, 0x0031C3C8, new (int, uint)[] { (0x3C, 0x0012CEC0) })
     };
 
     public const int VTableSize = 0x80;
 
     /// <summary>The data block.</summary>
-    public const int DataVa = 0x00132D90, DataSize = 0x640, VersionAt = 4, CountAt = 0xC, AbilityCountAt = 0x10,
+    public const int DataVa = 0x00132D90, DataSize = 0x648, VersionAt = 4, CountAt = 0xC, AbilityCountAt = 0x10,
                      SpellsAt = 0x1C, EntriesAt = 0x80, EntryStride = 0x60, AbilitiesAt = 0x320,
                      AbilityStride = 0x50, EntryPriceAt = 0x4A, EntryRanksAt = 0x49, AbilityManaAt = 0x2C, AbilityDamageAt = 0x26,
                      XantamDamageMinAt = 0x48, XantamDamageMaxAt = 0x50, BarrierDamageMinAt = 0x4B0,
                      BarrierDamageMaxAt = 0x4B8, FieldFramesAt = 0x4D0, MightDamageAt = 0x4E0,
                      MightDefenceAt = 0x4E8, PowerHitsAt = 0x4F8, PowerFramesAt = 0x500,
                      OrbsCountAt = 0x508, OrbsDamageMinAt = 0x510, OrbsDamageMaxAt = 0x518,
+                     OrbsSpeedAt = 0x520, OrbsFanAt = 0x524, OrbsApexAt = 0x52C,
                      CastTypes = 35, GameCastTypes = 23;
+
+    /// <summary>
+    /// The orbs' fan (the data block has them, from the template): 200 a second, 12 degrees between neighbouring
+    /// orbs (OrbsFanAt holds the cos and sin of half of it), the fan's point 32 behind her hand.
+    /// </summary>
+    public const float OrbsSpeed = 200f, OrbsFanDegrees = 12f, OrbsApex = 32f;
 
     /// <summary>The cast table (35 types: the game's 23 cases, then the default but for the spells that are on): a piece of the pool of its own since version 8.</summary>
     public const int CastTableVa = 0x0012CD30;
@@ -390,7 +397,7 @@ internal static class FeatPatch
     /// records): every spell's own settings at their defaults, the names of the icons, the HUD lines' keys.
     /// </summary>
     public const string DataCommonBase64 =
-        "RkVBVAgAAAAAAAAAAAAAAAAAAABABgAAGJMSAAAAAACamZk/AAAAQAAAwEEAALRDAIA7RQAAAEIAAwMFBQUAAAAAAAAAAQAAAAEBAgIDAAAAAgME"
+        "RkVBVAkAAAAAAAAAAAAAAAAAAABIBgAAwMUQAAAAAACamZk/AAAAQAAAwEEAALRDAIA7RQAAAEIAAwMFBQUAAAAAAAAAAQAAAAEBAgIDAAAAAgME"
         + "BQYAAAAAAAAAAAAAaWNvbl94YW50YW1maXJlLnRleAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -405,16 +412,16 @@ internal static class FeatPatch
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQGCAoMAAAACAoNEBQAAPQBAAAyAAAAAACgQQAAIEEAAMgA+gAsAV4BkAEAAAAAAAoUHigyAAAAChQe"
-        + "KDIAAPQBAACamZk+AAECAwQFAAD0AQAAAAAAAAABAgMEBQAAAAgICAgIAAAADAwMDAwAAAAASEMAAKBBaWNvbl9ibGFkZWJhcnJpZXIudGV4AAAA"
-        + "aWNvbl9hbnRpbWFnaWNmaWVsZC50ZXgAaWNvbl9yaWdodGVvdXNtaWdodC50ZXgAaWNvbl94YW50YW1vcmJzLnRleAAAAAAAYW50aW1hZ2ljZmll"
-        + "bGRfaHVkAAByaWdodGVvdXNtaWdodF9odWQAAAAAAAAAAAAAAAAAAAAAAAAgqjAA8KkwAHiqMADwqDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        + "KDIAAPQBAACamZk+AAECAwQFAAD0AQAAAAAAAAABAgMEBQAAAAgICAgIAAAADAwMDAwAAAAASEP9mH4/BRPWPQAAAEJpY29uX2JsYWRlYmFycmll"
+        + "ci50ZXgAAABpY29uX2FudGltYWdpY2ZpZWxkLnRleABpY29uX3JpZ2h0ZW91c21pZ2h0LnRleABpY29uX3hhbnRhbW9yYnMudGV4AAAAAABhbnRp"
+        + "bWFnaWNmaWVsZF9odWQAAHJpZ2h0ZW91c21pZ2h0X2h1ZAAAAAAAAAAAAAAAAAAAAAAAACCqMADwqTAAeKowAPCoMAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-        + "AAAAAA==";
+        + "AAAAAAAAAAAAAAAA";
 
     /// <summary>The spells, in the order the data block lists the ones that are on (the order of BorrowedSpell).</summary>
     public static readonly SpellPatchData[] Spells =
     {
-        new("xantam", 0x1, 1, 26, 10, 0x0010C338, "xantamfire", "icon_xantamfire.tex",
+        new("xantam", 0x1, 1, 26, 10, 0x00102D80, "xantamfire", "icon_xantamfire.tex",
             "AQAAAAAAAAB4YW50YW1maXJlX25hbWUAAAAAAAAAAAAAAAAAAAAAAHhhbnRhbWZpcmVfZGVzYwAAAAAAAAAAAAAAAAAAAAAAAAUQAAAAAAAAAAAE"
             + "AAAAAAAAAAAAAAAA",
             "eGFudGFtZmlyZQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAGQAAwABAAIAAAAAAHBB/wBaAB4AAAD+AXgAAACg/wAAAAAAAAAAAAAABAAAAAA=",
@@ -461,12 +468,12 @@ internal static class FeatPatch
             + "SUgAkmZvAB8dtwAAuUUAAE2+Q7h6zrWMzue14mhXGuIuANr+pwDHhi4A4s7OAHS3u4JmL0PiSes3V0O5AfO7SwJg7iyC8OJLV0t0qI24808aV3IA"
             + "SYK+AEjzZABDkgAALNgA79oCAACCOQAAgnQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
             + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="),
-        new("powerattack", 0x10, 2, 34, 18, 0x00102B18, "powerattack", "icon_powerattack.tex",
+        new("powerattack", 0x10, 2, 34, 18, 0x0012CF9C, "powerattack", "icon_powerattack.tex",
             "AgAAAAAAAABwb3dlcmF0dGFja19uYW1lAAAAAAAAAAAAAAAAAAAAAHBvd2VyYXR0YWNrX2Rlc2MAAAAAAAAAAAAAAAAAAAAAAAUFAAAAAAAAAAAA"
             + "BAAAAAAAAAAAAAAA",
             "",
             ""),
-        new("bladebarrier", 0x2, 2, 43, 32, 0x0012BD84, "bladebarrier", "icon_bladebarrier.tex",
+        new("bladebarrier", 0x2, 2, 43, 32, 0x0012BCAC, "bladebarrier", "icon_bladebarrier.tex",
             "AgAAAAAAAABibGFkZWJhcnJpZXJfbmFtZQAAAAAAAAAAAAAAAAAAAGJsYWRlYmFycmllcl9kZXNjAAAAAAAAAAAAAAAAAAAAAAUKAAAAAAAAAAAA"
             + "AAgAAAAAAAAAAAAA",
             "YmxhZGViYXJyaWVyAAAAAAAAAAAAAAAAAAAAAAAAAAAgAGQAAQAEAAgAAAAAAHBByADNAOYAAABKAUoBfAGg/wAAAAAAAAAAAAAAAAAIAAA=",
@@ -560,7 +567,7 @@ internal static class FeatPatch
             + "jtEAH3vXAB+CPwD64UAA+gDpIZF16T494OmM2xERCD6bAHvomwC1KcYAQ0I3AL6e7o9e193WXpz9YUgvjWFglI2UYGF6L4BhYJzdYV6E7ta+2vcA"
             + "80JCAMopKQB7HykACD4A+ozbAPo+IQD6IfcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
             + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="),
-        new("righteousmight", 0x8, 2, 45, 34, 0x0012BE50, "righteousmight", "icon_righteousmight.tex",
+        new("righteousmight", 0x8, 2, 45, 34, 0x0012BD78, "righteousmight", "icon_righteousmight.tex",
             "AgAAAAAAAAByaWdodGVvdXNtaWdodF9uYW1lAAAAAAAAAAAAAAAAAHJpZ2h0ZW91c21pZ2h0X2Rlc2MAAAAAAAAAAAAAAAAAAAUMAAAAAAAAAAAA"
             + "ACAAAAAAAAAAAAAA",
             "cmlnaHRlb3VzbWlnaHQAAAAAAAAAAAAAAAAAAAAAAAAiAGQAAQAAAAAAAAAAAHBBWgD6AFoAAAB4AKQBeACg/wAAAAAAAAAAAAAAAAAgAAA=",
@@ -612,7 +619,7 @@ internal static class FeatPatch
             + "AQAAAAAAAAAAAAAA",
             "",
             ""),
-        new("xantamorbs", 0x40, 1, 46, 35, 0x00102910, "xantamorbs", "icon_xantamorbs.tex",
+        new("xantamorbs", 0x40, 1, 46, 35, 0x0010C338, "xantamorbs", "icon_xantamorbs.tex",
             "AQAAAAAAAAB4YW50YW1vcmJzX25hbWUAAAAAAAAAAAAAAAAAAAAAAHhhbnRhbW9yYnNfZGVzYwAAAAAAAAAAAAAAAAAAAAAAAAUMAAAAAAAAAAAA"
             + "AEAAAAAAAAAAAAAA",
             "eGFudGFtb3JicwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAjAAAAAwAIAAwAAAAAACBB/wB0ADgAAAD+AegAcACg/wAAAAAAAAAAAAAAAABAAAA=",
@@ -667,19 +674,19 @@ internal static class FeatPatch
         (0x00161EF8, 0x2C830017, 0x2C830023, 0x7F),
         (0x00161F00, 0x3C020030, 0x3C020013, 0x7F),
         (0x00161F08, 0x24427BC0, 0x2442CD30, 0x7F),
-        (0x001676E4, 0x0C05AA52, 0x0C04A754, 0x20),
-        (0x00167AFC, 0x0240282D, 0x0C0462FE, 0x18),
+        (0x001676E4, 0x0C05AA52, 0x0C046350, 0x20),
+        (0x00167AFC, 0x0240282D, 0x0C04A4C6, 0x18),
         (0x0016DD44, 0x0C04EB96, 0x0C04AEBA, 0x7F),
         (0x0017A4BC, 0x0C05ED8E, 0x0C04A9C4, 0x7F),
-        (0x0017B594, 0x0C059CE4, 0x0C046345, 0x20),
-        (0x0017E52C, 0x14830009, 0x08043137, 0x4E),
-        (0x0017EA44, 0x8C440000, 0x0C04B3FD, 0x4E),
-        (0x0017EAB4, 0x8C440000, 0x0C04B3FD, 0x4E),
-        (0x0018331C, 0x0C058ADE, 0x0C04A4C6, 0x7F),
+        (0x0017B594, 0x0C059CE4, 0x0C04B3FF, 0x20),
+        (0x0017E52C, 0x14830009, 0x08043354, 0x4E),
+        (0x0017EA44, 0x8C440000, 0x0C04BDE4, 0x4E),
+        (0x0017EAB4, 0x8C440000, 0x0C04BDE4, 0x4E),
+        (0x0018331C, 0x0C058ADE, 0x0C043170, 0x7F),
         (0x001B177C, 0x3C030031, 0x8E230038, 0x1),
         (0x001B1784, 0x24636798, 0x24630080, 0x1),
-        (0x0030A104, 0x001663F8, 0x0012BCAC, 0xC),
-        (0x0030A11C, 0x0015C2F0, 0x0010C638, 0x8)
+        (0x0030A104, 0x001663F8, 0x00102F24, 0xC),
+        (0x0030A11C, 0x0015C2F0, 0x0012BEF4, 0x8)
     };
 
     /// <summary>The game's words the code relies on (checked before it goes in, never changed).</summary>
@@ -828,8 +835,8 @@ internal static class FeatPatch
 
     /// <summary>
     /// Version 5 (kromlech-spells-test1: Xantam's Fire and Kromlech's three, without Power Attack): its hooks (and which of its
-    /// spells need each, the same masks as version 8's), its code's pieces with their SHA-256 and its vtable copies, and where
-    /// its data block keeps the settings (its mask, Xantam's Fire's damage and the entries' prices where version 8 has them).
+    /// spells need each, the same masks as version 9's), its code's pieces with their SHA-256 and its vtable copies, and where
+    /// its data block keeps the settings (its mask, Xantam's Fire's damage and the entries' prices where version 9 has them).
     /// </summary>
     public const int V5Version = 5, V5EntriesAt = 0x80, V5AbilitiesAt = 0x200,
                      V5BarrierDamageMinAt = 0x340, V5BarrierDamageMaxAt = 0x348, V5FieldFramesAt = 0x360,
@@ -872,8 +879,8 @@ internal static class FeatPatch
 
     /// <summary>
     /// Version 6 (power-attack-test1: the five spells, without Sorcerer's Blood): its hooks (and which of its spells need each,
-    /// the same masks as version 8's), its code's pieces with their SHA-256 and its vtable copies, and where its data block keeps
-    /// the settings (its mask, its entries and Xantam's Fire's damage where version 8 has them).
+    /// the same masks as version 9's), its code's pieces with their SHA-256 and its vtable copies, and where its data block keeps
+    /// the settings (its mask, its entries and Xantam's Fire's damage where version 9 has them).
     /// </summary>
     public const int V6Version = 6, V6EntriesAt = 0x80, V6AbilitiesAt = 0x260,
                      V6BarrierDamageMinAt = 0x3A0, V6BarrierDamageMaxAt = 0x3A8, V6FieldFramesAt = 0x3C0,
@@ -916,8 +923,8 @@ internal static class FeatPatch
 
     /// <summary>
     /// Version 7 (sorcerers-blood-test1: the six, without Xantam's Orbs): its hooks (and which of its spells need each, the same
-    /// masks as version 8's), its code's pieces with their SHA-256 and its vtable copies, and where its data block keeps the
-    /// settings (its mask, its entries and Xantam's Fire's damage where version 8 has them).
+    /// masks as version 9's), its code's pieces with their SHA-256 and its vtable copies, and where its data block keeps the
+    /// settings (its mask, its entries and Xantam's Fire's damage where version 9 has them).
     /// </summary>
     public const int V7Version = 7, V7EntriesAt = 0x80, V7AbilitiesAt = 0x2C0,
                      V7BarrierDamageMinAt = 0x400, V7BarrierDamageMaxAt = 0x408, V7FieldFramesAt = 0x420,
@@ -958,6 +965,54 @@ internal static class FeatPatch
         (0x001293A0, 0x00316798, new (int, uint)[] { (0x24, 0x0010C480), (0x3C, 0x0012E418) }),
         (0x0012BD10, 0x0031B650, new (int, uint)[] { (0x0C, 0x0012A7E8), (0x24, 0x00102910) }),
         (0x00102AF0, 0x0031B5D0, new (int, uint)[] { (0x0C, 0x0010CE8C) })
+    };
+
+    /// <summary>
+    /// Version 8 (xantam-orbs-test1: all seven, the orbs aimed with a random scatter): its hooks (and which of its spells need
+    /// each, the same masks as version 9's), its code's pieces with their SHA-256 and its vtable copies, and where its data block
+    /// keeps the settings (its mask, its entries and Xantam's Fire's damage where version 9 has them).
+    /// </summary>
+    public const int V8Version = 8, V8EntriesAt = 0x80, V8AbilitiesAt = 0x320,
+                     V8BarrierDamageMinAt = 0x4B0, V8BarrierDamageMaxAt = 0x4B8, V8FieldFramesAt = 0x4D0,
+                     V8MightDamageAt = 0x4E0, V8MightDefenceAt = 0x4E8, V8PowerHitsAt = 0x4F8,
+                     V8OrbsCountAt = 0x508, V8OrbsDamageMinAt = 0x510, V8OrbsDamageMaxAt = 0x518;
+
+    public static readonly (int Va, uint Game, uint Patched, int Spells)[] V8Hooks =
+    {
+        (0x00161EF8, 0x2C830017, 0x2C830023, 0x7F),
+        (0x00161F00, 0x3C020030, 0x3C020013, 0x7F),
+        (0x00161F08, 0x24427BC0, 0x2442CD30, 0x7F),
+        (0x001676E4, 0x0C05AA52, 0x0C04A754, 0x20),
+        (0x00167AFC, 0x0240282D, 0x0C0462FE, 0x18),
+        (0x0016DD44, 0x0C04EB96, 0x0C04AEBA, 0x7F),
+        (0x0017A4BC, 0x0C05ED8E, 0x0C04A9C4, 0x7F),
+        (0x0017B594, 0x0C059CE4, 0x0C046345, 0x20),
+        (0x0017E52C, 0x14830009, 0x08043137, 0x4E),
+        (0x0017EA44, 0x8C440000, 0x0C04B3FD, 0x4E),
+        (0x0017EAB4, 0x8C440000, 0x0C04B3FD, 0x4E),
+        (0x0018331C, 0x0C058ADE, 0x0C04A4C6, 0x7F),
+        (0x001B177C, 0x3C030031, 0x8E230038, 0x1),
+        (0x001B1784, 0x24636798, 0x24630080, 0x1),
+        (0x0030A104, 0x001663F8, 0x0012BCAC, 0xC),
+        (0x0030A11C, 0x0015C2F0, 0x0010C638, 0x8)
+    };
+
+    public static readonly (int Va, int Length)[] V8Code =
+    {
+        (0x00102910, 0x268), (0x00102D80, 0x270), (0x0010C338, 0x390), (0x0010CD50, 0x1F8),
+        (0x00118978, 0x3EC), (0x00129318, 0x208), (0x00129D50, 0x28), (0x0012A710, 0x190),
+        (0x0012BAE8, 0x4A0), (0x0012CF40, 0x134)
+    };
+
+    public const string V8CodeSha256 = "624a0bd81a2b997713c550fc11ddb6ce95113364824924c61bb081978ff79eb3";
+
+    public static readonly (int Va, int GameVa, (int At, uint Word)[] Words)[] V8VTables =
+    {
+        (0x00129C50, 0x00316718, new (int, uint)[] {  }),
+        (0x00129CD0, 0x00316798, new (int, uint)[] { (0x24, 0x00118978), (0x3C, 0x0012E418) }),
+        (0x0012CE40, 0x0031B650, new (int, uint)[] { (0x0C, 0x00102F60), (0x24, 0x00102D80) }),
+        (0x0012CDC0, 0x0031B5D0, new (int, uint)[] { (0x0C, 0x0010CE98) }),
+        (0x0012CEC0, 0x0031C3C8, new (int, uint)[] { (0x3C, 0x0012CF40) })
     };
 
     /// <summary>Version 4 (Xantam's Fire alone, test4): its data block's settings, its code and two vtable copies, its six hooks.</summary>

@@ -103,15 +103,16 @@ Alliance II files are read with the Dark Alliance formats for now.
     gains gives her 1 more mana for each rank (1 rank, as the game's description says, unless set otherwise; not
     retroactive). Its texts are the game's; it takes no mana and has no icon;
   - Xantam's Orbs for Adrianna: the beholder's glowing orbs, one at rank 1 up to five at rank 5 (1 to 10 can be
-    set), hurled at the nearest monster in front of her (straight ahead when there is none); each bursts on the
-    first monster it touches for 8-12 damage (her kills give her the experience) and never hurts a player.
+    set), hurled in a fan 12 degrees apart, the middle of the fan at the nearest monster in front of her
+    (straight ahead when there is none); each bursts on the first thing it touches: a monster takes 8-12 damage
+    (her kills give her the experience), and barrels, crates, pots and the like break. They never hurt a player.
 
   They go into game code nothing ever runs (about 32 KB of it, the same in the stock executable and every
   three-player build, so three players can still be turned on or off), the borrowed spells' names and
   descriptions (in all five languages) into `GTEXT.LMP` and their HUD icons into `ICONS.LMP`, each saved after
   the executable. Unticking one puts the game's own code back exactly. A file with an earlier test version
-  (Kromlech's spells, Power Attack, Sorcerer's Blood) is brought up to date when it is saved, every spell keeping
-  its settings.
+  (Kromlech's spells, Power Attack, Sorcerer's Blood, the first Xantam's Orbs) is brought up to date when it is
+  saved, every spell keeping its settings.
 - **Pick colours** by clicking a colour box: a glow style's halo or core on the Glow tab, or a player's automap
   marker on the Three Players tab. Drag in the square and the hue bar, type red, green and blue or a `#RRGGBB`
   value, or click a ready-made colour; OK puts the colour in the red, green and blue boxes.
