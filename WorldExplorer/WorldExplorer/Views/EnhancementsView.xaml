@@ -40,10 +40,15 @@
             <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
         </Style>
 
-        <!-- one rank's boxes: "Rank 1  [4] – [8]", "Rank 1  [4] s", "Rank 1  +[10] % −[10] %" -->
+        <!-- one rank's boxes: "Rank 1  [4] – [8]", "Rank 1  [4] s", "Rank 1  +[10] % −[10] %", "Rank 1  [1] × [8] – [12]" -->
         <DataTemplate DataType="{x:Type local:SpellRankRow}">
             <StackPanel Orientation="Horizontal" Margin="0,0,18,0">
                 <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding Label}" />
+                <StackPanel Orientation="Horizontal" Visibility="{Binding HasThird, Converter={StaticResource BoolToVisibility}}">
+                    <TextBox Style="{StaticResource Field}" Width="36" Margin="0,3,0,3"
+                             Text="{Binding Third, UpdateSourceTrigger=PropertyChanged}" ToolTip="{Binding ThirdTip}" />
+                    <TextBlock Style="{StaticResource Mark}" Margin="4,0,4,0" Text="{Binding ThirdSuffix}" />
+                </StackPanel>
                 <TextBlock Style="{StaticResource Mark}" Text="{Binding FirstPrefix}" />
                 <TextBox Style="{StaticResource Field}" Width="44" Margin="0,3,0,3"
                          Text="{Binding First, UpdateSourceTrigger=PropertyChanged}" ToolTip="{Binding FirstTip}" />
@@ -120,7 +125,7 @@
 
             <TextBlock Text="NEW FEATS: SPELLS BORROWED FROM THE GAME'S MONSTERS, POWER ATTACK AND SORCERER'S BLOOD" Style="{StaticResource Heading}" Margin="0,8,0,6" />
             <TextBlock Style="{StaticResource Help}" Text="{Binding StateText}" />
-            <TextBlock Style="{StaticResource Help}" Text="Each is a feat on its hero's level-up screen. Four are spells borrowed from the game's monsters; Power Attack and Sorcerer's Blood are the game's own feats, which it never offers. The spells and Power Attack have 5 ranks, cost mana like the game's own spells, and the HUD shows their icons and their numbers for the rank. Sorcerer's Blood is passive: it adds to Adrianna's mana as she gains levels." />
+            <TextBlock Style="{StaticResource Help}" Text="Each is a feat on its hero's level-up screen. Five are spells borrowed from the game's monsters; Power Attack and Sorcerer's Blood are the game's own feats, which it never offers. The spells and Power Attack have 5 ranks, cost mana like the game's own spells, and the HUD shows their icons and their numbers for the rank. Sorcerer's Blood is passive: it adds to Adrianna's mana as she gains levels." />
             <ItemsControl ItemsSource="{Binding Spells}" Focusable="False" />
 
             <TextBlock Text="NAMES AND ICONS" Style="{StaticResource Heading}" />
