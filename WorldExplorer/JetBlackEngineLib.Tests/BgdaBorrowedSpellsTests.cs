@@ -15,10 +15,11 @@ namespace JetBlackEngineLib.Tests;
 /// The borrowed spells, the Enhancements tab (BgdaExecutable.BorrowedSpells.cs): Xantam's Fire, Sorcerer's Blood (the game's own
 /// feat) and Xantam's Orbs for Adrianna; Power Attack (the game's own feat), Blade Barrier, Antimagic Field and Righteous Might for
 /// Kromlech. On the stock PAL executable in Test_files (skipped when it is not present), with the Three Players tab switching three
-/// players underneath them, and versions 7, 6 and 5 (the first tests of Sorcerer's Blood, of Power Attack and of Kromlech's spells)
-/// brought up to date; their names in GTEXT.LMP and their icons in ICONS.LMP (archives built here). The patch is featpatch.py
-/// version 8: the checksums are of the files featpatch.py writes, and what it does in the game was checked by emulation
-/// (test_feats8.py on seventeen files: 210 checks on each with all seven; 110 broken copies, all caught on two bases).
+/// players underneath them, and versions 8, 7, 6 and 5 (the first tests of Xantam's Orbs, of Sorcerer's Blood, of Power Attack and
+/// of Kromlech's spells) brought up to date; their names in GTEXT.LMP and their icons in ICONS.LMP (archives built here). The patch
+/// is featpatch.py version 9 (the orbs in a fan; their touch breaks barrels and crates): the checksums are of the files featpatch.py
+/// writes, and what it does in the game was checked by emulation (test_feats9.py on nineteen files: 216 checks on each with all
+/// seven; 121 broken copies, all caught on two bases).
 /// </summary>
 [TestFixture]
 public class BgdaBorrowedSpellsTests
@@ -27,14 +28,14 @@ public class BgdaBorrowedSpellsTests
     private const string StockMd5 = "34874fe1aaed80fe52ad3911a7f304aa";
 
     /// <summary>
-    /// featpatch.py version 8 on the stock executable: all seven at the tested settings, at the test files' (price 0, 4 mana), Kromlech's
+    /// featpatch.py version 9 on the stock executable: all seven at the tested settings, at the test files' (price 0, 4 mana), Kromlech's
     /// four alone, Power Attack alone, Sorcerer's Blood alone, Sorcerer's Blood alone with 3 ranks at price 4, Xantam's Orbs alone,
     /// and Xantam's Orbs alone with its own settings (OrbsCustom).
     /// </summary>
-    private const string AllSevenMd5 = "bb70e0ec22b3063c64804fc403778a6d", TestSettingsMd5 = "af899f64ebe24bd3e5f16c6ce6afca19",
-                         KromlechMd5 = "1531f1121987c5660f2037b9e4cbc855", PowerAttackMd5 = "2a5ed6b63759bb766e545860e0325051",
-                         SorcerersMd5 = "a46f1358e0407fdec4bad8f279266524", SorcerersThreeRanksMd5 = "2a87d02bb34c70cacbdff22822430e6a",
-                         OrbsMd5 = "8e23ce7b238da6456300bcb07744b488", OrbsCustomMd5 = "512b8a7cd71798a0f2280f08921f6821";
+    private const string AllSevenMd5 = "8c794aa8d5341ab7fa971605fcc03bfe", TestSettingsMd5 = "046894be91bbe7780104947126da3a8a",
+                         KromlechMd5 = "df2d4dbb6107198d6f02d47ea6e32357", PowerAttackMd5 = "661aae5a09133f88a654ebd2c825d69f",
+                         SorcerersMd5 = "eadee46655c5e7d33b554fa6a9eb4187", SorcerersThreeRanksMd5 = "d0045edbde9f74e752b25e9c925850a1",
+                         OrbsMd5 = "4fdd8d778d697e1ae1536378832ae23e", OrbsCustomMd5 = "db5d4551235d25344b64b4311a412de6";
 
     /// <summary>
     /// featpatch.py --spells xantamorbs --xantamorbs-price 4 --xantamorbs-energy 6.5 --xantamorbs-orbs 2,3,5,7,10
@@ -43,8 +44,67 @@ public class BgdaBorrowedSpellsTests
     private static readonly BorrowedSpellSettings OrbsCustom =
         new(4, 6.5f, new[] { 1, 5, 9, 20, 0 }, new[] { 3, 6, 30, 20, 255 }, Third: new[] { 2, 3, 5, 7, 10 });
 
-    /// <summary>featpatch.py version 8 (all seven) on ADRIANNA26 (the stock file with three players turned on).</summary>
-    private const string ThreePlayersMd5 = "b784695d263ca3e7fc6c06442b002aeb";
+    /// <summary>featpatch.py version 9 (all seven) on ADRIANNA26 (the stock file with three players turned on).</summary>
+    private const string ThreePlayersMd5 = "80a3c8f3cfbcfd1691c692690cd2e072";
+
+    /// <summary>
+    /// Version 8 on the stock executable (featpatch.py version 8, all seven at its tested settings: MD5 below), as the changes it made:
+    /// {u32 file offset, u32 length, the bytes} runs, zlib, then base64.
+    /// </summary>
+    private const string Version8Md5 = "bb70e0ec22b3063c64804fc403778a6d";
+
+    private const string Version8RunsBase64 =
+        "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";
 
     /// <summary>
     /// Version 7 on the stock executable (featpatch.py version 7, all six at its tested settings: MD5 below), as the changes it made:
@@ -230,9 +290,9 @@ public class BgdaBorrowedSpellsTests
 
     private static readonly (int Start, int End)[] Used =
     {
-        (0x00102910, 0x00102B78), (0x00102D80, 0x00102FF0), (0x0010C338, 0x0010C6C8), (0x0010CD50, 0x0010CF48), (0x00118978, 0x00118D64),
-        (0x00129318, 0x00129520), (0x00129C50, 0x00129D78), (0x0012A710, 0x0012A8A0), (0x0012BAE8, 0x0012BF88), (0x0012CD30, 0x0012CDBC),
-        (0x0012CDC0, 0x0012D074), (0x00132D90, 0x001333D0)
+        (0x00102910, 0x00102B70), (0x00102D80, 0x00102FFC), (0x0010C338, 0x0010C6C4), (0x0010CD50, 0x0010CF3C), (0x00118978, 0x00118D68),
+        (0x00129318, 0x00129538), (0x00129C50, 0x00129D50), (0x0012A710, 0x0012A8A0), (0x0012BAE8, 0x0012BF84), (0x0012CD30, 0x0012CDBC),
+        (0x0012CDC0, 0x0012D04C), (0x0012F790, 0x0012F810), (0x00132D90, 0x001333D8)
     };
 
     /// <summary>The game's Power Attack record (its mana is the Feats &amp; Spells tab's: 5 in the game).</summary>
@@ -335,6 +395,8 @@ public class BgdaBorrowedSpellsTests
 
     private byte[] Version7() => Earlier(Version7RunsBase64, Version7Md5);
 
+    private byte[] Version8() => Earlier(Version8RunsBase64, Version8Md5);
+
     private static Dictionary<BorrowedSpell, BorrowedSpellSettings> Defaults(IEnumerable<BorrowedSpell> spells) =>
         spells.ToDictionary(s => s, s => BorrowedSpells.Info(s).Default);
 
@@ -416,7 +478,7 @@ public class BgdaBorrowedSpellsTests
                     Is.EqualTo(OrbsHooks));
 
         // the game's DodgeBall vtable (0x0031C3C8) is never written; the copy's touch (+0x3C) is the orbs' own, every other word the game's
-        const int gameVt = 0x0031C3C8 - VaToFile, copyVt = 0x0012CEC0 - VaToFile;
+        int gameVt = 0x0031C3C8 - VaToFile, copyVt = FeatPatch.VTables.Single(v => v.GameVa == 0x0031C3C8).Va - VaToFile;
         Assert.That(bytes.AsSpan(gameVt, 0x80).SequenceEqual(_stockBytes.AsSpan(gameVt, 0x80)), Is.True);
         for (var at = 0; at < 0x80; at += 4)
         {
@@ -430,11 +492,19 @@ public class BgdaBorrowedSpellsTests
         }
 
         // the cast table (its own piece of the pool): the game's 23 cases, the orbs' case for type 35, the default between
-        var table = 0x0012CD30 - VaToFile;
+        var table = FeatPatch.CastTableVa - VaToFile;
         for (var t = 0; t < 23; t++)
             Assert.That(BitConverter.ToUInt32(bytes, table + 4 * t), Is.EqualTo(BitConverter.ToUInt32(_stockBytes, 0x00307BC0 - VaToFile + 4 * t)));
         Assert.That(Enumerable.Range(23, 11).Select(t => BitConverter.ToUInt32(bytes, table + 4 * t)).Distinct(), Is.EqualTo(new[] { 0x001628F0u }));
         Assert.That(BitConverter.ToUInt32(bytes, table + 4 * 34), Is.Not.EqualTo(0x001628F0u), "type 35: the orbs' cast");
+
+        // the fan (version 9): 200 a second, the cos and sin of half of 12 degrees, the fan's point 32 behind her hand
+        var data = FeatPatch.DataVa - VaToFile;
+        Assert.That(BitConverter.ToSingle(bytes, data + FeatPatch.OrbsSpeedAt), Is.EqualTo(200f));
+        Assert.That(BitConverter.ToSingle(bytes, data + FeatPatch.OrbsFanAt), Is.EqualTo((float)Math.Cos(Math.PI * 6 / 180)));
+        Assert.That(BitConverter.ToSingle(bytes, data + FeatPatch.OrbsFanAt + 4), Is.EqualTo((float)Math.Sin(Math.PI * 6 / 180)));
+        Assert.That(BitConverter.ToSingle(bytes, data + FeatPatch.OrbsApexAt), Is.EqualTo(32f));
+        Assert.That((FeatPatch.OrbsSpeed, FeatPatch.OrbsFanDegrees, FeatPatch.OrbsApex), Is.EqualTo((200f, 12f, 32f)));
 
         // a cast table that isn't the one written, or the game's DodgeBall changed: not WorldExplorer's, or not the game's
         var table2 = (byte[])bytes.Clone();
@@ -542,7 +612,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("version 5"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version5Spells));
 
-        // saved with Power Attack, Sorcerer's Blood and Xantam's Orbs added: featpatch.py version 8's file
+        // saved with Power Attack, Sorcerer's Blood and Xantam's Orbs added: featpatch.py version 9's file
         var all = new Dictionary<BorrowedSpell, BorrowedSpellSettings>(exe.GetBorrowedSpells())
         {
             [BorrowedSpell.PowerAttack] = BorrowedSpells.Info(BorrowedSpell.PowerAttack).Default,
@@ -593,7 +663,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("version 6"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version6Spells));
 
-        // saved with Sorcerer's Blood and Xantam's Orbs added: featpatch.py version 8's file
+        // saved with Sorcerer's Blood and Xantam's Orbs added: featpatch.py version 9's file
         var all = new Dictionary<BorrowedSpell, BorrowedSpellSettings>(exe.GetBorrowedSpells())
         {
             [BorrowedSpell.SorcerersBlood] = BorrowedSpells.Info(BorrowedSpell.SorcerersBlood).Default,
@@ -636,6 +706,62 @@ public class BgdaBorrowedSpellsTests
     }
 
     [Test]
+    public void Version8_IsBroughtUpToDate_KeepingItsSettings()
+    {
+        RequireStock();
+        var v8 = Version8();
+        var exe = OpenBytes(v8, "v8");
+        Assert.That(exe.GetBorrowedSpellsState(out var detail), Is.EqualTo(BorrowedSpellsState.Outdated), detail);
+        Assert.That(detail, Does.Contain("version 8"));
+        AssertSame(exe.GetBorrowedSpells(), Defaults(BorrowedSpells.All));
+
+        // saved as it is: featpatch.py version 9's file (the orbs in a fan now)
+        exe.SetBorrowedSpells(exe.GetBorrowedSpells());
+        Assert.That(Md5(Bytes(exe, "v8-updated")), Is.EqualTo(AllSevenMd5));
+
+        // its own settings (in its data block, where version 8 keeps them) are read and kept, the orbs' among them
+        var custom = (byte[])v8.Clone();
+        const int data = 0x00132D90 - VaToFile;
+        custom[data + 0x80 + 0x60 + 8 + 0x42] = 2;                          // Power Attack's price (the second entry)
+        custom[data + 0x4F8 + 4] = 17;                                      // Power Attack: 17 hits at rank 4
+        BitConverter.GetBytes(9.5f).CopyTo(custom, data + 0x320 + 0x50 + 0x2C);   // Blade Barrier's mana (the second own record)
+        custom[data + 0x4B0 + 1] = 7;                                       // Blade Barrier's least damage at rank 1
+        BitConverter.GetBytes((ushort)(50 * 12)).CopyTo(custom, data + 0x4D0 + 2 * 5);   // Antimagic Field: 12 s at rank 5
+        custom[data + 0x4E8 + 3] = 77;                                      // Righteous Might: 77 % less at rank 3
+        custom[data + 0x80 + 5 * 0x60 + 8 + 0x41] = 4;                      // Sorcerer's Blood: 4 ranks (the sixth entry)
+        BitConverter.GetBytes(7.5f).CopyTo(custom, data + 0x320 + 4 * 0x50 + 0x2C);   // Xantam's Orbs' mana (the fifth own record)
+        custom[data + 0x508 + 2] = 9;                                       // Xantam's Orbs: 9 orbs at rank 2
+        custom[data + 0x510 + 5] = 3;                                       // ... 3-40 each at rank 5
+        custom[data + 0x518 + 5] = 40;
+        var read = OpenBytes(custom, "v8-custom").GetBorrowedSpells();
+        Assert.That(read[BorrowedSpell.PowerAttack].Price, Is.EqualTo(2));
+        Assert.That(read[BorrowedSpell.PowerAttack].First[3], Is.EqualTo(17));
+        Assert.That(read[BorrowedSpell.BladeBarrier].Mana, Is.EqualTo(9.5f));
+        Assert.That(read[BorrowedSpell.BladeBarrier].First[0], Is.EqualTo(7));
+        Assert.That(read[BorrowedSpell.AntimagicField].First[4], Is.EqualTo(12));
+        Assert.That(read[BorrowedSpell.RighteousMight].Second[2], Is.EqualTo(77));
+        Assert.That(read[BorrowedSpell.SorcerersBlood].RankCount, Is.EqualTo(4));
+        Assert.That(read[BorrowedSpell.XantamOrbs].Mana, Is.EqualTo(7.5f));
+        Assert.That(read[BorrowedSpell.XantamOrbs].ThirdValues, Is.EqualTo(new[] { 1, 9, 3, 4, 5 }));
+        Assert.That((read[BorrowedSpell.XantamOrbs].First[4], read[BorrowedSpell.XantamOrbs].Second[4]), Is.EqualTo((3, 40)));
+        var updated = OpenBytes(custom, "v8-custom2");
+        updated.SetBorrowedSpells(read);
+        var reread = OpenBytes(Bytes(updated, "v8-custom-saved"), "v8-custom-saved2");
+        Assert.That(reread.GetBorrowedSpellsState(), Is.EqualTo(BorrowedSpellsState.On));
+        AssertSame(reread.GetBorrowedSpells(), read);
+
+        // taken out: the stock file
+        var removed = OpenBytes(v8, "v8-out");
+        removed.RemoveBorrowedSpells();
+        Assert.That(Bytes(removed, "v8-out-saved"), Is.EqualTo(_stockBytes));
+
+        // version 8 with its code changed: not recognised
+        var broken = (byte[])v8.Clone();
+        broken[FeatPatch.V8Code[0].Va + 8 - VaToFile] ^= 4;
+        Assert.That(OpenBytes(broken, "v8-broken").GetBorrowedSpellsState(), Is.EqualTo(BorrowedSpellsState.Unrecognized));
+    }
+
+    [Test]
     public void Version7_IsBroughtUpToDate_KeepingItsSettings()
     {
         RequireStock();
@@ -645,7 +771,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("version 7"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version7Spells));
 
-        // saved with Xantam's Orbs added: featpatch.py version 8's file
+        // saved with Xantam's Orbs added: featpatch.py version 9's file
         var all = new Dictionary<BorrowedSpell, BorrowedSpellSettings>(exe.GetBorrowedSpells())
         {
             [BorrowedSpell.XantamOrbs] = BorrowedSpells.Info(BorrowedSpell.XantamOrbs).Default

@@ -146,11 +146,12 @@ public sealed class SpellCard : ObservableObject
             "included), and a spell that reaches him bursts into lilac sparks. Weapons still hurt him. Casting it again while it " +
             "runs starts its time again.",
         BorrowedSpell.XantamOrbs =>
-            "Xantam's third attack: she hurls the rank's number of his glowing orange orbs (one at rank 1, five at rank 5), each " +
-            "at a random point near the middle of the nearest monster in front of her, as Xantam aims his (straight ahead when " +
-            "there is none). They fly as his do, and each bursts on the first thing it touches: a monster takes the orb's damage " +
-            "from her (resistances count, and her kills give her the experience). They never hurt her or the other players. The " +
-            "cast sounds like her Fireball.",
+            "Xantam's third attack: she hurls the rank's number of his glowing orange orbs (one at rank 1, five at rank 5) in a " +
+            "fan from her hand, 12 degrees apart, the middle of the fan at the nearest monster in front of her (straight ahead " +
+            "when there is none), so the outer orbs fly past it on either side. They fly as his do, and each bursts on the first " +
+            "thing it touches: a monster takes the orb's damage from her (resistances count, and her kills give her the " +
+            "experience), and barrels, crates, pots and the like break. They never hurt her or the other players. The cast " +
+            "sounds like her Fireball.",
         BorrowedSpell.SorcerersBlood =>
             "The game's own feat, which it never offers, as its description says: \"+1 Mana Point gain per level. This is not " +
             "retroactive.\" Once she has it, every level she gains gives her 1 more mana for each rank (12 in place of 11 at one " +
