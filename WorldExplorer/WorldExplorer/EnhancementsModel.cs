@@ -3,14 +3,15 @@
 //
 // The Enhancements tab of Executable Tuning (Views/EnhancementsView.xaml): additions to the game that
 // work with or without three players, each turned on or off by itself. Five spells borrowed from the
-// game's monsters and two feats the game has but never offers (BgdaExecutable.BorrowedSpells.cs), one card
-// each: Xantam's Fire, Sorcerer's Blood and Xantam's Orbs for Adrianna; Power Attack, Blade Barrier,
-// Antimagic Field and Righteous Might for Kromlech. Each card has its tick box, price, mana (not Power
-// Attack's: its record's, on the Feats & Spells tab) and values by rank (Xantam's Orbs: three, the number of
-// orbs with the least and most damage of each); Sorcerer's Blood, a passive, has the number of ranks its
-// entry offers instead of mana and values. The names they need in GTEXT.LMP (the Items tab's copy, so one
-// save writes both tabs' texts) and their icons in ICONS.LMP are shared (Power Attack's and Sorcerer's
-// Blood's are the game's own).
+// game's monsters and three feats the game has but never offers (BgdaExecutable.BorrowedSpells.cs), one
+// card each: Xantam's Fire, Sorcerer's Blood and Xantam's Orbs for Adrianna; Power Attack, Blade Barrier,
+// Antimagic Field and Righteous Might for Kromlech; Inferno Arrow for Vahn. Each card has its tick box,
+// price, mana (not Power Attack's: its record's, on the Feats & Spells tab) and values by rank (Xantam's
+// Orbs: three, the number of orbs with the least and most damage of each; Inferno Arrow: seven, the arrow's
+// damage, the blast's reach, the flames' spread and time, and their damage); Sorcerer's Blood, a passive,
+// has the number of ranks its entry offers instead of mana and values. The names they need in GTEXT.LMP
+// (the Items tab's copy, so one save writes both tabs' texts) and their icons in ICONS.LMP are shared
+// (Power Attack's, Sorcerer's Blood's and Inferno Arrow's names, and Power Attack's icon, are the game's own).
 // Every box is text so a half-typed value never throws; SettingsProblem says what is wrong. No WPF types,
 // so it runs in tests.
 //
@@ -28,7 +29,56 @@ using WorldExplorer.Infrastructure;
 
 namespace WorldExplorer;
 
-/// <summary>One rank's boxes on a spell's card: one value, two, or three (Xantam's Orbs: how many, then least and most damage).</summary>
+/// <summary>A further box of a rank's row (Inferno Arrow's blast, flames and burns): what goes before and after it, and its text.</summary>
+public sealed class SpellValueBox : ObservableObject
+{
+    private readonly Action _edited;
+    private string _text = "";
+
+    internal SpellValueBox(BorrowedSpellValue value, string prefix, string suffix, string tip, Action edited)
+    {
+        Value = value;
+        Prefix = prefix;
+        Suffix = suffix;
+        Tip = tip;
+        _edited = edited;
+    }
+
+    public BorrowedSpellValue Value { get; }
+
+    public string Prefix { get; }
+
+    public string Suffix { get; }
+
+    public string Tip { get; }
+
+    public string Text
+    {
+        get => _text;
+        set
+        {
+            if (SetProperty(ref _text, value)) _edited();
+        }
+    }
+
+    /// <summary>A value as the box shows it (a time in seconds with one decimal: kept in tenths).</summary>
+    internal void Fill(int value) =>
+        SetProperty(ref _text, Value.Tenths ? NumberText.Format(value / 10.0) : value.ToString(), nameof(Text));
+
+    /// <summary>The box's value (in tenths for a time), or false when it isn't one.</summary>
+    internal bool TryRead(out int value)
+    {
+        value = 0;
+        if (!Value.Tenths) return NumberText.TryParseInteger(_text, out value);
+        if (!NumberText.TryParseDecimal(_text, out var seconds) || !double.IsFinite(seconds)) return false;
+        var tenths = Math.Round(seconds * 10.0);
+        if (Math.Abs(seconds * 10.0 - tenths) > 1e-6 || tenths is < int.MinValue or > int.MaxValue) return false;
+        value = (int)tenths;
+        return true;
+    }
+}
+
+/// <summary>One rank's boxes on a spell's card: one value, two, or three (Xantam's Orbs: how many, then least and most damage), and any further ones (Inferno Arrow's).</summary>
 public sealed class SpellRankRow : ObservableObject
 {
     private readonly Action _edited;
@@ -40,7 +90,14 @@ public sealed class SpellRankRow : ObservableObject
         Rank = rank;
         _card = card;
         _edited = edited;
+        More = card.Info.More.Select((v, k) => new SpellValueBox(v, card.MorePrefix(k), card.MoreSuffix(k), card.MoreTip(k), edited))
+            .ToList();
     }
+
+    /// <summary>The further boxes, after the others (Inferno Arrow's: the blast's reach, the flames' spread and time, their damage).</summary>
+    public IReadOnlyList<SpellValueBox> More { get; }
+
+    public bool HasMore => More.Count > 0;
 
     public int Rank { get; }
 
@@ -95,11 +152,12 @@ public sealed class SpellRankRow : ObservableObject
         }
     }
 
-    internal void Fill(int first, int? second, int? third = null)
+    internal void Fill(int first, int? second, int? third = null, IEnumerable<int>? more = null)
     {
         SetProperty(ref _first, first.ToString(), nameof(First));
         SetProperty(ref _second, second?.ToString() ?? "", nameof(Second));
         SetProperty(ref _third, third?.ToString() ?? "", nameof(Third));
+        foreach (var (box, value) in More.Zip(more ?? Enumerable.Empty<int>())) box.Fill(value);
     }
 }
 
@@ -157,6 +215,14 @@ public sealed class SpellCard : ObservableObject
             "retroactive.\" Once she has it, every level she gains gives her 1 more mana for each rank (12 in place of 11 at one " +
             "rank); the levels she had before don't count, so it is worth most taken early. A passive feat: no mana, no HUD slot. " +
             "Her extra mana is kept with her in saved games. Its texts are the game's.",
+        BorrowedSpell.InfernoArrow =>
+            "The game's own feat, cut before it worked (\"This feat will enchant an arrow so that it erupts into flames on " +
+            "impact.\"): he looses an arrow that flies like a Flaming Arrow, does the rank's damage to what it hits, and bursts " +
+            "where it strikes. Every monster within the blast's reach takes up to the arrow's most damage from him (fire: " +
+            "resistances count, his kills give him the experience), less towards the edge, and catches fire for the rank's time; " +
+            "barrels, crates and pots break. Then flames run out along the ground all round, as far as the rank's spread, and " +
+            "burn there for that time, burning every monster in them five times a second. They never hurt him or the other " +
+            "players. Its texts are the game's; its HUD shows the rank's damage.",
         _ =>
             "Ilivarra's might: for 10 seconds he grows to 1.3 times his size in a green glow, his melee hits do the rank's " +
             "percentage more damage and physical hits on him the rank's percentage less (spells do their full damage). Casting it " +
@@ -172,6 +238,9 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.AntimagicField => "Seconds it lasts, by rank",
         BorrowedSpell.SorcerersBlood => "",
         BorrowedSpell.XantamOrbs => "Orbs, and the damage of each (least to most), by rank",
+        BorrowedSpell.InfernoArrow =>
+            "The arrow's damage (least to most; the blast does up to the most), the blast's reach, how far the flames spread, how " +
+            "long they burn, and the damage of each of their burns (least to most), by rank",
         _ => "Percentage more melee damage and less physical damage taken, by rank"
     };
 
@@ -208,6 +277,22 @@ public sealed class SpellCard : ObservableObject
 
     public string ThirdTip => Info.HasThird ? $"How many orbs she hurls: {Info.ThirdMin} to {Info.ThirdMax}." : "";
 
+    /// <summary>What goes before and after a further box ("blast [72]", "for [3] s"), and its tooltip (Inferno Arrow's).</summary>
+    public string MorePrefix(int k) => k switch { 0 => "blast", 1 => "flames", 2 => "for", 3 => "burning", _ => "–" };
+
+    public string MoreSuffix(int k) => k == 2 ? "s" : "";
+
+    public string MoreTip(int k) => k switch
+    {
+        0 => "The blast's reach, measured to a monster's edge: 1 to 255 (Exploding Arrow's is 72). Within a third of it a monster " +
+             "takes the arrow's most damage, less beyond (at least 1).",
+        1 => "How far the flames run out along the ground all round: 1 to 255 (they run 300 a second).",
+        2 => "How long the flames burn, and the monsters the blast sets alight: 0.1 to 25.5 seconds (a tenth at a time). A monster " +
+             "that resists fire burns half as long.",
+        3 => "The least damage of each burn of the flames (five a second): 0 to 255.",
+        _ => "The most damage of each burn of the flames: 0 to 255."
+    };
+
     public string DefaultsTip
     {
         get
@@ -225,6 +310,12 @@ public sealed class SpellCard : ObservableObject
                                             (d.First.Distinct().Count() == 1 && d.Second.Distinct().Count() == 1
                                                 ? $"{d.First[0]}-{d.Second[0]}"
                                                 : string.Join(", ", d.First.Select((f, r) => $"{f}-{d.Second[r]}"))),
+                BorrowedSpell.InfernoArrow => string.Join(", ", d.First.Select((f, r) => $"{f}-{d.Second[r]}")) + " damage, a blast of " +
+                                              string.Join(", ", d.MoreValues[0]) + ", flames spreading " +
+                                              string.Join(", ", d.MoreValues[1]) + " for " +
+                                              string.Join(", ", d.MoreValues[2].Select(t => NumberText.Format(t / 10.0))) +
+                                              " seconds, burning " +
+                                              string.Join(", ", d.MoreValues[3].Select((f, r) => $"{f}-{d.MoreValues[4][r]}")),
                 _ => string.Join(", ", d.First.Select((f, r) => $"{f}-{d.Second[r]}"))
             };
             return $"Price {d.Price}, {NumberText.Format(d.Mana)} mana, and {values}: what featpatch.py writes.";
@@ -315,7 +406,8 @@ public sealed class SpellCard : ObservableObject
         SetProperty(ref _rankCount, s.RankCount.ToString(), nameof(RankCount));
         if (!Info.HasValues) return;
         for (var r = 0; r < Ranks.Count; r++)
-            Ranks[r].Fill(s.First[r], Info.HasSecond ? s.Second[r] : null, Info.HasThird ? s.ThirdValues[r] : null);
+            Ranks[r].Fill(s.First[r], Info.HasSecond ? s.Second[r] : null, Info.HasThird ? s.ThirdValues[r] : null,
+                          s.MoreValues.Select(v => v[r]));
     }
 
     /// <summary>"1 rank", "3 ranks".</summary>
@@ -361,6 +453,7 @@ public sealed class SpellCard : ObservableObject
         var first = new int[Ranks.Count];
         var second = new int[Info.HasSecond ? Ranks.Count : 0];
         var third = Info.HasThird ? new int[Ranks.Count] : null;
+        var more = Info.More.Select(_ => new int[Ranks.Count]).ToArray();
         for (var r = 0; r < Ranks.Count; r++)
         {
             if (!NumberText.TryParseInteger(Ranks[r].First, out first[r]) ||
@@ -371,9 +464,19 @@ public sealed class SpellCard : ObservableObject
                           (third != null ? "three whole numbers" : Info.HasSecond ? "two whole numbers" : "a whole number") + ".";
                 return null;
             }
+
+            for (var k = 0; k < more.Length; k++)
+            {
+                if (Ranks[r].More[k].TryRead(out more[k][r])) continue;
+                var v = Info.More[k];
+                problem = $"{Info.Title}, rank {r + 1}: {v.Name} is " +
+                          (v.Tenths ? "a number of seconds, such as 2 or 2.5 (a tenth at a time)." : "a whole number.");
+                return null;
+            }
         }
 
-        var s = new BorrowedSpellSettings(price, (float)mana, first, second, Third: third);
+        var s = new BorrowedSpellSettings(price, (float)mana, first, second, Third: third,
+                                          More: more.Length > 0 ? more.Select(m => (IReadOnlyList<int>)m).ToArray() : null);
         problem = s.Problem(Spell);
         return problem == null ? s : null;
     }
@@ -471,7 +574,7 @@ public sealed class EnhancementsModel : ObservableObject
         Reload();
     }
 
-    /// <summary>The seven spells' cards: Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs.</summary>
+    /// <summary>The eight spells' cards: Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow.</summary>
     public IReadOnlyList<SpellCard> Spells { get; }
 
     public SpellCard Card(BorrowedSpell spell) => Spells[(int)spell];
@@ -519,8 +622,11 @@ public sealed class EnhancementsModel : ObservableObject
 
     private List<SpellCard> TakingOut => Spells.Where(c => c.TakingOut).ToList();
 
-    /// <summary>Those with names and an icon of their own to put in GTEXT.LMP and ICONS.LMP (all but Power Attack and Sorcerer's Blood, whose are the game's).</summary>
-    private static bool HasOwnFiles(SpellCard c) => !c.Info.GameFeat;
+    /// <summary>Those with names of their own to put in GTEXT.LMP (all but Power Attack, Sorcerer's Blood and Inferno Arrow, whose are the game's).</summary>
+    private static bool HasOwnNames(SpellCard c) => c.Info.HasOwnTexts;
+
+    /// <summary>Those with an icon of their own to put in ICONS.LMP (all but Power Attack, whose is the game's, and Sorcerer's Blood, a passive).</summary>
+    private static bool HasOwnIcon(SpellCard c) => BorrowedSpellIcons.HasOwnIcon(c.Spell);
 
     /// <summary>
     /// The settings to save, checked (empty when every spell is to be out); throws <see cref="ArgumentException"/> on a bad box.
@@ -548,8 +654,8 @@ public sealed class EnhancementsModel : ObservableObject
 
     /// <summary>GTEXT.LMP has to change: names go in (a spell will be in and its names are missing) or come out (taken out here).</summary>
     public bool NamesPending =>
-        _names() is { } names && (WillBeIn.Where(HasOwnFiles).Any(c => !BorrowedSpellTexts.HasNames(names, c.Spell)) ||
-                                  TakingOut.Where(HasOwnFiles).Any(c => BorrowedSpellTexts.HasAnyName(names, c.Spell)));
+        _names() is { } names && (WillBeIn.Where(HasOwnNames).Any(c => !BorrowedSpellTexts.HasNames(names, c.Spell)) ||
+                                  TakingOut.Where(HasOwnNames).Any(c => BorrowedSpellTexts.HasAnyName(names, c.Spell)));
 
     /// <summary>Called when the Items tab loads or saves GTEXT.LMP: the names' status follows it.</summary>
     public void NamesReloaded() => Edited();
@@ -558,8 +664,8 @@ public sealed class EnhancementsModel : ObservableObject
     public void ApplyNames()
     {
         if (_names() is not { } names || !NamesPending) return;
-        BorrowedSpellTexts.AddNames(names, WillBeIn.Where(HasOwnFiles).Where(c => !BorrowedSpellTexts.HasNames(names, c.Spell)).Select(c => c.Spell));
-        BorrowedSpellTexts.RemoveNames(names, TakingOut.Where(HasOwnFiles).Select(c => c.Spell));
+        BorrowedSpellTexts.AddNames(names, WillBeIn.Where(HasOwnNames).Where(c => !BorrowedSpellTexts.HasNames(names, c.Spell)).Select(c => c.Spell));
+        BorrowedSpellTexts.RemoveNames(names, TakingOut.Where(HasOwnNames).Select(c => c.Spell));
         _namesApplied = true;
     }
 
@@ -568,14 +674,14 @@ public sealed class EnhancementsModel : ObservableObject
         get
         {
             var names = _names();
-            var going = WillBeIn.Where(HasOwnFiles).ToList();
+            var going = WillBeIn.Where(HasOwnNames).ToList();
             if (names == null)
                 return going.Count > 0
                     ? "GTEXT.LMP isn't loaded (Items tab, Open GTEXT.LMP…): without the spells' names the level-up screen and the HUD " +
                       $"show NF:{BorrowedSpellTexts.NameKey(going[0].Spell)} and the like."
                     : "GTEXT.LMP isn't loaded (Items tab).";
             var adding = going.Where(c => !BorrowedSpellTexts.HasNames(names, c.Spell)).Select(c => c.Info.Title).ToList();
-            var removing = TakingOut.Where(HasOwnFiles).Where(c => BorrowedSpellTexts.HasAnyName(names, c.Spell)).Select(c => c.Info.Title).ToList();
+            var removing = TakingOut.Where(HasOwnNames).Where(c => BorrowedSpellTexts.HasAnyName(names, c.Spell)).Select(c => c.Info.Title).ToList();
             var parts = new List<string>();
             if (adding.Count > 0)
                 parts.Add($"The names and descriptions of {Join(adding)} (in all five languages) are added to GTEXT.LMP when you save.");
@@ -586,7 +692,8 @@ public sealed class EnhancementsModel : ObservableObject
             if (parts.Count > 0) return string.Join(" ", parts);
             return going.Count > 0
                 ? "GTEXT.LMP has the spells' names and descriptions, in all five languages."
-                : "Each spell's name and description go in GTEXT.LMP with it (Power Attack's and Sorcerer's Blood's are the game's: always there).";
+                : "Each spell's name and description go in GTEXT.LMP with it (Power Attack's, Sorcerer's Blood's and Inferno Arrow's are the " +
+                  "game's: always there).";
         }
     }
 
@@ -609,16 +716,16 @@ public sealed class EnhancementsModel : ObservableObject
 
     /// <summary>ICONS.LMP has to change: icons go in (a spell will be in) or come out (taken out here).</summary>
     public bool IconsNeedSaving =>
-        _icons is { } icons && (WillBeIn.Where(HasOwnFiles).Any(c => !BorrowedSpellIcons.IsIn(icons, c.Spell)) ||
-                                TakingOut.Where(HasOwnFiles).Any(c => BorrowedSpellIcons.IsIn(icons, c.Spell)));
+        _icons is { } icons && (WillBeIn.Where(HasOwnIcon).Any(c => !BorrowedSpellIcons.IsIn(icons, c.Spell)) ||
+                                TakingOut.Where(HasOwnIcon).Any(c => BorrowedSpellIcons.IsIn(icons, c.Spell)));
 
     /// <summary>ICONS.LMP as it is to be saved (see <see cref="IconsNeedSaving"/>).</summary>
     public byte[] IconsToSave()
     {
         if (_icons == null) throw new InvalidOperationException("ICONS.LMP isn't loaded.");
         if (!IconsNeedSaving) return _icons;
-        var icons = BorrowedSpellIcons.RemoveFrom(_icons, TakingOut.Where(HasOwnFiles).Select(c => c.Spell));
-        return BorrowedSpellIcons.AddTo(icons, WillBeIn.Where(HasOwnFiles).Select(c => c.Spell));
+        var icons = BorrowedSpellIcons.RemoveFrom(_icons, TakingOut.Where(HasOwnIcon).Select(c => c.Spell));
+        return BorrowedSpellIcons.AddTo(icons, WillBeIn.Where(HasOwnIcon).Select(c => c.Spell));
     }
 
     /// <summary>Called after ICONS.LMP was saved: what was written is the new starting point.</summary>
@@ -628,14 +735,14 @@ public sealed class EnhancementsModel : ObservableObject
     {
         get
         {
-            var going = WillBeIn.Where(HasOwnFiles).ToList();
+            var going = WillBeIn.Where(HasOwnIcon).ToList();
             if (_icons is not { } icons)
                 return going.Count > 0
                     ? "ICONS.LMP isn't loaded: open it from the game's data folder to add the spells' HUD icons. Without them the HUD " +
                       "shows a game icon in their place; nothing else changes."
                     : "ICONS.LMP isn't loaded.";
             var adding = going.Where(c => !BorrowedSpellIcons.IsIn(icons, c.Spell)).Select(c => BorrowedSpellIcons.EntryName(c.Spell)).ToList();
-            var removing = TakingOut.Where(HasOwnFiles).Where(c => BorrowedSpellIcons.IsIn(icons, c.Spell))
+            var removing = TakingOut.Where(HasOwnIcon).Where(c => BorrowedSpellIcons.IsIn(icons, c.Spell))
                 .Select(c => BorrowedSpellIcons.EntryName(c.Spell)).ToList();
             var parts = new List<string>();
             if (adding.Count > 0)
@@ -656,15 +763,16 @@ public sealed class EnhancementsModel : ObservableObject
     /// </summary>
     public string? FilesNote(bool namesWritten)
     {
-        var going = WillBeIn.Where(HasOwnFiles).ToList();
+        var going = WillBeIn.Where(c => HasOwnNames(c) || HasOwnIcon(c)).ToList();
         if (going.Count == 0) return null;
         var missing = new List<string>();
         var names = _names();
-        var noNames = going.Where(c => names == null || !BorrowedSpellTexts.HasNames(names, c.Spell) || _namesApplied && !namesWritten).ToList();
+        var noNames = going.Where(HasOwnNames)
+            .Where(c => names == null || !BorrowedSpellTexts.HasNames(names, c.Spell) || _namesApplied && !namesWritten).ToList();
         if (noNames.Count > 0)
             missing.Add($"GTEXT.LMP still needs the names of {Join(noNames.Select(c => c.Info.Title).ToList())} (load it on the Items tab " +
                         $"and save again), or the game shows NF:{BorrowedSpellTexts.NameKey(noNames[0].Spell)}");
-        var noIcons = going.Where(c => _icons == null || !BorrowedSpellIcons.IsIn(_icons, c.Spell)).ToList();
+        var noIcons = going.Where(HasOwnIcon).Where(c => _icons == null || !BorrowedSpellIcons.IsIn(_icons, c.Spell)).ToList();
         if (noIcons.Count > 0)
             missing.Add($"ICONS.LMP doesn't have the icons of {Join(noIcons.Select(c => c.Info.Title).ToList())} yet (open it on the " +
                         "Enhancements tab and save again), so the HUD shows a game icon in their place");
@@ -681,7 +789,7 @@ public sealed class EnhancementsModel : ObservableObject
             var used = WillBeIn.Count > 0 ? BgdaExecutable.BorrowedSpellsBytes : 0;
             return $"New feats go into game code that nothing ever runs: {BgdaExecutable.FeatPoolStretches} stretches, " +
                    $"{BgdaExecutable.FeatPoolBytes:N0} bytes, the same in the stock executable and every three-player build. " +
-                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all seven); " : "") +
+                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all eight); " : "") +
                    $"{BgdaExecutable.FeatPoolBytes - used:N0} bytes are free for more.";
         }
     }
