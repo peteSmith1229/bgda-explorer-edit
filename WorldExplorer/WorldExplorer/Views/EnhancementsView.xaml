@@ -40,7 +40,18 @@
             <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
         </Style>
 
-        <!-- one rank's boxes: "Rank 1  [4] – [8]", "Rank 1  [4] s", "Rank 1  +[10] % −[10] %", "Rank 1  [1] × [8] – [12]" -->
+        <!-- a further box of a rank's row (Inferno Arrow's): "blast [72]", "for [3] s" -->
+        <DataTemplate DataType="{x:Type local:SpellValueBox}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource Mark}" Margin="10,0,4,0" Text="{Binding Prefix}" />
+                <TextBox Style="{StaticResource Field}" Width="40" Margin="0,3,0,3"
+                         Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" ToolTip="{Binding Tip}" />
+                <TextBlock Style="{StaticResource Mark}" Text="{Binding Suffix}" />
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- one rank's boxes: "Rank 1  [4] – [8]", "Rank 1  [4] s", "Rank 1  +[10] % −[10] %", "Rank 1  [1] × [8] – [12]",
+             "Rank 1  [10] – [15]  blast [64]  flames [48]  for [2] s  burning [1] – [2]" -->
         <DataTemplate DataType="{x:Type local:SpellRankRow}">
             <StackPanel Orientation="Horizontal" Margin="0,0,18,0">
                 <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding Label}" />
@@ -59,6 +70,14 @@
                              Text="{Binding Second, UpdateSourceTrigger=PropertyChanged}" ToolTip="{Binding SecondTip}" />
                     <TextBlock Style="{StaticResource Mark}" Text="{Binding SecondSuffix}" />
                 </StackPanel>
+                <ItemsControl ItemsSource="{Binding More}" Focusable="False"
+                              Visibility="{Binding HasMore, Converter={StaticResource BoolToVisibility}}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
             </StackPanel>
         </DataTemplate>
 
@@ -123,9 +142,9 @@
         <StackPanel Margin="0,2,14,8">
             <TextBlock Style="{StaticResource Help}" Text="Additions to the game that work with or without three players. Each one is turned on or off by itself here, and taking one out puts the game's own code back exactly. Nothing is written until you save." />
 
-            <TextBlock Text="NEW FEATS: SPELLS BORROWED FROM THE GAME'S MONSTERS, POWER ATTACK AND SORCERER'S BLOOD" Style="{StaticResource Heading}" Margin="0,8,0,6" />
+            <TextBlock Text="NEW FEATS: SPELLS BORROWED FROM THE GAME'S MONSTERS, AND THE GAME'S OWN CUT FEATS" Style="{StaticResource Heading}" Margin="0,8,0,6" />
             <TextBlock Style="{StaticResource Help}" Text="{Binding StateText}" />
-            <TextBlock Style="{StaticResource Help}" Text="Each is a feat on its hero's level-up screen. Five are spells borrowed from the game's monsters; Power Attack and Sorcerer's Blood are the game's own feats, which it never offers. The spells and Power Attack have 5 ranks, cost mana like the game's own spells, and the HUD shows their icons and their numbers for the rank. Sorcerer's Blood is passive: it adds to Adrianna's mana as she gains levels." />
+            <TextBlock Style="{StaticResource Help}" Text="Each is a feat on its hero's level-up screen. Five are spells borrowed from the game's monsters; Power Attack, Sorcerer's Blood and Inferno Arrow are the game's own feats, which it never offers. The spells, Power Attack and Inferno Arrow have 5 ranks, cost mana like the game's own spells, and the HUD shows their icons and their numbers for the rank. Sorcerer's Blood is passive: it adds to Adrianna's mana as she gains levels." />
             <ItemsControl ItemsSource="{Binding Spells}" Focusable="False" />
 
             <TextBlock Text="NAMES AND ICONS" Style="{StaticResource Heading}" />

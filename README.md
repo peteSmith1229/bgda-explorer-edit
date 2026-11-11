@@ -89,8 +89,8 @@ Alliance II files are read with the Dark Alliance formats for now.
   (in all five languages) go in `GTEXT.LMP` and the item card's acid drop in `INVENTRY.LMP`, each saved after the
   executable. "Take Corrosive out" takes all three out again, and the acid glow is one click away.
 - **Add enhancements** on Executable Tuning's Enhancements tab: additions to the game that work with or without
-  three players, each turned on or off by itself. Five spells borrowed from the game's monsters and two feats the
-  game has but never offers, each a feat on its hero's level-up screen (5 ranks; price, mana and the values of
+  three players, each turned on or off by itself. Five spells borrowed from the game's monsters and three feats
+  the game has but never offers, each a feat on its hero's level-up screen (5 ranks; price, mana and the values of
   each rank can be set; Sorcerer's Blood has a price and 1 to 5 ranks):
   - Xantam's Fire for Adrianna: the beholder Xantam's fire trails, which burn the monsters in their path;
   - Power Attack for Kromlech: the game's own cut feat, finished: casting it readies his weapon, and his next
@@ -105,13 +105,19 @@ Alliance II files are read with the Dark Alliance formats for now.
   - Xantam's Orbs for Adrianna: the beholder's glowing orbs, one at rank 1 up to five at rank 5 (1 to 10 can be
     set), hurled in a fan 12 degrees apart, the middle of the fan at the nearest monster in front of her
     (straight ahead when there is none); each bursts on the first thing it touches: a monster takes 8-12 damage
-    (her kills give her the experience), and barrels, crates, pots and the like break. They never hurt a player.
+    (her kills give her the experience), and barrels, crates, pots and the like break. They never hurt a player;
+  - Inferno Arrow for Vahn: the game's own cut feat ("This feat will enchant an arrow so that it erupts into
+    flames on impact."), made to work: an arrow that flies like a Flaming Arrow and bursts where it strikes.
+    Every monster within the blast's reach takes up to the arrow's damage (less towards the edge) and catches
+    fire; barrels and crates break; then flames run out along the ground all round and burn there for a few
+    seconds, burning the monsters in them. Each rank's arrow damage, blast reach, spread, burning time and flame
+    damage can be set. Its texts are the game's; its icon goes in `ICONS.LMP`. It never hurts a player.
 
   They go into game code nothing ever runs (about 32 KB of it, the same in the stock executable and every
   three-player build, so three players can still be turned on or off), the borrowed spells' names and
   descriptions (in all five languages) into `GTEXT.LMP` and their HUD icons into `ICONS.LMP`, each saved after
   the executable. Unticking one puts the game's own code back exactly. A file with an earlier test version
-  (Kromlech's spells, Power Attack, Sorcerer's Blood, the first Xantam's Orbs) is brought up to date when it is
+  (Kromlech's spells, Power Attack, Sorcerer's Blood, either Xantam's Orbs) is brought up to date when it is
   saved, every spell keeping its settings.
 - **Pick colours** by clicking a colour box: a glow style's halo or core on the Glow tab, or a player's automap
   marker on the Three Players tab. Drag in the square and the hue bar, type red, green and blue or a `#RRGGBB`
