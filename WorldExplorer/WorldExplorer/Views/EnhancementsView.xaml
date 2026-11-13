@@ -81,60 +81,72 @@
             </StackPanel>
         </DataTemplate>
 
-        <!-- one spell's card -->
+        <!-- one spell's card: its tick box and title always shown; the rest folded away until the chevron is clicked -->
         <DataTemplate DataType="{x:Type local:SpellCard}">
-            <Border Style="{StaticResource Card}" Margin="0,4,0,8" Padding="14,12">
-                <StackPanel>
-                    <CheckBox Content="{Binding Title}" FontWeight="SemiBold"
-                              IsChecked="{Binding On}" IsEnabled="{Binding Usable}" ToolTip="{Binding Description}" />
-                    <TextBlock Style="{StaticResource Help}" Margin="24,6,0,0" Text="{Binding Status}" />
-                    <TextBlock Style="{StaticResource Help}" Margin="24,0,0,0" Text="{Binding Description}" />
+            <Border Style="{StaticResource Card}" Margin="0,4,0,8" Padding="14,8">
+                <Expander IsExpanded="False">
+                    <Expander.Header>
+                        <CheckBox Content="{Binding Title}" FontWeight="SemiBold"
+                                  IsChecked="{Binding On}" IsEnabled="{Binding Usable}" ToolTip="{Binding Description}" />
+                    </Expander.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Help}" Margin="6,0,0,0" Text="{Binding Status}" />
+                        <TextBlock Style="{StaticResource Help}" Margin="6,0,0,0" Text="{Binding Description}" />
 
-                    <StackPanel Margin="24,4,0,0" IsEnabled="{Binding On}">
-                        <TextBlock Text="SETTINGS" Style="{StaticResource Heading}" />
-                        <Grid HorizontalAlignment="Left">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Price" />
-                            <TextBox Grid.Column="1" Style="{StaticResource Field}" Text="{Binding Price, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="The level-up price: 0 to 30, priced as the game prices its own feats (16, as Ball Lightning, makes the ranks cost 16, 17, 19, 21 and 25 feat points; 0 makes every rank free)." />
-                            <TextBlock Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Mana a cast takes"
-                                       Visibility="{Binding HasMana, Converter={StaticResource BoolToVisibility}}" />
-                            <TextBox Grid.Column="3" Style="{StaticResource Field}" Text="{Binding Mana, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Above 0 and at most 100." Visibility="{Binding HasMana, Converter={StaticResource BoolToVisibility}}" />
-                            <TextBlock Grid.Column="4" Style="{StaticResource FieldLabel}" Text="Ranks"
-                                       Visibility="{Binding HasRankCount, Converter={StaticResource BoolToVisibility}}" />
-                            <TextBox Grid.Column="5" Style="{StaticResource Field}" Text="{Binding RankCount, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="How many ranks the level-up screen offers: 1 (the game's description: +1 mana a level) to 5. Each rank adds 1 mana for every level she gains once she has it."
-                                     Visibility="{Binding HasRankCount, Converter={StaticResource BoolToVisibility}}" />
-                        </Grid>
-                        <TextBlock Style="{StaticResource Help}" Text="{Binding ManaNote}"
-                                   Visibility="{Binding ManaNote, Converter={StaticResource NullToVisibility}}" />
-                        <TextBlock Style="{StaticResource Help}" Text="{Binding RankCostText}" />
+                        <StackPanel Margin="6,4,0,0" IsEnabled="{Binding On}">
+                            <TextBlock Text="SETTINGS" Style="{StaticResource Heading}" />
+                            <Grid HorizontalAlignment="Left">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Price" />
+                                <TextBox Grid.Column="1" Style="{StaticResource Field}" Text="{Binding Price, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="The level-up price: 0 to 30, priced as the game prices its own feats (16, as Ball Lightning, makes the ranks cost 16, 17, 19, 21 and 25 feat points; 0 makes every rank free)." />
+                                <TextBlock Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Mana a cast takes"
+                                           Visibility="{Binding HasMana, Converter={StaticResource BoolToVisibility}}" />
+                                <TextBox Grid.Column="3" Style="{StaticResource Field}" Text="{Binding Mana, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Above 0 and at most 100." Visibility="{Binding HasMana, Converter={StaticResource BoolToVisibility}}" />
+                                <TextBlock Grid.Column="4" Style="{StaticResource FieldLabel}" Text="Ranks"
+                                           Visibility="{Binding HasRankCount, Converter={StaticResource BoolToVisibility}}" />
+                                <TextBox Grid.Column="5" Style="{StaticResource Field}" Text="{Binding RankCount, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="How many ranks the level-up screen offers: 1 (the game's description: +1 mana a level) to 5. Each rank adds 1 mana for every level she gains once she has it."
+                                         Visibility="{Binding HasRankCount, Converter={StaticResource BoolToVisibility}}" />
+                            </Grid>
+                            <TextBlock Style="{StaticResource Help}" Text="{Binding ManaNote}"
+                                       Visibility="{Binding ManaNote, Converter={StaticResource NullToVisibility}}" />
+                            <TextBlock Style="{StaticResource Help}" Text="{Binding RankCostText}" />
 
-                        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,8,0,4" Text="{Binding ValuesCaption}"
-                                   Visibility="{Binding HasValues, Converter={StaticResource BoolToVisibility}}" />
-                        <ItemsControl ItemsSource="{Binding Ranks}" Visibility="{Binding HasValues, Converter={StaticResource BoolToVisibility}}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <WrapPanel />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                        <WrapPanel Margin="0,6,0,0">
-                            <Button Content="The tested settings" Click="SpellDefaults_Click" Margin="0,0,12,4" ToolTip="{Binding DefaultsTip}" />
-                        </WrapPanel>
-                        <TextBlock Style="{StaticResource Problem}" Text="{Binding SettingsProblem}"
-                                   Visibility="{Binding SettingsProblem, Converter={StaticResource NullToVisibility}}" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,8,0,4" Text="{Binding ValuesCaption}"
+                                       Visibility="{Binding HasValues, Converter={StaticResource BoolToVisibility}}" />
+                            <ItemsControl ItemsSource="{Binding Ranks}" Visibility="{Binding HasValues, Converter={StaticResource BoolToVisibility}}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                            <WrapPanel Margin="0,6,0,0">
+                                <Button Content="The tested settings" Click="SpellDefaults_Click" Margin="0,0,12,4" ToolTip="{Binding DefaultsTip}" />
+                            </WrapPanel>
+                            <TextBlock Style="{StaticResource Problem}" Text="{Binding SettingsProblem}"
+                                       Visibility="{Binding SettingsProblem, Converter={StaticResource NullToVisibility}}" />
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
+                </Expander>
             </Border>
+        </DataTemplate>
+
+        <!-- one hero's cards: "ADRIANNA", then hers in alphabetical order -->
+        <DataTemplate DataType="{x:Type local:SpellGroup}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource Heading}" Text="{Binding Heading}" />
+                <ItemsControl ItemsSource="{Binding Cards}" Focusable="False" />
+            </StackPanel>
         </DataTemplate>
     </UserControl.Resources>
 
@@ -145,7 +157,11 @@
             <TextBlock Text="NEW FEATS: SPELLS BORROWED FROM THE GAME'S MONSTERS, AND THE GAME'S OWN CUT FEATS" Style="{StaticResource Heading}" Margin="0,8,0,6" />
             <TextBlock Style="{StaticResource Help}" Text="{Binding StateText}" />
             <TextBlock Style="{StaticResource Help}" Text="Each is a feat on its hero's level-up screen. Five are spells borrowed from the game's monsters, and Entangle is the game's own vines, which nothing in it casts; Power Attack, Sorcerer's Blood and Inferno Arrow are the game's own feats, which it never offers. The spells, Power Attack and Inferno Arrow have 5 ranks, cost mana like the game's own spells, and the HUD shows their icons and their numbers for the rank. Sorcerer's Blood is passive: it adds to Adrianna's mana as she gains levels." />
-            <ItemsControl ItemsSource="{Binding Spells}" Focusable="False" />
+            <WrapPanel Margin="0,2,0,2">
+                <Button Content="Enable all" Click="EnableAll_Click" IsEnabled="{Binding Usable}" Margin="0,0,12,4"
+                        ToolTip="Ticks every spell's box. Each keeps the settings shown on its card (unticked cards show the tested settings)." />
+            </WrapPanel>
+            <ItemsControl ItemsSource="{Binding Groups}" Focusable="False" />
 
             <TextBlock Text="NAMES AND ICONS" Style="{StaticResource Heading}" />
             <TextBlock Style="{StaticResource Help}" Text="{Binding NamesStatus}" />

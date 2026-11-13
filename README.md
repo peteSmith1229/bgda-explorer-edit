@@ -91,7 +91,9 @@ Alliance II files are read with the Dark Alliance formats for now.
 - **Add enhancements** on Executable Tuning's Enhancements tab: additions to the game that work with or without
   three players, each turned on or off by itself. Five spells borrowed from the game's monsters, the game's own
   unused vines and three feats the game has but never offers, each a feat on its hero's level-up screen (5 ranks;
-  price, mana and the values of each rank can be set; Sorcerer's Blood has a price and 1 to 5 ranks):
+  price, mana and the values of each rank can be set; Sorcerer's Blood has a price and 1 to 5 ranks). The tab
+  groups them by hero (Adrianna's, Kromlech's, Vahn's, each in alphabetical order); each card shows its tick box and
+  opens to its settings, and Enable all ticks every one at once:
   - Xantam's Fire for Adrianna: the beholder Xantam's fire trails, which burn the monsters in their path;
   - Power Attack for Kromlech: the game's own cut feat, finished: casting it readies his weapon, and his next
     melee hits (one to five, by rank) within 10 seconds do double damage. Its icon, HUD line and texts are the
