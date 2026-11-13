@@ -3,12 +3,14 @@
 //
 // The Enhancements tab of Executable Tuning (Views/EnhancementsView.xaml): additions to the game that
 // work with or without three players, each turned on or off by itself. Five spells borrowed from the
-// game's monsters and three feats the game has but never offers (BgdaExecutable.BorrowedSpells.cs), one
-// card each: Xantam's Fire, Sorcerer's Blood and Xantam's Orbs for Adrianna; Power Attack, Blade Barrier,
-// Antimagic Field and Righteous Might for Kromlech; Inferno Arrow for Vahn. Each card has its tick box,
-// price, mana (not Power Attack's: its record's, on the Feats & Spells tab) and values by rank (Xantam's
-// Orbs: three, the number of orbs with the least and most damage of each; Inferno Arrow: seven, the arrow's
-// damage, the blast's reach, the flames' spread and time, and their damage); Sorcerer's Blood, a passive,
+// game's monsters, the game's own unused vines and three feats the game has but never offers
+// (BgdaExecutable.BorrowedSpells.cs), one card each: Xantam's Fire, Sorcerer's Blood and Xantam's Orbs for
+// Adrianna; Power Attack, Blade Barrier, Antimagic Field and Righteous Might for Kromlech; Inferno Arrow and
+// Entangle for Vahn. Each card has its tick box, price, mana (not Power Attack's: its record's, on the Feats &
+// Spells tab) and values by rank (Xantam's Orbs: three, the number of orbs with the least and most damage of
+// each; Inferno Arrow: seven, the arrow's damage, the blast's reach, the flames' spread and time, and their
+// damage; Entangle: five, the number of vines with the least and most damage of each thorn, how much slower a
+// wrapped monster walks and how long a vine holds it); Sorcerer's Blood, a passive,
 // has the number of ranks its entry offers instead of mana and values. The names they need in GTEXT.LMP
 // (the Items tab's copy, so one save writes both tabs' texts) and their icons in ICONS.LMP are shared
 // (Power Attack's, Sorcerer's Blood's and Inferno Arrow's names, and Power Attack's icon, are the game's own).
@@ -29,7 +31,7 @@ using WorldExplorer.Infrastructure;
 
 namespace WorldExplorer;
 
-/// <summary>A further box of a rank's row (Inferno Arrow's blast, flames and burns): what goes before and after it, and its text.</summary>
+/// <summary>A further box of a rank's row (Inferno Arrow's blast, flames and burns; Entangle's slow and time): what goes before and after it, and its text.</summary>
 public sealed class SpellValueBox : ObservableObject
 {
     private readonly Action _edited;
@@ -78,7 +80,7 @@ public sealed class SpellValueBox : ObservableObject
     }
 }
 
-/// <summary>One rank's boxes on a spell's card: one value, two, or three (Xantam's Orbs: how many, then least and most damage), and any further ones (Inferno Arrow's).</summary>
+/// <summary>One rank's boxes on a spell's card: one value, two, or three (Xantam's Orbs, Entangle: how many, then least and most damage), and any further ones (Inferno Arrow's, Entangle's).</summary>
 public sealed class SpellRankRow : ObservableObject
 {
     private readonly Action _edited;
@@ -94,7 +96,7 @@ public sealed class SpellRankRow : ObservableObject
             .ToList();
     }
 
-    /// <summary>The further boxes, after the others (Inferno Arrow's: the blast's reach, the flames' spread and time, their damage).</summary>
+    /// <summary>The further boxes, after the others (Inferno Arrow's: the blast's reach, the flames' spread and time, their damage; Entangle's: the slow and the time).</summary>
     public IReadOnlyList<SpellValueBox> More { get; }
 
     public bool HasMore => More.Count > 0;
@@ -105,7 +107,7 @@ public sealed class SpellRankRow : ObservableObject
 
     public bool HasSecond => _card.Info.HasSecond;
 
-    /// <summary>The row has a third box, before the others (Xantam's Orbs: how many orbs).</summary>
+    /// <summary>The row has a third box, before the others (Xantam's Orbs: how many orbs; Entangle: how many vines).</summary>
     public bool HasThird => _card.Info.HasThird;
 
     /// <summary>The card's marks around the boxes ("+10 % − 10 %", "6 s", "4 – 8") and their tooltips.</summary>
@@ -223,6 +225,14 @@ public sealed class SpellCard : ObservableObject
             "barrels, crates and pots break. Then flames run out along the ground all round, as far as the rank's spread, and " +
             "burn there for that time, burning every monster in them five times a second. They never hurt him or the other " +
             "players. Its texts are the game's; its HUD shows the rank's damage.",
+        BorrowedSpell.Entangle =>
+            "The game's own vines, which nothing in it ever casts: the rank's number of thorny vines (one at rank 1, five at rank " +
+            "5) crawl along the ground from his feet, trailing green sparks, each to a different monster within 240 of him, the " +
+            "nearest first. A vine wraps its monster in a spiral of green sparks for the rank's time: it walks the rank's " +
+            "percentage slower, and every second the thorns do the rank's damage to it from him (piercing, which a shield can't " +
+            "block; resistances count, and his kills give him the experience). The vine falls away when its monster dies. Never " +
+            "a player. Fewer monsters near him, fewer vines. The cast sounds like Melf's Acid Arrow's; its HUD shows a thorn's " +
+            "damage.",
         _ =>
             "Ilivarra's might: for 10 seconds he grows to 1.3 times his size in a green glow, his melee hits do the rank's " +
             "percentage more damage and physical hits on him the rank's percentage less (spells do their full damage). Casting it " +
@@ -241,6 +251,9 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.InfernoArrow =>
             "The arrow's damage (least to most; the blast does up to the most), the blast's reach, how far the flames spread, how " +
             "long they burn, and the damage of each of their burns (least to most), by rank",
+        BorrowedSpell.Entangle =>
+            "Vines, and the damage of each thorn (least to most, once a second), how much slower a wrapped monster walks and how " +
+            "long a vine holds it, by rank",
         _ => "Percentage more melee damage and less physical damage taken, by rank"
     };
 
@@ -262,6 +275,7 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.AntimagicField => "How long the field lasts: 1 to 60 seconds.",
         BorrowedSpell.RighteousMight => "How much more damage his melee hits do: 0 to 200 percent.",
         BorrowedSpell.XantamOrbs => "The least damage of each orb: 0 to 255.",
+        BorrowedSpell.Entangle => "The least damage of each thorn (a thorn a second while a vine holds its monster): 0 to 255.",
         _ => "The least damage: 0 to 255."
     };
 
@@ -269,20 +283,33 @@ public sealed class SpellCard : ObservableObject
     {
         BorrowedSpell.RighteousMight => "How much less damage physical hits on him do: 0 to 90 percent.",
         BorrowedSpell.XantamOrbs => "The most damage of each orb: 0 to 255.",
+        BorrowedSpell.Entangle => "The most damage of each thorn: 0 to 255.",
         _ => "The most damage: 0 to 255."
     };
 
     /// <summary>After the third box ("[3] ×  [8] – [12]": three orbs of 8 to 12) and its tooltip.</summary>
     public string ThirdSuffix => Info.HasThird ? "×" : "";
 
-    public string ThirdTip => Info.HasThird ? $"How many orbs she hurls: {Info.ThirdMin} to {Info.ThirdMax}." : "";
+    public string ThirdTip => !Info.HasThird ? "" :
+        Spell == BorrowedSpell.Entangle
+            ? $"How many vines crawl out, each to a different monster within 240 of him: {Info.ThirdMin} to {Info.ThirdMax}."
+            : $"How many orbs she hurls: {Info.ThirdMin} to {Info.ThirdMax}.";
 
-    /// <summary>What goes before and after a further box ("blast [72]", "for [3] s"), and its tooltip (Inferno Arrow's).</summary>
-    public string MorePrefix(int k) => k switch { 0 => "blast", 1 => "flames", 2 => "for", 3 => "burning", _ => "–" };
+    /// <summary>What goes before and after a further box ("blast [72]", "for [3] s"; "slower [40] %"), and its tooltip (Inferno Arrow's, Entangle's).</summary>
+    public string MorePrefix(int k) => Spell == BorrowedSpell.Entangle
+        ? (k == 0 ? "slower" : "for")
+        : k switch { 0 => "blast", 1 => "flames", 2 => "for", 3 => "burning", _ => "–" };
 
-    public string MoreSuffix(int k) => k == 2 ? "s" : "";
+    public string MoreSuffix(int k) => Spell == BorrowedSpell.Entangle ? (k == 0 ? "%" : "s") : k == 2 ? "s" : "";
 
-    public string MoreTip(int k) => k switch
+    public string MoreTip(int k) => Spell == BorrowedSpell.Entangle ? EntangleTip(k) : InfernoTip(k);
+
+    private static string EntangleTip(int k) => k == 0
+        ? "How much slower a wrapped monster walks: an even percentage from 2 to 98 (the game counts in fiftieths; its own " +
+          "vine: 50). A monster already slower, chilled say, keeps its own."
+        : "How long a vine holds its monster: 0.1 to 25.5 seconds (a tenth at a time). A thorn every whole second of it.";
+
+    private static string InfernoTip(int k) => k switch
     {
         0 => "The blast's reach, measured to a monster's edge: 1 to 255 (Exploding Arrow's is 72). Within a third of it a monster " +
              "takes the arrow's most damage, less beyond (at least 1).",
@@ -316,6 +343,10 @@ public sealed class SpellCard : ObservableObject
                                               string.Join(", ", d.MoreValues[2].Select(t => NumberText.Format(t / 10.0))) +
                                               " seconds, burning " +
                                               string.Join(", ", d.MoreValues[3].Select((f, r) => $"{f}-{d.MoreValues[4][r]}")),
+                BorrowedSpell.Entangle => string.Join(", ", d.ThirdValues) + " vines, thorns of " +
+                                          string.Join(", ", d.First.Select((f, r) => $"{f}-{d.Second[r]}")) + ", " +
+                                          string.Join(", ", d.MoreValues[0]) + " percent slower for " +
+                                          string.Join(", ", d.MoreValues[1].Select(t => NumberText.Format(t / 10.0))) + " seconds",
                 _ => string.Join(", ", d.First.Select((f, r) => $"{f}-{d.Second[r]}"))
             };
             return $"Price {d.Price}, {NumberText.Format(d.Mana)} mana, and {values}: what featpatch.py writes.";
@@ -574,7 +605,7 @@ public sealed class EnhancementsModel : ObservableObject
         Reload();
     }
 
-    /// <summary>The eight spells' cards: Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow.</summary>
+    /// <summary>The nine spells' cards: Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle.</summary>
     public IReadOnlyList<SpellCard> Spells { get; }
 
     public SpellCard Card(BorrowedSpell spell) => Spells[(int)spell];
@@ -789,7 +820,7 @@ public sealed class EnhancementsModel : ObservableObject
             var used = WillBeIn.Count > 0 ? BgdaExecutable.BorrowedSpellsBytes : 0;
             return $"New feats go into game code that nothing ever runs: {BgdaExecutable.FeatPoolStretches} stretches, " +
                    $"{BgdaExecutable.FeatPoolBytes:N0} bytes, the same in the stock executable and every three-player build. " +
-                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all eight); " : "") +
+                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all nine); " : "") +
                    $"{BgdaExecutable.FeatPoolBytes - used:N0} bytes are free for more.";
         }
     }

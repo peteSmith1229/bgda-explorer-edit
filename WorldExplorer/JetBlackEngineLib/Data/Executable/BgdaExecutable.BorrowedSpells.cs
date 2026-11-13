@@ -1,8 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // NEW FILE: WorldExplorer/JetBlackEngineLib/Data/Executable/BgdaExecutable.BorrowedSpells.cs
 //
-// BORROWED SPELLS (the Enhancements tab): five spells the heroes learn from the game's monsters and three feats
-// the game has but never offers, each a feat on a hero's level-up screen, each turned on or off by itself:
+// BORROWED SPELLS (the Enhancements tab): five spells the heroes learn from the game's monsters, the game's own
+// vines that nothing in it casts, and three feats the game has but never offers, each a feat on a hero's level-up
+// screen, each turned on or off by itself:
 //   Xantam's Fire for Adrianna    the beholder Xantam's fire trails, which burn the monsters in their path;
 //   Xantam's Orbs for Adrianna    the beholder's third attack: the rank's number of his glowing orbs (one at rank
 //                                 1, up to five at rank 5) in a fan whose middle goes at the nearest monster in
@@ -18,8 +19,13 @@
 //   Righteous Might for Kromlech  Ilivarra's might: he grows, his weapon hits do more damage and take less;
 //   Inferno Arrow for Vahn        the game's own cut feat, made to work: an enchanted arrow that bursts into
 //                                 flames where it strikes, burning every monster round it, then sets the
-//                                 ground alight for a few seconds.
-// It is featpatch.py version 10, written from the data in BgdaFeatPatch.cs (generated from that script), so
+//                                 ground alight for a few seconds;
+//   Entangle for Vahn             the game's own vines (VineSeek and VineSpell), which nothing in it ever casts:
+//                                 the rank's number of thorny vines (one at rank 1, up to five at rank 5) crawl
+//                                 along the ground from his feet, each to a different monster near him, the
+//                                 nearest first, and wrap it: it walks slower, and the thorns hurt it every
+//                                 second, from him.
+// It is featpatch.py version 11, written from the data in BgdaFeatPatch.cs (generated from that script), so
 // the bytes are the ones tested in the emulator.
 //
 // POWER ATTACK is the game's: its ability record (0x0030E2E0, bit 34, cast type 18, 5 mana), its grant, its
@@ -49,6 +55,20 @@
 // burn there for that time, burning every monster in them five times a second. Never a player. Its icon,
 // icon_infernoarrow.tex, goes in ICONS.LMP as the borrowed spells' do; it needs nothing in GTEXT.LMP.
 //
+// ENTANGLE uses the game's own vines, which nothing builds: a VineSeek (vtable 0x003174F0, constructor
+// FUN_001BF690) crawls along the floor towards its monster trailing green sparks, and within 10 of it builds a
+// VineSpell (FUN_001BF5A0), which follows the monster spiralling green sparks round it, slowed (the game's slow byte,
+// which the chill uses too) and poisoned, until its time is up. Its cast case (type 36) sends the rank's number of
+// seekers from his feet, each at a different monster within 240 of him (never a player, nothing flagged 4, nothing
+// dead), the nearest first. The patch hooks the seeker's update (nothing else runs it): it crawls at 200 a second (the
+// game's 100), and its VineSpell is made 0x60 bytes and given a vtable copy whose update keeps the monster at least the
+// rank's percentage slower and, every second from a second after the wrap, hurts it with the rank's thorns from Vahn
+// (piercing that a shield can't block; resistances count, his kills give him the experience), and whose destructor
+// checks the monster is still there (the game's writes through a link that may be gone). Its poison is left as it was
+// (the thorns are his instead), and the vine falls away when its monster dies. Its name, description and icon go in
+// GTEXT.LMP and ICONS.LMP as the other borrowed spells'; its HUD line is the game's "Damage: %d-%d" (a thorn's). Its
+// list entry goes after Inferno Arrow's in his list.
+//
 // XANTAM'S ORBS are Xantam's DodgeBalls (his third attack; vtable 0x0031C3C8, built by the game's own constructor
 // FUN_001E8320), flying and bursting as his do, but with a vtable copy whose touch hurts monsters and breakable
 // things only (barrels, crates, pots, baskets and pallets: flag 8, which the game's hit function breaks), once an
@@ -62,11 +82,12 @@
 // WHERE IT GOES. The pool: 61 stretches of the game's own code that nothing ever runs (unused library
 // functions and leftover routines, 32,724 bytes; see featpool.py). They are the same addresses and bytes
 // in the stock executable and in every three-player build, the game's own segment loads them, and no
-// other patch WorldExplorer knows writes there. The patch takes 10,752 bytes of it: its data block at
-// 0x00221B88 (every earlier version's was at 0x00132D90), its code in sixteen pieces, six vtable copies and
-// its cast table (35 types). The code is the same whichever spells are on; only the hooks of the spells that
-// are on are written (23 words when all eight are), and the data block says which ones are. Nothing else
-// changes: no program header, no start-up copy, the same file length.
+// other patch WorldExplorer knows writes there. The patch takes 12,248 bytes of it: its data block at
+// 0x00221B88 (every earlier version's was at 0x00132D90), its second block at 0x00224B68 (the icons of types 32-36
+// and Entangle's settings, since version 11), its code in eighteen pieces, seven vtable copies and its cast table
+// (36 types). The code is the same whichever spells are on; only the hooks of the spells that are on are written
+// (27 words when all nine are), and the data block says which ones are. Nothing else changes: no program header,
+// no start-up copy, the same file length.
 //
 // SO IT NEEDS NO THREE-PLAYER BUILD, and the Three Players tab can turn three players on or off
 // underneath it: the three-player patch never touches these bytes, and the code finds the class lists
@@ -75,13 +96,14 @@
 // as well: Righteous Might and Power Attack hook the instruction before the melee hit's call, which
 // Corrosive changes.
 //
-// STATES. Off: the hooks and the pool are the game's. On: version 10 is in, with the spells its data
-// block names. Outdated: version 9 (xantam-orbs-test2: all seven, the orbs in a fan), version 8
+// STATES. Off: the hooks and the pool are the game's. On: version 11 is in, with the spells its data
+// block names. Outdated: version 10 (inferno-arrow-test1: all eight, Inferno Arrow the newest), version 9
+// (xantam-orbs-test2: all seven, the orbs in a fan), version 8
 // (xantam-orbs-test1: all seven, the orbs aimed with a random scatter), version 7 (sorcerers-blood-test1: the
 // six without Xantam's Orbs), version 6 (power-attack-test1: the five without Sorcerer's Blood either),
 // version 5 (kromlech-spells-test1: the four borrowed spells of then), or Xantam's Fire alone as the fourth or
 // third test version (test4: in the pool; test3: a 12 KB spell area copied into low memory at start-up);
-// saving takes it out and puts version 10 in, every spell it had with its settings. Unrecognized: anything
+// saving takes it out and puts version 11 in, every spell it had with its settings. Unrecognized: anything
 // else (earlier test versions, or another patch in those places).
 //
 // SETTINGS (the data block; the code reads them while the game runs): each spell's level-up price
@@ -94,7 +116,10 @@
 // do. Sorcerer's Blood has the number of ranks its entry offers (1-5; each adds 1 mana a level) in their
 // place. Inferno Arrow has seven by rank: the arrow's least and most damage (the blast's most is the arrow's
 // most), the blast's reach, how far the flames spread, how long they burn (tenths of a second: the monsters
-// the blast sets alight burn as long), and the least and most damage of each of their burns.
+// the blast sets alight burn as long), and the least and most damage of each of their burns. Entangle has
+// five: a thorn's least and most damage, the number of vines (1-10), how much slower a wrapped monster walks
+// (a percentage, an even number from 2 to 98: the game counts in fiftieths) and how long a vine holds it (tenths
+// of a second).
 //
 // THE GAME'S FILES. GTEXT.LMP needs each borrowed spell's name and description (and two HUD lines;
 // BorrowedSpellTexts, in the five languages), or the level-up screen and the HUD show NF:<name>_name.
@@ -124,16 +149,17 @@ public enum BorrowedSpell
     RighteousMight,
     SorcerersBlood,
     XantamOrbs,
-    InfernoArrow
+    InfernoArrow,
+    Entangle
 }
 
 public enum BorrowedSpellsState
 {
     /// <summary>The game's code and the free pool: the spells can be put in.</summary>
     Off,
-    /// <summary>Version 10 is in: which spells, and their settings, can be read and changed.</summary>
+    /// <summary>Version 11 is in: which spells, and their settings, can be read and changed.</summary>
     On,
-    /// <summary>Version 9 (all seven, the orbs in a fan), 8 (all seven, the orbs aimed with a random scatter), 7 (the six without Xantam's Orbs), 6 (the five without Sorcerer's Blood either) or 5 (the four borrowed spells of then), or Xantam's Fire alone as the fourth or third test version: saving brings it to version 10.</summary>
+    /// <summary>Version 10 (all eight, Inferno Arrow the newest), 9 (all seven, the orbs in a fan), 8 (all seven, the orbs aimed with a random scatter), 7 (the six without Xantam's Orbs), 6 (the five without Sorcerer's Blood either) or 5 (the four borrowed spells of then), or Xantam's Fire alone as the fourth or third test version: saving brings it to version 11.</summary>
     Outdated,
     /// <summary>Neither: an earlier test version, or another patch where it goes.</summary>
     Unrecognized
@@ -146,7 +172,8 @@ public enum BorrowedSpellsState
 /// <paramref name="Passive"/>: a passive feat (Sorcerer's Blood), no cast and no values by rank; the number of ranks its entry
 /// offers is its setting instead. <paramref name="ThirdName"/>: a third value by rank (Xantam's Orbs: the number of orbs).
 /// <paramref name="GameRecord"/>: the game's own ability record and texts (Inferno Arrow), though the patch sets its mana and
-/// brings its icon. <paramref name="MoreValues"/>: further values by rank (Inferno Arrow's blast, flames and burns).
+/// brings its icon. <paramref name="MoreValues"/>: further values by rank (Inferno Arrow's blast, flames and burns;
+/// Entangle's slow and time).
 /// </summary>
 public sealed record BorrowedSpellInfo(
     BorrowedSpell Spell, string Title, string Hero, string After, int Bit, int CastType,
@@ -167,7 +194,7 @@ public sealed record BorrowedSpellInfo(
     /// <summary>The patch writes the mana a cast takes (not for Power Attack, whose record's mana the Feats &amp; Spells tab edits, nor a passive).</summary>
     public bool HasMana => !GameFeat;
 
-    /// <summary>The further values by rank (none for every spell but Inferno Arrow).</summary>
+    /// <summary>The further values by rank (none for every spell but Inferno Arrow and Entangle).</summary>
     public IReadOnlyList<BorrowedSpellValue> More => MoreValues ?? Array.Empty<BorrowedSpellValue>();
 
     /// <summary>The spell's names and descriptions go into GTEXT.LMP with it (not the game's own feats').</summary>
@@ -178,11 +205,12 @@ public sealed record BorrowedSpellInfo(
 }
 
 /// <summary>
-/// A further value by rank (Inferno Arrow's): what it is, the values it may take, and whether it is kept in tenths (a time in
-/// seconds with one decimal: <paramref name="Tenths"/>). <paramref name="AtMost"/>: the index of the further value it may not be
-/// more than (a least damage's most), or -1.
+/// A further value by rank (Inferno Arrow's, Entangle's): what it is, the values it may take, and whether it is kept in tenths
+/// (a time in seconds with one decimal: <paramref name="Tenths"/>). <paramref name="AtMost"/>: the index of the further value it
+/// may not be more than (a least damage's most), or -1. <paramref name="Step"/>: the values go in steps of it (Entangle's slow:
+/// 2, an even percentage, as the game counts in fiftieths).
 /// </summary>
-public sealed record BorrowedSpellValue(string Name, int Min, int Max, bool Tenths = false, int AtMost = -1);
+public sealed record BorrowedSpellValue(string Name, int Min, int Max, bool Tenths = false, int AtMost = -1, int Step = 1);
 
 /// <summary>
 /// One spell's settings: the level-up price byte, the mana a cast takes (0 for Power Attack: its record's; 0 for Sorcerer's
@@ -192,9 +220,12 @@ public sealed record BorrowedSpellValue(string Name, int Min, int Max, bool Tent
 /// (<see cref="Second"/>); Xantam's Orbs the least (<see cref="First"/>) and most (<see cref="Second"/>) damage of each orb and
 /// how many orbs (<see cref="Third"/>); Inferno Arrow the arrow's least (<see cref="First"/>) and most (<see cref="Second"/>)
 /// damage and five more (<see cref="More"/>: the blast's reach, how far the flames spread, how long they burn in tenths of a
-/// second, the least and most damage of a burn); Sorcerer's Blood none (all empty). <see cref="RankCount"/>: the ranks its list
-/// entry offers, 5 for every spell but Sorcerer's Blood, whose setting it is (1-5; each rank adds 1 mana a level).
-/// <see cref="Third"/> is null (none) for every spell but Xantam's Orbs, <see cref="More"/> for every one but Inferno Arrow.
+/// second, the least and most damage of a burn); Entangle a thorn's least (<see cref="First"/>) and most (<see cref="Second"/>)
+/// damage, how many vines (<see cref="Third"/>) and two more (<see cref="More"/>: the percentage slower a wrapped monster walks,
+/// how long a vine holds it in tenths of a second); Sorcerer's Blood none (all empty). <see cref="RankCount"/>: the ranks its
+/// list entry offers, 5 for every spell but Sorcerer's Blood, whose setting it is (1-5; each rank adds 1 mana a level).
+/// <see cref="Third"/> is null (none) for every spell but Xantam's Orbs and Entangle, <see cref="More"/> for every one but
+/// Inferno Arrow and Entangle.
 /// </summary>
 public sealed record BorrowedSpellSettings(int Price, float Mana, IReadOnlyList<int> First, IReadOnlyList<int> Second,
                                            int RankCount = 5, IReadOnlyList<int>? Third = null,
@@ -257,9 +288,10 @@ public sealed record BorrowedSpellSettings(int Price, float Mana, IReadOnlyList<
             for (var k = 0; k < info.More.Count; k++)
             {
                 var v = info.More[k];
-                if (MoreValues[k][r] < v.Min || MoreValues[k][r] > v.Max)
+                if (MoreValues[k][r] < v.Min || MoreValues[k][r] > v.Max || (MoreValues[k][r] - v.Min) % v.Step != 0)
                     return $"{info.Title}, rank {r + 1}: {v.Name} is " +
-                           (v.Tenths ? $"{v.Min / 10.0:0.0} to {v.Max / 10.0:0.0} seconds." : $"{v.Min} to {v.Max}.");
+                           (v.Tenths ? $"{v.Min / 10.0:0.0} to {v.Max / 10.0:0.0} seconds." :
+                            v.Step == 2 ? $"an even number from {v.Min} to {v.Max}." : $"{v.Min} to {v.Max}.");
                 if (v.AtMost >= 0 && MoreValues[k][r] > MoreValues[v.AtMost][r])
                     return $"{info.Title}, rank {r + 1}: {v.Name} is more than {info.More[v.AtMost].Name}.";
             }
@@ -277,7 +309,7 @@ public sealed record BorrowedSpellSettings(int Price, float Mana, IReadOnlyList<
         HashCode.Combine(Price, Mana, First.Count, Second.Count, RankCount, ThirdValues.Count, MoreValues.Count);
 }
 
-/// <summary>The eight spells: what each is, its defaults (what featpatch.py writes) and the test files' settings.</summary>
+/// <summary>The nine spells: what each is, its defaults (what featpatch.py writes) and the test files' settings.</summary>
 public static class BorrowedSpells
 {
     /// <summary>Every spell, in the order of <see cref="BorrowedSpell"/> (the data block's).</summary>
@@ -285,7 +317,8 @@ public static class BorrowedSpells
         new[]
         {
             BorrowedSpell.XantamFire, BorrowedSpell.PowerAttack, BorrowedSpell.BladeBarrier, BorrowedSpell.AntimagicField,
-            BorrowedSpell.RighteousMight, BorrowedSpell.SorcerersBlood, BorrowedSpell.XantamOrbs, BorrowedSpell.InfernoArrow
+            BorrowedSpell.RighteousMight, BorrowedSpell.SorcerersBlood, BorrowedSpell.XantamOrbs, BorrowedSpell.InfernoArrow,
+            BorrowedSpell.Entangle
         };
 
     /// <summary>Inferno Arrow's further values by rank, in the order of <see cref="BorrowedSpellSettings.More"/>.</summary>
@@ -294,6 +327,12 @@ public static class BorrowedSpells
         new("the blast's reach", 1, 255), new("how far the flames spread", 1, 255),
         new("how long the flames burn", 1, 255, Tenths: true), new("the least damage of a burn", 0, 255, AtMost: 4),
         new("the most damage of a burn", 0, 255)
+    };
+
+    /// <summary>Entangle's further values by rank, in the order of <see cref="BorrowedSpellSettings.More"/>.</summary>
+    private static readonly BorrowedSpellValue[] EntangleValues =
+    {
+        new("the percentage slower a wrapped monster walks", 2, 98, Step: 2), new("how long a vine holds it", 1, 255, Tenths: true)
     };
 
     private static readonly BorrowedSpellInfo[] Infos =
@@ -328,7 +367,13 @@ public static class BorrowedSpells
                     new[] { 64, 68, 72, 76, 80 }, new[] { 48, 54, 60, 66, 72 }, new[] { 20, 25, 30, 35, 40 }, new[] { 1, 1, 2, 2, 3 },
                     new[] { 2, 3, 3, 4, 5 }
                 }),
-            GameRecord: true, MoreValues: InfernoValues)
+            GameRecord: true, MoreValues: InfernoValues),
+        new(BorrowedSpell.Entangle, "Entangle", "Vahn", "his own feats and Inferno Arrow", 47, 36,
+            "the thorns' damage, the number of vines, the slow and the time", "the least damage", 0, 255, "the most damage", 0,
+            255, true,
+            new BorrowedSpellSettings(12, 12f, new[] { 2, 3, 4, 5, 6 }, new[] { 4, 5, 6, 7, 8 }, Third: new[] { 1, 2, 3, 4, 5 },
+                More: new IReadOnlyList<int>[] { new[] { 30, 34, 40, 44, 50 }, new[] { 40, 45, 50, 55, 60 } }),
+            ThirdName: "the number of vines", ThirdMin: 1, ThirdMax: 10, MoreValues: EntangleValues)
     };
 
     public static BorrowedSpellInfo Info(BorrowedSpell spell) => Infos[(int)spell];
@@ -350,7 +395,7 @@ public static class BorrowedSpells
 /// </summary>
 public static class BorrowedSpellTexts
 {
-    /// <summary>The keys and texts of <paramref name="spell"/> in each language (0 English ... 4 Spanish): what gtext_feats8.py writes (none for Power Attack, Sorcerer's Blood and Inferno Arrow).</summary>
+    /// <summary>The keys and texts of <paramref name="spell"/> in each language (0 English ... 4 Spanish): what gtext_feats11.py writes (none for Power Attack, Sorcerer's Blood and Inferno Arrow).</summary>
     public static IReadOnlyList<(int Language, string Key, string Text)> Of(BorrowedSpell spell)
     {
         var key = BorrowedSpells.Data(spell).Key;
@@ -390,7 +435,7 @@ public static class BorrowedSpellTexts
 
 /// <summary>
 /// The spells' HUD icons in ICONS.LMP (icon_xantamfire.tex, icon_bladebarrier.tex, icon_antimagicfield.tex,
-/// icon_righteousmight.tex, icon_xantamorbs.tex, icon_infernoarrow.tex). Power Attack's, icon_powerattack.tex, is the game's
+/// icon_righteousmight.tex, icon_xantamorbs.tex, icon_infernoarrow.tex, icon_entangle.tex). Power Attack's, icon_powerattack.tex, is the game's
 /// own: never added or taken out. Sorcerer's Blood, a passive feat, has no HUD slot and no icon.
 /// </summary>
 public static class BorrowedSpellIcons
@@ -413,6 +458,7 @@ public static class BorrowedSpellIcons
         BorrowedSpell.SorcerersBlood => "none (a passive feat has no HUD slot)",
         BorrowedSpell.XantamOrbs => "icon_fireball.tex (Fireball's)",
         BorrowedSpell.InfernoArrow => "icon_flamingarrow.tex (Flaming Arrow's)",
+        BorrowedSpell.Entangle => "icon_melfsacidarrow.tex (Melf's Acid Arrow's)",
         _ => "icon_powerattack.tex (Power Attack's)"
     };
 
@@ -439,7 +485,7 @@ public static class BorrowedSpellIcons
 
     /// <summary>
     /// ICONS.LMP with the icons of <paramref name="spells"/> added where the game finds them (where each name sorts; when the
-    /// directory is full every file first moves on by 0x80): icons_lmp10.py's result, byte for byte. An icon that is in already
+    /// directory is full every file first moves on by 0x80): icons_lmp11.py's result, byte for byte. An icon that is in already
     /// is left as it is, and Power Attack and Sorcerer's Blood bring none (the game's is used; a passive needs none).
     /// </summary>
     public static byte[] AddTo(byte[] icons, IEnumerable<BorrowedSpell> spells)
@@ -475,10 +521,10 @@ public partial class BgdaExecutable
 {
     private static readonly byte[] FeatMark = "FEAT"u8.ToArray();
 
-    private static readonly Lazy<(byte[] Pool, (int Va, byte[] Bytes)[] Code, byte[] Data, byte[] V4Code)> FeatPatchData =
+    private static readonly Lazy<(byte[] Pool, (int Va, byte[] Bytes)[] Code, byte[] Data, byte[] V4Code, byte[] Data2)> FeatPatchData =
         new(LoadFeatPatchData);
 
-    private static (byte[] Pool, (int Va, byte[] Bytes)[] Code, byte[] Data, byte[] V4Code) LoadFeatPatchData()
+    private static (byte[] Pool, (int Va, byte[] Bytes)[] Code, byte[] Data, byte[] V4Code, byte[] Data2) LoadFeatPatchData()
     {
         using var packed = new MemoryStream(Convert.FromBase64String(FeatPatch.PoolOriginalBase64));
         using var unpack = new ZLibStream(packed, CompressionMode.Decompress);
@@ -491,9 +537,12 @@ public partial class BgdaExecutable
         var code = FeatPatch.Code.Select(c => (c.Va, Convert.FromBase64String(c.Base64))).ToArray();
         var data = Convert.FromBase64String(FeatPatch.DataCommonBase64);
         var v4 = Convert.FromBase64String(FeatPatch.V4CodeBase64);
-        if (data.Length != FeatPatch.DataSize || v4.Length != FeatPatch.V4CodeEndVa - FeatPatch.V4CodeVa)
+        var data2 = Convert.FromBase64String(FeatPatch.Data2CommonBase64);
+        if (data.Length != FeatPatch.DataSize || v4.Length != FeatPatch.V4CodeEndVa - FeatPatch.V4CodeVa ||
+            data2.Length != FeatPatch.Data2Size || !data2.AsSpan(0, 4).SequenceEqual(Encoding.ASCII.GetBytes(FeatPatch.Data2Mark)) ||
+            BitConverter.ToInt32(data2, 4) != FeatPatch.Version)
             throw new InvalidDataException("The built-in feats patch data is damaged.");
-        return (bytes, code, data, v4);
+        return (bytes, code, data, v4, data2);
     }
 
     /// <summary>The end of everything the patch reads or writes in the game's part of the file (a shorter file isn't the game's).</summary>
@@ -501,6 +550,9 @@ public partial class BgdaExecutable
         new[] { FeatPatch.Pool[^1].End, FeatPatch.AbilityTableEndVa + 4, FeatPatch.GameCastTableVa + 4 * FeatPatch.GameCastTypes }
             .Concat(FeatPatch.Checks.Select(c => c.Va + 4))
             .Concat(FeatPatch.Hooks.Select(h => h.Va + 4))
+            .Concat(FeatPatch.V10Hooks.Select(h => h.Va + 4))
+            .Concat(FeatPatch.V10Code.Select(c => c.Va + c.Length))
+            .Concat(FeatPatch.V10VTables.Select(v => v.GameVa + FeatPatch.VTableSize))
             .Concat(FeatPatch.V9Hooks.Select(h => h.Va + 4))
             .Concat(FeatPatch.V9Code.Select(c => c.Va + c.Length))
             .Concat(FeatPatch.V9VTables.Select(v => v.GameVa + FeatPatch.VTableSize))
@@ -547,11 +599,16 @@ public partial class BgdaExecutable
     private bool BytesAre(int va, ReadOnlySpan<byte> bytes) =>
         _data.Length >= FileOffset(va) + bytes.Length && _data.AsSpan(FileOffset(va), bytes.Length).SequenceEqual(bytes);
 
-    /// <summary>The file offset of <paramref name="offset"/> in the data block at <paramref name="dataVa"/> (version 10's, or every earlier version's at <see cref="FeatPatch.LegacyDataVa"/>).</summary>
+    /// <summary>The file offset of <paramref name="offset"/> in the data block at <paramref name="dataVa"/> (version 11's and 10's, or every earlier version's at <see cref="FeatPatch.LegacyDataVa"/>).</summary>
     private int FeatDataAt(int offset, int dataVa = FeatPatch.DataVa) => FileOffset(dataVa) + offset;
 
-    /// <summary>Where a version's data block is: version 10's in the pool's stretch 59, every earlier one's at 0x00132D90.</summary>
-    private static int DataVaOf(int version) => version >= FeatPatch.Version ? FeatPatch.DataVa : FeatPatch.LegacyDataVa;
+    /// <summary>Where a version's data block is: version 11's and 10's in the pool's stretch 59, every earlier one's at 0x00132D90.</summary>
+    private static int DataVaOf(int version) => version >= FeatPatch.V10Version ? FeatPatch.DataVa : FeatPatch.LegacyDataVa;
+
+    /// <summary>The second data block's mark ("FEA2" and the version, 11), which version 11 writes with its data block.</summary>
+    private bool Data2Marked() =>
+        BytesAre(FeatPatch.Data2Va, Encoding.ASCII.GetBytes(FeatPatch.Data2Mark)) &&
+        ReadU32(FileOffset(FeatPatch.Data2Va) + 4) == FeatPatch.Version;
 
     private bool PoolIsGame() => FeatPatch.Pool.All(s => BytesAre(s.Start, PoolOriginal(s.Start, s.End)));
 
@@ -581,7 +638,7 @@ public partial class BgdaExecutable
         return SpellsOf((int)ReadU32(FeatDataAt(FeatPatch.SpellsAt, at)));
     }
 
-    /// <summary>The spells version 10 says it has (its data block's mask), or null when the file doesn't have version 10's mark.</summary>
+    /// <summary>The spells version 11 says it has (its data block's mask), or null when the file doesn't have version 11's mark.</summary>
     private List<BorrowedSpell>? CurrentSpells() => MarkedSpells(FeatPatch.Version);
 
     /// <summary>
@@ -608,35 +665,44 @@ public partial class BgdaExecutable
         return Convert.ToHexString(sha.GetHashAndReset()).ToLowerInvariant() == sha256 ? spells : null;
     }
 
+    /// <summary>Version 10 (all eight, Inferno Arrow the newest): see <see cref="EarlierSpells"/>.</summary>
+    private List<BorrowedSpell>? V10Spells() =>
+        EarlierSpells(FeatPatch.V10Version, new[] { BorrowedSpell.Entangle }, FeatPatch.V10Hooks, FeatPatch.V10Code,
+                      FeatPatch.V10CodeSha256, FeatPatch.V10VTables);
+
     /// <summary>Version 9 (all seven, the orbs in a fan): see <see cref="EarlierSpells"/>.</summary>
     private List<BorrowedSpell>? V9Spells() =>
-        EarlierSpells(FeatPatch.V9Version, new[] { BorrowedSpell.InfernoArrow }, FeatPatch.V9Hooks, FeatPatch.V9Code,
-                      FeatPatch.V9CodeSha256, FeatPatch.V9VTables);
+        EarlierSpells(FeatPatch.V9Version, new[] { BorrowedSpell.InfernoArrow, BorrowedSpell.Entangle }, FeatPatch.V9Hooks,
+                      FeatPatch.V9Code, FeatPatch.V9CodeSha256, FeatPatch.V9VTables);
 
     /// <summary>Version 8 (all seven, the orbs aimed with a random scatter): see <see cref="EarlierSpells"/>.</summary>
     private List<BorrowedSpell>? V8Spells() =>
-        EarlierSpells(FeatPatch.V8Version, new[] { BorrowedSpell.InfernoArrow }, FeatPatch.V8Hooks, FeatPatch.V8Code,
-                      FeatPatch.V8CodeSha256, FeatPatch.V8VTables);
+        EarlierSpells(FeatPatch.V8Version, new[] { BorrowedSpell.InfernoArrow, BorrowedSpell.Entangle }, FeatPatch.V8Hooks,
+                      FeatPatch.V8Code, FeatPatch.V8CodeSha256, FeatPatch.V8VTables);
 
     /// <summary>Version 7 (the six, without Xantam's Orbs): see <see cref="EarlierSpells"/>.</summary>
     private List<BorrowedSpell>? V7Spells() =>
-        EarlierSpells(FeatPatch.V7Version, new[] { BorrowedSpell.XantamOrbs, BorrowedSpell.InfernoArrow }, FeatPatch.V7Hooks, FeatPatch.V7Code,
-                      FeatPatch.V7CodeSha256, FeatPatch.V7VTables);
+        EarlierSpells(FeatPatch.V7Version, new[] { BorrowedSpell.XantamOrbs, BorrowedSpell.InfernoArrow, BorrowedSpell.Entangle },
+                      FeatPatch.V7Hooks, FeatPatch.V7Code, FeatPatch.V7CodeSha256, FeatPatch.V7VTables);
 
     /// <summary>Version 6 (the five spells, without Sorcerer's Blood): see <see cref="EarlierSpells"/>.</summary>
     private List<BorrowedSpell>? V6Spells() =>
-        EarlierSpells(FeatPatch.V6Version, new[] { BorrowedSpell.SorcerersBlood, BorrowedSpell.XantamOrbs, BorrowedSpell.InfernoArrow },
-                      FeatPatch.V6Hooks,
-                      FeatPatch.V6Code, FeatPatch.V6CodeSha256, FeatPatch.V6VTables);
+        EarlierSpells(FeatPatch.V6Version,
+                      new[] { BorrowedSpell.SorcerersBlood, BorrowedSpell.XantamOrbs, BorrowedSpell.InfernoArrow, BorrowedSpell.Entangle },
+                      FeatPatch.V6Hooks, FeatPatch.V6Code, FeatPatch.V6CodeSha256, FeatPatch.V6VTables);
 
     /// <summary>Version 5 (the four borrowed spells, without Power Attack): see <see cref="EarlierSpells"/>.</summary>
     private List<BorrowedSpell>? V5Spells() =>
         EarlierSpells(FeatPatch.V5Version,
-                      new[] { BorrowedSpell.PowerAttack, BorrowedSpell.SorcerersBlood, BorrowedSpell.XantamOrbs, BorrowedSpell.InfernoArrow },
+                      new[]
+                      {
+                          BorrowedSpell.PowerAttack, BorrowedSpell.SorcerersBlood, BorrowedSpell.XantamOrbs, BorrowedSpell.InfernoArrow,
+                          BorrowedSpell.Entangle
+                      },
                       FeatPatch.V5Hooks, FeatPatch.V5Code, FeatPatch.V5CodeSha256, FeatPatch.V5VTables);
 
     /// <summary>
-    /// Off, On, Outdated (version 9, 8, 7, 6 or 5, or Xantam's Fire alone as the fourth or third test version: updated on save) or
+    /// Off, On, Outdated (version 10, 9, 8, 7, 6 or 5, or Xantam's Fire alone as the fourth or third test version: updated on save) or
     /// Unrecognized; <paramref name="detail"/> says what was found, in a sentence.
     /// </summary>
     public BorrowedSpellsState GetBorrowedSpellsState(out string detail)
@@ -647,15 +713,15 @@ public partial class BgdaExecutable
             return BorrowedSpellsState.Unrecognized;
         }
 
-        var (_, code, _, v4Code) = FeatPatchData.Value;
+        var (_, code, _, v4Code, _) = FeatPatchData.Value;
         if (CurrentSpells() is { } spells)
         {
             var mask = FeatMask(spells);
             var hooks = FeatPatch.Hooks.All(h => ReadU32(FileOffset(h.Va)) == ((h.Spells & mask) != 0 ? h.Patched : h.Game));
             if (spells.Count > 0 && hooks && code.All(c => BytesAre(c.Va, c.Bytes)) && FeatPatch.VTables.All(v => BytesAre(v.Va, FeatVTable(v))) &&
-                BytesAre(FeatPatch.CastTableVa, FeatCastTable(spells)))
+                BytesAre(FeatPatch.CastTableVa, FeatCastTable(spells)) && Data2Marked())
             {
-                detail = $"In (version 10, in game code nothing runs): {Names(spells)}. It works with or without three players.";
+                detail = $"In (version 11, in game code nothing runs): {Names(spells)}. It works with or without three players.";
                 return BorrowedSpellsState.On;
             }
 
@@ -663,55 +729,63 @@ public partial class BgdaExecutable
             return BorrowedSpellsState.Unrecognized;
         }
 
+        if (V10Spells() is { } ten)
+        {
+            detail = $"In as version 10 (the first test of Inferno Arrow): {Names(ten)}. Saving brings it to version 11, which " +
+                     "adds Entangle for Vahn; every spell keeps its settings.";
+            return BorrowedSpellsState.Outdated;
+        }
+
         if (V9Spells() is { } nine)
         {
-            detail = $"In as version 9 (the second test of Xantam's Orbs): {Names(nine)}. Saving brings it to version 10, which " +
-                     "adds Inferno Arrow for Vahn; every spell keeps its settings.";
+            detail = $"In as version 9 (the second test of Xantam's Orbs): {Names(nine)}. Saving brings it to version 11, which " +
+                     "adds Inferno Arrow and Entangle for Vahn; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V8Spells() is { } eight)
         {
-            detail = $"In as version 8 (the first test of Xantam's Orbs): {Names(eight)}. Saving brings it to version 10, which " +
-                     "fans the orbs out, lets them break barrels and crates, and adds Inferno Arrow for Vahn; every spell keeps its " +
-                     "settings.";
+            detail = $"In as version 8 (the first test of Xantam's Orbs): {Names(eight)}. Saving brings it to version 11, which " +
+                     "fans the orbs out, lets them break barrels and crates, and adds Inferno Arrow and Entangle for Vahn; every " +
+                     "spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V7Spells() is { } seven)
         {
-            detail = $"In as version 7 (the first test of Sorcerer's Blood): {Names(seven)}. Saving brings it to version 10, which " +
-                     "adds Xantam's Orbs for Adrianna and Inferno Arrow for Vahn; every spell keeps its settings.";
+            detail = $"In as version 7 (the first test of Sorcerer's Blood): {Names(seven)}. Saving brings it to version 11, which " +
+                     "adds Xantam's Orbs for Adrianna and Inferno Arrow and Entangle for Vahn; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V6Spells() is { } six)
         {
-            detail = $"In as version 6 (the first test of Power Attack): {Names(six)}. Saving brings it to version 10, which adds " +
-                     "Sorcerer's Blood and Xantam's Orbs for Adrianna and Inferno Arrow for Vahn; every spell keeps its settings.";
+            detail = $"In as version 6 (the first test of Power Attack): {Names(six)}. Saving brings it to version 11, which adds " +
+                     "Sorcerer's Blood and Xantam's Orbs for Adrianna and Inferno Arrow and Entangle for Vahn; every spell keeps " +
+                     "its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V5Spells() is { } old)
         {
-            detail = $"In as version 5 (the first test of Kromlech's spells): {Names(old)}. Saving brings it to version 10, which adds " +
-                     "Power Attack for Kromlech, Sorcerer's Blood and Xantam's Orbs for Adrianna, and Inferno Arrow for Vahn; every " +
-                     "spell keeps its settings.";
+            detail = $"In as version 5 (the first test of Kromlech's spells): {Names(old)}. Saving brings it to version 11, which adds " +
+                     "Power Attack for Kromlech, Sorcerer's Blood and Xantam's Orbs for Adrianna, and Inferno Arrow and Entangle " +
+                     "for Vahn; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V4Present(v4Code))
         {
-            detail = "Xantam's Fire is in as the fourth test version (Adrianna's spell alone). Saving brings it to version 10, which " +
-                     "also has Sorcerer's Blood, Xantam's Orbs, Kromlech's spells and Vahn's Inferno Arrow; its price, mana and " +
-                     "damage are kept.";
+            detail = "Xantam's Fire is in as the fourth test version (Adrianna's spell alone). Saving brings it to version 11, which " +
+                     "also has Sorcerer's Blood, Xantam's Orbs, Kromlech's spells and Vahn's Inferno Arrow and Entangle; its " +
+                     "price, mana and damage are kept.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V3Present())
         {
             detail = "Xantam's Fire is in as the third test version (its spell area, which only a three-player build loads). " +
-                     "Saving brings it to version 10, which works with or without three players; its price, mana and damage are kept.";
+                     "Saving brings it to version 11, which works with or without three players; its price, mana and damage are kept.";
             return BorrowedSpellsState.Outdated;
         }
 
@@ -818,17 +892,33 @@ public partial class BgdaExecutable
         FeatPatch.V3Hooks.All(h => ReadU32(FileOffset(h.Va)) == h.Patched);
 
     /// <summary>
-    /// Where a version's data block is and keeps the settings (version 10's at <see cref="FeatPatch.DataVa"/>, every earlier
-    /// one's at <see cref="FeatPatch.LegacyDataVa"/>; the entries are where the others' are; the orbs' tables are versions 10's,
-    /// 9's and 8's alone, Inferno Arrow's version 10's).
+    /// Where a version's data block is and keeps the settings (version 11's and 10's at <see cref="FeatPatch.DataVa"/>, every
+    /// earlier one's at <see cref="FeatPatch.LegacyDataVa"/>; the entries are where the others' are; the orbs' tables are versions
+    /// 11's, 10's, 9's and 8's alone, Inferno Arrow's (<see cref="Inferno"/>: its mana, its least and most damage, then its five
+    /// further tables) versions 11's and 10's, Entangle's version 11's, in its second block).
     /// </summary>
     private sealed record FeatLayout(int DataVa, int Entries, int Abilities, int BarrierMin, int BarrierMax, int FieldFrames,
                                      int MightDamage, int MightDefence, int PowerHits, int OrbsCount = -1, int OrbsMin = -1,
-                                     int OrbsMax = -1);
+                                     int OrbsMax = -1, int[]? Inferno = null);
 
     private static readonly FeatLayout CurrentLayout = new(FeatPatch.DataVa, FeatPatch.EntriesAt, FeatPatch.AbilitiesAt,
         FeatPatch.BarrierDamageMinAt, FeatPatch.BarrierDamageMaxAt, FeatPatch.FieldFramesAt, FeatPatch.MightDamageAt,
-        FeatPatch.MightDefenceAt, FeatPatch.PowerHitsAt, FeatPatch.OrbsCountAt, FeatPatch.OrbsDamageMinAt, FeatPatch.OrbsDamageMaxAt);
+        FeatPatch.MightDefenceAt, FeatPatch.PowerHitsAt, FeatPatch.OrbsCountAt, FeatPatch.OrbsDamageMinAt, FeatPatch.OrbsDamageMaxAt,
+        new[]
+        {
+            FeatPatch.InfernoManaAt, FeatPatch.InfernoDamageMinAt, FeatPatch.InfernoDamageMaxAt, FeatPatch.InfernoBlastAt,
+            FeatPatch.InfernoSpreadAt, FeatPatch.InfernoBurnAt, FeatPatch.InfernoFlameMinAt, FeatPatch.InfernoFlameMaxAt
+        });
+
+    private static readonly FeatLayout V10Layout = new(FeatPatch.DataVa, FeatPatch.V10EntriesAt, FeatPatch.V10AbilitiesAt,
+        FeatPatch.V10BarrierDamageMinAt, FeatPatch.V10BarrierDamageMaxAt, FeatPatch.V10FieldFramesAt, FeatPatch.V10MightDamageAt,
+        FeatPatch.V10MightDefenceAt, FeatPatch.V10PowerHitsAt, FeatPatch.V10OrbsCountAt, FeatPatch.V10OrbsDamageMinAt,
+        FeatPatch.V10OrbsDamageMaxAt,
+        new[]
+        {
+            FeatPatch.V10InfernoManaAt, FeatPatch.V10InfernoDamageMinAt, FeatPatch.V10InfernoDamageMaxAt, FeatPatch.V10InfernoBlastAt,
+            FeatPatch.V10InfernoSpreadAt, FeatPatch.V10InfernoBurnAt, FeatPatch.V10InfernoFlameMinAt, FeatPatch.V10InfernoFlameMaxAt
+        });
 
     private static readonly FeatLayout V9Layout = new(FeatPatch.LegacyDataVa, FeatPatch.V9EntriesAt, FeatPatch.V9AbilitiesAt,
         FeatPatch.V9BarrierDamageMinAt, FeatPatch.V9BarrierDamageMaxAt, FeatPatch.V9FieldFramesAt, FeatPatch.V9MightDamageAt,
@@ -851,7 +941,7 @@ public partial class BgdaExecutable
         FeatPatch.V5BarrierDamageMaxAt, FeatPatch.V5FieldFramesAt, FeatPatch.V5MightDamageAt, FeatPatch.V5MightDefenceAt, -1);
 
     /// <summary>
-    /// The spells in the file and their settings (On; Outdated: version 9's, 8's, 7's, 6's or 5's spells, or Xantam's Fire's), or none (Off,
+    /// The spells in the file and their settings (On; Outdated: version 10's, 9's, 8's, 7's, 6's or 5's spells, or Xantam's Fire's), or none (Off,
     /// Unrecognized). Power Attack's mana is 0: its record's is the Feats &amp; Spells tab's. Sorcerer's Blood's is 0 too: it
     /// is passive.
     /// </summary>
@@ -859,6 +949,8 @@ public partial class BgdaExecutable
     {
         var found = new Dictionary<BorrowedSpell, BorrowedSpellSettings>();
         var state = GetBorrowedSpellsState(out _);
+        if (state == BorrowedSpellsState.Outdated && V10Spells() is { } ten)
+            return ReadAll(ten, V10Layout);
         if (state == BorrowedSpellsState.Outdated && V9Spells() is { } nine)
             return ReadAll(nine, V9Layout);
         if (state == BorrowedSpellsState.Outdated && V8Spells() is { } eight)
@@ -902,7 +994,7 @@ public partial class BgdaExecutable
     /// One spell's settings from the data block: the price (and Sorcerer's Blood's ranks) from its entry (at
     /// <paramref name="entry"/>), the mana from its ability record (at <paramref name="ability"/>; -1: none, Power Attack and
     /// Sorcerer's Blood; Inferno Arrow's is the data block's own), its values by rank where <paramref name="layout"/>'s version
-    /// keeps them.
+    /// keeps them (Entangle's in the second block).
     /// </summary>
     private BorrowedSpellSettings ReadSettings(BorrowedSpell spell, int entry, int ability, FeatLayout layout)
     {
@@ -924,9 +1016,15 @@ public partial class BgdaExecutable
             BorrowedSpell.XantamOrbs => new BorrowedSpellSettings(price, mana, ByRank(At(layout.OrbsMin)),
                                                                   ByRank(At(layout.OrbsMax)),
                                                                   Third: ByRank(At(layout.OrbsCount))),
-            BorrowedSpell.InfernoArrow => new BorrowedSpellSettings(price, BitConverter.ToSingle(_data, At(FeatPatch.InfernoManaAt)),
-                ByRank(At(FeatPatch.InfernoDamageMinAt)), ByRank(At(FeatPatch.InfernoDamageMaxAt)),
-                More: InfernoTables.Select(t => (IReadOnlyList<int>)ByRank(At(t))).ToArray()),
+            BorrowedSpell.InfernoArrow => new BorrowedSpellSettings(price, BitConverter.ToSingle(_data, At(layout.Inferno![0])),
+                ByRank(At(layout.Inferno[1])), ByRank(At(layout.Inferno[2])),
+                More: layout.Inferno.Skip(3).Select(t => (IReadOnlyList<int>)ByRank(At(t))).ToArray()),
+            BorrowedSpell.Entangle => new BorrowedSpellSettings(price, mana, ByRank(Data2At(FeatPatch.EntangleThornMinAt)),
+                ByRank(Data2At(FeatPatch.EntangleThornMaxAt)), Third: ByRank(Data2At(FeatPatch.EntangleVinesAt)),
+                More: new IReadOnlyList<int>[]
+                {
+                    ByRank(Data2At(FeatPatch.EntangleSlowAt)).Select(v => 2 * v).ToArray(), ByRank(Data2At(FeatPatch.EntangleTimeAt))
+                }),
             _ => new BorrowedSpellSettings(price, mana, ByRank(At(layout.MightDamage)), ByRank(At(layout.MightDefence)))
         };
     }
@@ -938,11 +1036,14 @@ public partial class BgdaExecutable
         FeatPatch.InfernoFlameMaxAt
     };
 
+    /// <summary>The file offset of <paramref name="offset"/> in the second data block (version 11's).</summary>
+    private int Data2At(int offset) => FileOffset(FeatPatch.Data2Va) + offset;
+
     /// <summary>Ranks 1-5 of a by-rank byte table (its entry 0 is rank 0's).</summary>
     private int[] ByRank(int at) => Enumerable.Range(1, BorrowedSpellSettings.Ranks).Select(r => (int)_data[at + r]).ToArray();
 
     /// <summary>
-    /// Puts in, updates (Outdated: to version 10), changes or takes out the borrowed spells so that exactly
+    /// Puts in, updates (Outdated: to version 11), changes or takes out the borrowed spells so that exactly
     /// <paramref name="spells"/> are in, with their settings (none: <see cref="RemoveBorrowedSpells"/>). Throws
     /// <see cref="ArgumentException"/> on bad settings and <see cref="InvalidOperationException"/> when the state is
     /// Unrecognized; nothing is changed then.
@@ -974,7 +1075,7 @@ public partial class BgdaExecutable
             }
         }
 
-        var (_, code, _, _) = FeatPatchData.Value;
+        var (_, code, _, _, _) = FeatPatchData.Value;
         if (state != BorrowedSpellsState.On)
         {
             foreach (var (va, bytes) in code) bytes.CopyTo(_data, FileOffset(va));
@@ -982,6 +1083,7 @@ public partial class BgdaExecutable
         }
 
         FeatDataBlock(spells).CopyTo(_data, FeatDataAt(0));
+        FeatData2Block(spells).CopyTo(_data, FileOffset(FeatPatch.Data2Va));
         FeatCastTable(spells.Keys).CopyTo(_data, FileOffset(FeatPatch.CastTableVa));
         var mask = FeatMask(spells.Keys);
         foreach (var (va, game, patched, need) in FeatPatch.Hooks) WriteInt(FileOffset(va), (int)((need & mask) != 0 ? patched : game));
@@ -1055,6 +1157,11 @@ public partial class BgdaExecutable
                     }
 
                     break;
+                case BorrowedSpell.Entangle:
+                    // the ability record's damage (a thorn's): the HUD's line until the first cast; its tables are in the second block
+                    BitConverter.GetBytes((ushort)s.First[0]).CopyTo(block, ability + FeatPatch.AbilityDamageAt);
+                    BitConverter.GetBytes((ushort)s.Second[0]).CopyTo(block, ability + FeatPatch.AbilityDamageAt + 2);
+                    break;
                 case BorrowedSpell.InfernoArrow:
                     // its mana goes into its slot at every shot (the game's record keeps its own)
                     BitConverter.GetBytes(s.Mana).CopyTo(block, FeatPatch.InfernoManaAt);
@@ -1073,9 +1180,30 @@ public partial class BgdaExecutable
     }
 
     /// <summary>
+    /// The second data block for <paramref name="spells"/>, as featpatch.py's data2_block makes it: its mark, the names of the
+    /// icons of types 32-36 and their fallbacks, Entangle's settings (its defaults when it is off: the template's) and its fixed
+    /// values.
+    /// </summary>
+    private static byte[] FeatData2Block(IReadOnlyDictionary<BorrowedSpell, BorrowedSpellSettings> spells)
+    {
+        var block = (byte[])FeatPatchData.Value.Data2.Clone();
+        if (!spells.TryGetValue(BorrowedSpell.Entangle, out var s)) return block;
+        for (var r = 0; r < BorrowedSpellSettings.Ranks; r++)
+        {
+            block[FeatPatch.EntangleThornMinAt + r + 1] = (byte)s.First[r];
+            block[FeatPatch.EntangleThornMaxAt + r + 1] = (byte)s.Second[r];
+            block[FeatPatch.EntangleVinesAt + r + 1] = (byte)s.ThirdValues[r];
+            block[FeatPatch.EntangleSlowAt + r + 1] = (byte)(s.MoreValues[0][r] / 2);
+            block[FeatPatch.EntangleTimeAt + r + 1] = (byte)s.MoreValues[1][r];
+        }
+
+        return block;
+    }
+
+    /// <summary>
     /// The cast table for <paramref name="spells"/> (its own piece of the pool), as featpatch.py's cast_table makes it: the game's
     /// 23 cases from this file, the default for the rest, and the case of each spell that is on but Sorcerer's Blood (a passive)
-    /// and Inferno Arrow (type 9: the game's own case, the arrows').
+    /// and Inferno Arrow (type 9: the game's own case, the arrows'); Entangle's is type 36.
     /// The state checks it as it checks the code: a table that isn't this one is not WorldExplorer's.
     /// </summary>
     private byte[] FeatCastTable(IEnumerable<BorrowedSpell> spells)
@@ -1124,16 +1252,24 @@ public partial class BgdaExecutable
         foreach (var (a, b) in FeatPatch.Pool) PoolOriginal(a, b).CopyTo(_data.AsSpan(FileOffset(a)));
     }
 
-    /// <summary>Takes out the earlier version that is in (Outdated): version 9, 8, 7, 6 or 5, or the fourth or third test version.</summary>
+    /// <summary>Takes out the earlier version that is in (Outdated): version 10, 9, 8, 7, 6 or 5, or the fourth or third test version.</summary>
     private void RemoveOutdated()
     {
-        if (V9Spells() != null) RemoveV9();
+        if (V10Spells() != null) RemoveV10();
+        else if (V9Spells() != null) RemoveV9();
         else if (V8Spells() != null) RemoveV8();
         else if (V7Spells() != null) RemoveV7();
         else if (V6Spells() != null) RemoveV6();
         else if (V5Spells() != null) RemoveV5();
         else if (V3Present()) RemoveV3();
         else RemoveV4();
+    }
+
+    /// <summary>Takes version 10 out: the game's words back at its hooks, the game's bytes back in the pool.</summary>
+    private void RemoveV10()
+    {
+        foreach (var (va, game, _, _) in FeatPatch.V10Hooks) WriteInt(FileOffset(va), (int)game);
+        RestorePool();
     }
 
     /// <summary>Takes version 9 out: the game's words back at its hooks, the game's bytes back in the pool.</summary>

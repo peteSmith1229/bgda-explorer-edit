@@ -89,9 +89,9 @@ Alliance II files are read with the Dark Alliance formats for now.
   (in all five languages) go in `GTEXT.LMP` and the item card's acid drop in `INVENTRY.LMP`, each saved after the
   executable. "Take Corrosive out" takes all three out again, and the acid glow is one click away.
 - **Add enhancements** on Executable Tuning's Enhancements tab: additions to the game that work with or without
-  three players, each turned on or off by itself. Five spells borrowed from the game's monsters and three feats
-  the game has but never offers, each a feat on its hero's level-up screen (5 ranks; price, mana and the values of
-  each rank can be set; Sorcerer's Blood has a price and 1 to 5 ranks):
+  three players, each turned on or off by itself. Five spells borrowed from the game's monsters, the game's own
+  unused vines and three feats the game has but never offers, each a feat on its hero's level-up screen (5 ranks;
+  price, mana and the values of each rank can be set; Sorcerer's Blood has a price and 1 to 5 ranks):
   - Xantam's Fire for Adrianna: the beholder Xantam's fire trails, which burn the monsters in their path;
   - Power Attack for Kromlech: the game's own cut feat, finished: casting it readies his weapon, and his next
     melee hits (one to five, by rank) within 10 seconds do double damage. Its icon, HUD line and texts are the
@@ -111,14 +111,19 @@ Alliance II files are read with the Dark Alliance formats for now.
     Every monster within the blast's reach takes up to the arrow's damage (less towards the edge) and catches
     fire; barrels and crates break; then flames run out along the ground all round and burn there for a few
     seconds, burning the monsters in them. Each rank's arrow damage, blast reach, spread, burning time and flame
-    damage can be set. Its texts are the game's; its icon goes in `ICONS.LMP`. It never hurts a player.
+    damage can be set. Its texts are the game's; its icon goes in `ICONS.LMP`. It never hurts a player;
+  - Entangle for Vahn: the game's own vines, which nothing in it ever casts. Thorny vines crawl along the ground
+    from his feet, each to a different monster near him, the nearest first: one at rank 1 up to five at rank 5
+    (1 to 10 can be set). A vine wraps its monster for a few seconds: it walks slower, and every second the
+    thorns hurt it (his kills give him the experience); the vine falls away when its monster dies. Each rank's
+    vines, thorn damage, slow (2 to 98 percent) and time can be set. It never touches a player.
 
   They go into game code nothing ever runs (about 32 KB of it, the same in the stock executable and every
   three-player build, so three players can still be turned on or off), the borrowed spells' names and
   descriptions (in all five languages) into `GTEXT.LMP` and their HUD icons into `ICONS.LMP`, each saved after
   the executable. Unticking one puts the game's own code back exactly. A file with an earlier test version
-  (Kromlech's spells, Power Attack, Sorcerer's Blood, either Xantam's Orbs) is brought up to date when it is
-  saved, every spell keeping its settings.
+  (Kromlech's spells, Power Attack, Sorcerer's Blood, either Xantam's Orbs, Inferno Arrow) is brought up to date
+  when it is saved, every spell keeping its settings.
 - **Pick colours** by clicking a colour box: a glow style's halo or core on the Glow tab, or a player's automap
   marker on the Three Players tab. Drag in the square and the hue bar, type red, green and blue or a `#RRGGBB`
   value, or click a ready-made colour; OK puts the colour in the red, green and blue boxes.
