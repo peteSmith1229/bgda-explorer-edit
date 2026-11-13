@@ -163,6 +163,12 @@ public sealed class SpellRankRow : ObservableObject
     }
 }
 
+/// <summary>One hero's cards on the tab, under the hero's name.</summary>
+public sealed record SpellGroup(string Hero, IReadOnlyList<SpellCard> Cards)
+{
+    public string Heading => Hero.ToUpperInvariant();
+}
+
 /// <summary>One borrowed spell's card: its tick box, its settings and what saving does with it.</summary>
 public sealed class SpellCard : ObservableObject
 {
@@ -602,10 +608,25 @@ public sealed class EnhancementsModel : ObservableObject
         _exe = exe;
         _names = names;
         Spells = BorrowedSpells.All.Select(s => new SpellCard(this, s)).ToList();
+        Groups = HeroOrder.Select(h => new SpellGroup(h, Spells.Where(c => c.Info.Hero == h)
+                                                           .OrderBy(c => c.Info.Title, StringComparer.CurrentCultureIgnoreCase).ToList()))
+                          .Where(g => g.Cards.Count > 0).ToList();
         Reload();
     }
 
-    /// <summary>The nine spells' cards: Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle.</summary>
+    /// <summary>The order of the heroes' groups on the tab.</summary>
+    private static readonly string[] HeroOrder = { "Adrianna", "Kromlech", "Vahn" };
+
+    /// <summary>The cards as the tab shows them: Adrianna's, then Kromlech's, then Vahn's, each hero's in alphabetical order.</summary>
+    public IReadOnlyList<SpellGroup> Groups { get; }
+
+    /// <summary>Ticks every card ("Enable all"); each keeps the settings in its boxes.</summary>
+    public void EnableAll()
+    {
+        foreach (var card in Spells) card.On = true;
+    }
+
+    /// <summary>The nine spells' cards in the library's order (Card() indexes it): Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle. The tab shows Groups.</summary>
     public IReadOnlyList<SpellCard> Spells { get; }
 
     public SpellCard Card(BorrowedSpell spell) => Spells[(int)spell];

@@ -8,7 +8,7 @@ namespace WorldExplorer.Views;
 
 /// <summary>
 /// The Enhancements tab of Executable Tuning (DataContext: EnhancementsModel; each spell's card: SpellCard). Everything is
-/// edited in the model; this only opens ICONS.LMP and passes a card's button on to it.
+/// edited in the model; this only opens ICONS.LMP and passes the buttons (a card's, Enable all) on to it.
 /// </summary>
 public partial class EnhancementsView : UserControl
 {
@@ -42,6 +42,9 @@ public partial class EnhancementsView : UserControl
 
     /// <summary>A card's "The tested settings" button: that spell's boxes back to what featpatch.py writes.</summary>
     private void SpellDefaults_Click(object sender, RoutedEventArgs e) => ((sender as FrameworkElement)?.DataContext as SpellCard)?.Defaults();
+
+    /// <summary>"Enable all": every spell's box ticked.</summary>
+    private void EnableAll_Click(object sender, RoutedEventArgs e) => Model?.EnableAll();
 
     private void OpenIcons_Click(object sender, RoutedEventArgs e)
     {
