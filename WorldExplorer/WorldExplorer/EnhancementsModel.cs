@@ -2,16 +2,17 @@
 // NEW FILE: WorldExplorer/WorldExplorer/EnhancementsModel.cs
 //
 // The Enhancements tab of Executable Tuning (Views/EnhancementsView.xaml): additions to the game that
-// work with or without three players, each turned on or off by itself. Six spells borrowed from the
+// work with or without three players, each turned on or off by itself. Seven spells borrowed from the
 // game's monsters, the game's own unused vines and three feats the game has but never offers
 // (BgdaExecutable.BorrowedSpells.cs), one card each: Xantam's Fire, Sorcerer's Blood and Xantam's Orbs for
 // Adrianna; Power Attack, Blade Barrier, Antimagic Field and Righteous Might for Kromlech; Inferno Arrow,
-// Entangle and Insect Plague for Vahn. Each card has its tick box, price, mana (not Power Attack's: its record's,
-// on the Feats & Spells tab) and values by rank (Xantam's Orbs: three, the number of orbs with the least and most
-// damage of each; Inferno Arrow: seven, the arrow's damage, the blast's reach, the flames' spread and time, and
-// their damage; Entangle: five, the number of vines with the least and most damage of each thorn, how much slower
-// a wrapped monster walks and how long a vine holds it; Insect Plague: four, the number of swarms with the least
-// and most damage of each sting, and how long a swarm lasts); Sorcerer's Blood, a passive,
+// Entangle, Insect Plague and Poison Gas Arrow for Vahn. Each card has its tick box, price, mana (not Power
+// Attack's: its record's, on the Feats & Spells tab) and values by rank (Xantam's Orbs: three, the number of orbs
+// with the least and most damage of each; Inferno Arrow: seven, the arrow's damage, the blast's reach, the flames'
+// spread and time, and their damage; Entangle: five, the number of vines with the least and most damage of each
+// thorn, how much slower a wrapped monster walks and how long a vine holds it; Insect Plague: four, the number of
+// swarms with the least and most damage of each sting, and how long a swarm lasts; Poison Gas Arrow: six, the
+// arrow's damage, the cloud's reach and time, and the damage of its hits); Sorcerer's Blood, a passive,
 // has the number of ranks its entry offers instead of mana and values. The names they need in GTEXT.LMP
 // (the Items tab's copy, so one save writes both tabs' texts) and their icons in ICONS.LMP are shared
 // (Power Attack's, Sorcerer's Blood's and Inferno Arrow's names, and Power Attack's icon, are the game's own).
@@ -32,7 +33,7 @@ using WorldExplorer.Infrastructure;
 
 namespace WorldExplorer;
 
-/// <summary>A further box of a rank's row (Inferno Arrow's blast, flames and burns; Entangle's slow and time; Insect Plague's time): what goes before and after it, and its text.</summary>
+/// <summary>A further box of a rank's row (Inferno Arrow's blast, flames and burns; Entangle's slow and time; Insect Plague's time; Poison Gas Arrow's cloud): what goes before and after it, and its text.</summary>
 public sealed class SpellValueBox : ObservableObject
 {
     private readonly Action _edited;
@@ -81,7 +82,7 @@ public sealed class SpellValueBox : ObservableObject
     }
 }
 
-/// <summary>One rank's boxes on a spell's card: one value, two, or three (Xantam's Orbs, Entangle, Insect Plague: how many, then least and most damage), and any further ones (Inferno Arrow's, Entangle's, Insect Plague's).</summary>
+/// <summary>One rank's boxes on a spell's card: one value, two, or three (Xantam's Orbs, Entangle, Insect Plague: how many, then least and most damage), and any further ones (Inferno Arrow's, Entangle's, Insect Plague's, Poison Gas Arrow's).</summary>
 public sealed class SpellRankRow : ObservableObject
 {
     private readonly Action _edited;
@@ -97,7 +98,7 @@ public sealed class SpellRankRow : ObservableObject
             .ToList();
     }
 
-    /// <summary>The further boxes, after the others (Inferno Arrow's: the blast's reach, the flames' spread and time, their damage; Entangle's: the slow and the time; Insect Plague's: the time).</summary>
+    /// <summary>The further boxes, after the others (Inferno Arrow's: the blast's reach, the flames' spread and time, their damage; Entangle's: the slow and the time; Insect Plague's: the time; Poison Gas Arrow's: the cloud's reach and time, its damage).</summary>
     public IReadOnlyList<SpellValueBox> More { get; }
 
     public bool HasMore => More.Count > 0;
@@ -248,6 +249,15 @@ public sealed class SpellCard : ObservableObject
             "(5 seconds; 1 for a monster that resists poison, none for one immune to it), whose bites count as his too. When its " +
             "monster dies, a swarm moves on to the nearest other monster within 240 of it, until its time is up. Never a player. " +
             "The cast crackles like an electric shock; its HUD shows a sting's damage.",
+        BorrowedSpell.PoisonGasArrow =>
+            "The monsters' poison gas (the kobold shamans', the lizardmen's, the zombies'), on an arrow: he looses an arrow from his " +
+            "bow, as with his other arrow feats, that trails a thin wisp of dark green gas and does the rank's damage to what it " +
+            "hits. Where it strikes, a monster, a wall or the floor, the game's own cloud of poison gas bursts with the rank's reach " +
+            "for the rank's time. Once a second, from the moment it bursts, every monster whose edge is in the cloud takes the " +
+            "rank's gas damage from him (resistances count, and his kills give him the experience) and is poisoned with the game's " +
+            "own poison (5 seconds; 1 for a monster that resists poison, none for one immune to it), whose bites count as his too. " +
+            "Never a player, nor him: the monsters' clouds hurt everyone in them, this one doesn't. The arrow sounds like Melf's " +
+            "Acid Arrow; its HUD shows the arrow's damage.",
         _ =>
             "Ilivarra's might: for 10 seconds he grows to 1.3 times his size in a green glow, his melee hits do the rank's " +
             "percentage more damage and physical hits on him the rank's percentage less (spells do their full damage). Casting it " +
@@ -271,6 +281,9 @@ public sealed class SpellCard : ObservableObject
             "long a vine holds it, by rank",
         BorrowedSpell.InsectPlague =>
             "Swarms, and the damage of each sting (least to most, once a second), and how long a swarm lasts, by rank",
+        BorrowedSpell.PoisonGasArrow =>
+            "The arrow's damage (least to most), the cloud's reach, how long it lasts and the damage of its hits (least to most, " +
+            "once a second), by rank",
         _ => "Percentage more melee damage and less physical damage taken, by rank"
     };
 
@@ -295,6 +308,7 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.Entangle => "The least damage of each thorn (a thorn a second while a vine holds its monster): 0 to 255.",
         BorrowedSpell.InsectPlague =>
             "The least damage of each sting (a sting a second while a swarm is on its monster; the poison does more): 0 to 255.",
+        BorrowedSpell.PoisonGasArrow => "The least damage of the arrow itself, to what it hits: 0 to 255.",
         _ => "The least damage: 0 to 255."
     };
 
@@ -304,6 +318,7 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.XantamOrbs => "The most damage of each orb: 0 to 255.",
         BorrowedSpell.Entangle => "The most damage of each thorn: 0 to 255.",
         BorrowedSpell.InsectPlague => "The most damage of each sting: 0 to 255.",
+        BorrowedSpell.PoisonGasArrow => "The most damage of the arrow itself: 0 to 255.",
         _ => "The most damage: 0 to 255."
     };
 
@@ -319,11 +334,12 @@ public sealed class SpellCard : ObservableObject
         _ => $"How many orbs she hurls: {Info.ThirdMin} to {Info.ThirdMax}."
     };
 
-    /// <summary>What goes before and after a further box ("blast [72]", "for [3] s"; "slower [40] %"), and its tooltip (Inferno Arrow's, Entangle's, Insect Plague's).</summary>
+    /// <summary>What goes before and after a further box ("blast [72]", "for [3] s"; "slower [40] %"; "cloud [50]  for [5] s  gas [3] – [4]"), and its tooltip (Inferno Arrow's, Entangle's, Insect Plague's, Poison Gas Arrow's).</summary>
     public string MorePrefix(int k) => Spell switch
     {
         BorrowedSpell.Entangle => k == 0 ? "slower" : "for",
         BorrowedSpell.InsectPlague => "for",
+        BorrowedSpell.PoisonGasArrow => k switch { 0 => "cloud", 1 => "for", 2 => "gas", _ => "–" },
         _ => k switch { 0 => "blast", 1 => "flames", 2 => "for", 3 => "burning", _ => "–" }
     };
 
@@ -331,6 +347,7 @@ public sealed class SpellCard : ObservableObject
     {
         BorrowedSpell.Entangle => k == 0 ? "%" : "s",
         BorrowedSpell.InsectPlague => "s",
+        BorrowedSpell.PoisonGasArrow => k == 1 ? "s" : "",
         _ => k == 2 ? "s" : ""
     };
 
@@ -340,7 +357,18 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.InsectPlague =>
             "How long a swarm lasts, from the cast: 0.1 to 25.5 seconds (a tenth at a time; the shaman's: 10). Its first half " +
             "second it gathers; then a sting every second it is on its monster.",
+        BorrowedSpell.PoisonGasArrow => GasTip(k),
         _ => InfernoTip(k)
+    };
+
+    private static string GasTip(int k) => k switch
+    {
+        0 => "The cloud's reach, measured to a monster's edge on the ground: 10 to 255 (the monsters' own clouds: 20). Its puffs " +
+             "fill as much: a tenth of the reach in puffs a frame.",
+        1 => "How long the cloud lasts: 0.1 to 25.5 seconds (a tenth at a time; the monsters' own: 5, the zombies' 3). It hits " +
+             "at once and then every second.",
+        2 => "The least damage of each of the cloud's hits (once a second; the poison does more): 0 to 255.",
+        _ => "The most damage of each of the cloud's hits: 0 to 255."
     };
 
     private static string EntangleTip(int k) => k == 0
@@ -395,6 +423,11 @@ public sealed class SpellCard : ObservableObject
                                                   ? NumberText.Format(d.MoreValues[0][0] / 10.0)
                                                   : string.Join(", ", d.MoreValues[0].Select(t => NumberText.Format(t / 10.0)))) +
                                               " seconds",
+                BorrowedSpell.PoisonGasArrow => string.Join(", ", d.First.Select((f, r) => $"{f}-{d.Second[r]}")) + " damage, a cloud of " +
+                                                string.Join(", ", d.MoreValues[0]) + " for " +
+                                                string.Join(", ", d.MoreValues[1].Select(t => NumberText.Format(t / 10.0))) +
+                                                " seconds, hitting " +
+                                                string.Join(", ", d.MoreValues[2].Select((f, r) => $"{f}-{d.MoreValues[3][r]}")),
                 _ => string.Join(", ", d.First.Select((f, r) => $"{f}-{d.Second[r]}"))
             };
             return $"Price {d.Price}, {NumberText.Format(d.Mana)} mana, and {values}: what featpatch.py writes.";
@@ -668,7 +701,7 @@ public sealed class EnhancementsModel : ObservableObject
         foreach (var card in Spells) card.On = true;
     }
 
-    /// <summary>The ten spells' cards in the library's order (Card() indexes it): Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague. The tab shows Groups.</summary>
+    /// <summary>The eleven spells' cards in the library's order (Card() indexes it): Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow. The tab shows Groups.</summary>
     public IReadOnlyList<SpellCard> Spells { get; }
 
     public SpellCard Card(BorrowedSpell spell) => Spells[(int)spell];
@@ -883,7 +916,7 @@ public sealed class EnhancementsModel : ObservableObject
             var used = WillBeIn.Count > 0 ? BgdaExecutable.BorrowedSpellsBytes : 0;
             return $"New feats go into game code that nothing ever runs: {BgdaExecutable.FeatPoolStretches} stretches, " +
                    $"{BgdaExecutable.FeatPoolBytes:N0} bytes, the same in the stock executable and every three-player build. " +
-                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all ten); " : "") +
+                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all eleven); " : "") +
                    $"{BgdaExecutable.FeatPoolBytes - used:N0} bytes are free for more.";
         }
     }
