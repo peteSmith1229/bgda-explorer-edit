@@ -103,10 +103,10 @@
 // WHERE IT GOES. The pool: 61 stretches of the game's own code that nothing ever runs (unused library
 // functions and leftover routines, 32,724 bytes; see featpool.py). They are the same addresses and bytes
 // in the stock executable and in every three-player build, the game's own segment loads them, and no
-// other patch WorldExplorer knows writes there. The patch takes 14,816 bytes of it: its data block at
+// other patch WorldExplorer knows writes there. The patch takes 14,944 bytes of it: its data block at
 // 0x00221B88 (every earlier version's was at 0x00132D90), its second block at 0x00224B68 (the icons of types 32-36
 // and Entangle's settings, since version 11), its third at 0x0020B890 (Insect Plague's list entry, ability record
-// and settings, since version 12), its code in twenty-one pieces, eight vtable copies and its cast table (37 types).
+// and settings, since version 12), its code in twenty pieces, its vtable copies (the swarm's a creature's whole 0xA0 bytes) and its cast table (37 types).
 // The code is the same whichever spells are on; only the hooks of the spells that are on are written (28 words when
 // all ten are), and the data block says which ones are. Nothing else changes: no program header, no start-up copy,
 // the same file length.

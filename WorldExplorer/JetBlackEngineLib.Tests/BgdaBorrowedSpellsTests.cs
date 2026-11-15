@@ -20,7 +20,7 @@ namespace JetBlackEngineLib.Tests;
 /// and first of Xantam's Orbs, the first of Sorcerer's Blood, of Power Attack and of Kromlech's spells) brought up to date; their
 /// names in GTEXT.LMP and their icons in ICONS.LMP (archives built here). The patch is featpatch.py version 12 (Insect Plague; its
 /// third data block at the start of the pool's stretch 47): the checksums are of the files featpatch.py writes, and what it does in
-/// the game was checked by emulation (test_feats12.py on thirty-two files: 350 checks on each with all ten; 306 broken copies
+/// the game was checked by emulation (test_feats12.py on thirty-two files: 353 checks on each with all ten; 307 broken copies
 /// on two bases).
 /// </summary>
 [TestFixture]
@@ -37,15 +37,15 @@ public class BgdaBorrowedSpellsTests
     /// (OrbsCustom), Inferno Arrow alone, Inferno Arrow alone with its own settings (InfernoCustom), Entangle alone, Entangle alone
     /// with its own settings (EntangleCustom), Insect Plague alone, and Insect Plague alone with its own settings (InsectCustom).
     /// </summary>
-    private const string AllTenMd5 = "8b3e33153ded79618b9cc4b0b5ffcc3c", NineMd5 = "d4151040f63999938d81f7a000c7750a",
-                         EightMd5 = "bd15e82e7a7f7634e2e5062460c8ff30", SevenMd5 = "d92cf41e57f5e7acd7ceff3a34093685",
-                         TestSettingsMd5 = "103b65489f28c3b24a2de2b9df4a5f55", KromlechMd5 = "c2b59465ecc61f2d93823afee442c741",
-                         PowerAttackMd5 = "98479d04dbe7ea2472596c6ef8df4a4d", SorcerersMd5 = "8fd608a63626bd375fcc26de5117c9e0",
-                         SorcerersThreeRanksMd5 = "7b24a6b6624e3a6f5e6ab91ddcfdc3d6", OrbsMd5 = "40099a4f5a1c3169d288cbac1a80eaa4",
-                         OrbsCustomMd5 = "d0fde0a17faf654d5746adab86ee0bec", InfernoMd5 = "a113f712fc4aa95644734b5a786eec06",
-                         InfernoCustomMd5 = "c0bbaa48ab84e8e90c1662fac446e1d0", EntangleMd5 = "c4775ad3d7b010b5a9b991df60ff3274",
-                         EntangleCustomMd5 = "bb43b7abcb1b02ae3b9055d1f9d9875a", InsectMd5 = "5844e83cd5680c4f2067365b31f3376b",
-                         InsectCustomMd5 = "2ed4f8a2db31c6d08024f5751dbb56a7";
+    private const string AllTenMd5 = "fcf340f0fbcaf9c680ac8ac178cf2108", NineMd5 = "df69e3dbd0e1ba397d3b1e0bf29805e9",
+                         EightMd5 = "1e07a680ff50133acfa8056d8fb2879a", SevenMd5 = "8e989525a54120879fb8d4cf99d6874d",
+                         TestSettingsMd5 = "83d0f661c31b2bb1748953f3084b5975", KromlechMd5 = "5ff3912548e88a0dce513566ba8ca31a",
+                         PowerAttackMd5 = "383cb152375be68317bab59fedec6b34", SorcerersMd5 = "dfa0084390c19a8fcb4d404ae9c652c9",
+                         SorcerersThreeRanksMd5 = "c6e519c63cd63a344a0756d85a2e5797", OrbsMd5 = "01c184e002469959f7a957ff78a04db5",
+                         OrbsCustomMd5 = "f8f10a554627c4519c49c655cb401824", InfernoMd5 = "c7106fafbd91dc8351da2c292ab84e1a",
+                         InfernoCustomMd5 = "b727ff676754bff2d587ce93ec210ab2", EntangleMd5 = "1df719202da353b6dd1ca5f51894d177",
+                         EntangleCustomMd5 = "a47ce09496b5e64bcbb8c67acf834ac8", InsectMd5 = "019a8f3823d3fe4b22dc664df1d50590",
+                         InsectCustomMd5 = "bcad12e50120aeb54fb6b47c50ae50f6";
 
     /// <summary>
     /// featpatch.py --spells xantamorbs --xantamorbs-price 4 --xantamorbs-energy 6.5 --xantamorbs-orbs 2,3,5,7,10
@@ -84,7 +84,7 @@ public class BgdaBorrowedSpellsTests
             More: new IReadOnlyList<int>[] { new[] { 1, 10, 25, 100, 255 } });
 
     /// <summary>featpatch.py version 12 (all ten) on ADRIANNA26 (the stock file with three players turned on).</summary>
-    private const string ThreePlayersMd5 = "8fd514755e8e067bd1f58079ec661f41";
+    private const string ThreePlayersMd5 = "ed368f56a81c9a535839688160f84b86";
 
     /// <summary>
     /// Version 11 on the stock executable (featpatch.py version 11, all nine at its tested settings: MD5 below), as the changes it made:
@@ -565,9 +565,9 @@ public class BgdaBorrowedSpellsTests
     {
         (0x00102910, 0x00102B74), (0x00102D80, 0x00103000), (0x0010C338, 0x0010C6C4), (0x0010CD50, 0x0010CF30), (0x00118978, 0x00118D70),
         (0x00129318, 0x00129528), (0x00129C48, 0x00129D6C), (0x0012A710, 0x0012A8A0), (0x0012BAE8, 0x0012BF84), (0x0012CD30, 0x0012D07C),
-        (0x0012F790, 0x0012FA08), (0x00130540, 0x00130704), (0x00131170, 0x001312C0), (0x00132018, 0x0013216C), (0x00132D90, 0x001333EC),
-        (0x00134CE0, 0x00134E04), (0x00134F18, 0x00134FA8), (0x00134FB0, 0x001350D8), (0x0013CE00, 0x0013D000), (0x0013D220, 0x0013D410),
-        (0x00166E28, 0x00166F0C), (0x0020B890, 0x0020BA70), (0x00221B88, 0x002222C0), (0x00224B68, 0x00224C50)
+        (0x0012F790, 0x0012FA08), (0x00130540, 0x00130704), (0x00131170, 0x001312C0), (0x00132020, 0x00132160), (0x00132D90, 0x001333CC),
+        (0x00134CE0, 0x00134D78), (0x00134D80, 0x00134E14), (0x00134F18, 0x00135038), (0x00135040, 0x001350C0), (0x0013CE00, 0x0013D000),
+        (0x0013D220, 0x0013D428), (0x00166E28, 0x00166FB8), (0x0020B890, 0x0020BA70), (0x00221B88, 0x002222C0), (0x00224B68, 0x00224C50)
     };
 
     /// <summary>The game's Power Attack record (its mana is the Feats &amp; Spells tab's: 5 in the game).</summary>
@@ -918,7 +918,8 @@ public class BgdaBorrowedSpellsTests
         Assert.That(hooks.Count, Is.EqualTo(10));
         Assert.That(InsectOnly.All(hooks.Contains), Is.True);
         var bite = BitConverter.ToUInt32(bytes, 0x0011B758 - VaToFile);
-        Assert.That((bite >> 26, (bite & 0x03FFFFFF) << 2 is >= 0x00100000u and < 0x00140000u), Is.EqualTo((3u, true)), "jal into the pool");
+        var biteTo = (int)((bite & 0x03FFFFFF) << 2);
+        Assert.That((bite >> 26, Used.Any(u => u.Start <= biteTo && biteTo < u.End)), Is.EqualTo((3u, true)), "jal into the pool");
         Assert.That(BitConverter.ToUInt32(_stockBytes, 0x0011B758 - VaToFile), Is.EqualTo(0x0100F809u), "(the game's jalr t0)");
 
         // the main block names it (its bit in the mask) but has no entry for it; the third block has its entry, record and settings
@@ -957,10 +958,12 @@ public class BgdaBorrowedSpellsTests
         Assert.That(entangle.Skip(data3 + FeatPatch.InsectSwarmsAt).Take(8), Is.EqualTo(new byte[] { 0, 1, 2, 3, 4, 5, 0, 0 }));
         Assert.That(BitConverter.ToUInt32(entangle, 0x0011B758 - VaToFile), Is.EqualTo(0x0100F809u), "the poison's bite the game's");
 
-        // the InsectPlagueSpell vtable copy: the game's (0x0031B530) but for its destructor (+0x0C) and update (+0x24); the game's draw
+        // the InsectPlagueSpell vtable copy, all 0xA0 bytes of it (a swarm is a creature: the game's walk calls through +0x8C; a copy
+        // of 0x80 crashed the first test): the game's (0x0031B530) but for its destructor (+0x0C) and update (+0x24); the game's draw
         const int gameSwarm = 0x0031B530 - VaToFile;
         var copy = FeatPatch.VTables.Single(v => v.GameVa == 0x0031B530).Va - VaToFile;
-        for (var at = 0; at < 0x80; at += 4)
+        Assert.That(FeatPatch.VTables.Single(v => v.GameVa == 0x0031B530 + 0x80).Va - VaToFile, Is.EqualTo(copy + 0x80), "its second piece follows");
+        for (var at = 0; at < 0xA0; at += 4)
         {
             var word = BitConverter.ToUInt32(bytes, copy + at);
             if (at is 0x0C or 0x24)
@@ -971,7 +974,7 @@ public class BgdaBorrowedSpellsTests
             else Assert.That(word, Is.EqualTo(BitConverter.ToUInt32(_stockBytes, gameSwarm + at)), $"+0x{at:X2}");
         }
 
-        Assert.That(bytes.AsSpan(gameSwarm, 0x80).SequenceEqual(_stockBytes.AsSpan(gameSwarm, 0x80)), Is.True, "the game's vtable is never written");
+        Assert.That(bytes.AsSpan(gameSwarm, 0xA0).SequenceEqual(_stockBytes.AsSpan(gameSwarm, 0xA0)), Is.True, "the game's vtable is never written");
 
         // the cast table: type 37 is Insect Plague's case, in the pool
         var cast = BitConverter.ToUInt32(bytes, FeatPatch.CastTableVa - VaToFile + 4 * 36);
