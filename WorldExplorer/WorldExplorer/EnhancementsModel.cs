@@ -2,15 +2,16 @@
 // NEW FILE: WorldExplorer/WorldExplorer/EnhancementsModel.cs
 //
 // The Enhancements tab of Executable Tuning (Views/EnhancementsView.xaml): additions to the game that
-// work with or without three players, each turned on or off by itself. Five spells borrowed from the
+// work with or without three players, each turned on or off by itself. Six spells borrowed from the
 // game's monsters, the game's own unused vines and three feats the game has but never offers
 // (BgdaExecutable.BorrowedSpells.cs), one card each: Xantam's Fire, Sorcerer's Blood and Xantam's Orbs for
-// Adrianna; Power Attack, Blade Barrier, Antimagic Field and Righteous Might for Kromlech; Inferno Arrow and
-// Entangle for Vahn. Each card has its tick box, price, mana (not Power Attack's: its record's, on the Feats &
-// Spells tab) and values by rank (Xantam's Orbs: three, the number of orbs with the least and most damage of
-// each; Inferno Arrow: seven, the arrow's damage, the blast's reach, the flames' spread and time, and their
-// damage; Entangle: five, the number of vines with the least and most damage of each thorn, how much slower a
-// wrapped monster walks and how long a vine holds it); Sorcerer's Blood, a passive,
+// Adrianna; Power Attack, Blade Barrier, Antimagic Field and Righteous Might for Kromlech; Inferno Arrow,
+// Entangle and Insect Plague for Vahn. Each card has its tick box, price, mana (not Power Attack's: its record's,
+// on the Feats & Spells tab) and values by rank (Xantam's Orbs: three, the number of orbs with the least and most
+// damage of each; Inferno Arrow: seven, the arrow's damage, the blast's reach, the flames' spread and time, and
+// their damage; Entangle: five, the number of vines with the least and most damage of each thorn, how much slower
+// a wrapped monster walks and how long a vine holds it; Insect Plague: four, the number of swarms with the least
+// and most damage of each sting, and how long a swarm lasts); Sorcerer's Blood, a passive,
 // has the number of ranks its entry offers instead of mana and values. The names they need in GTEXT.LMP
 // (the Items tab's copy, so one save writes both tabs' texts) and their icons in ICONS.LMP are shared
 // (Power Attack's, Sorcerer's Blood's and Inferno Arrow's names, and Power Attack's icon, are the game's own).
@@ -31,7 +32,7 @@ using WorldExplorer.Infrastructure;
 
 namespace WorldExplorer;
 
-/// <summary>A further box of a rank's row (Inferno Arrow's blast, flames and burns; Entangle's slow and time): what goes before and after it, and its text.</summary>
+/// <summary>A further box of a rank's row (Inferno Arrow's blast, flames and burns; Entangle's slow and time; Insect Plague's time): what goes before and after it, and its text.</summary>
 public sealed class SpellValueBox : ObservableObject
 {
     private readonly Action _edited;
@@ -80,7 +81,7 @@ public sealed class SpellValueBox : ObservableObject
     }
 }
 
-/// <summary>One rank's boxes on a spell's card: one value, two, or three (Xantam's Orbs, Entangle: how many, then least and most damage), and any further ones (Inferno Arrow's, Entangle's).</summary>
+/// <summary>One rank's boxes on a spell's card: one value, two, or three (Xantam's Orbs, Entangle, Insect Plague: how many, then least and most damage), and any further ones (Inferno Arrow's, Entangle's, Insect Plague's).</summary>
 public sealed class SpellRankRow : ObservableObject
 {
     private readonly Action _edited;
@@ -96,7 +97,7 @@ public sealed class SpellRankRow : ObservableObject
             .ToList();
     }
 
-    /// <summary>The further boxes, after the others (Inferno Arrow's: the blast's reach, the flames' spread and time, their damage; Entangle's: the slow and the time).</summary>
+    /// <summary>The further boxes, after the others (Inferno Arrow's: the blast's reach, the flames' spread and time, their damage; Entangle's: the slow and the time; Insect Plague's: the time).</summary>
     public IReadOnlyList<SpellValueBox> More { get; }
 
     public bool HasMore => More.Count > 0;
@@ -107,7 +108,7 @@ public sealed class SpellRankRow : ObservableObject
 
     public bool HasSecond => _card.Info.HasSecond;
 
-    /// <summary>The row has a third box, before the others (Xantam's Orbs: how many orbs; Entangle: how many vines).</summary>
+    /// <summary>The row has a third box, before the others (Xantam's Orbs: how many orbs; Entangle: how many vines; Insect Plague: how many swarms).</summary>
     public bool HasThird => _card.Info.HasThird;
 
     /// <summary>The card's marks around the boxes ("+10 % − 10 %", "6 s", "4 – 8") and their tooltips.</summary>
@@ -239,6 +240,14 @@ public sealed class SpellCard : ObservableObject
             "block; resistances count, and his kills give him the experience). The vine falls away when its monster dies. Never " +
             "a player. Fewer monsters near him, fewer vines. The cast sounds like Melf's Acid Arrow's; its HUD shows a thorn's " +
             "damage.",
+        BorrowedSpell.InsectPlague =>
+            "The kobold shaman's insect swarm: the rank's number of swarms (one at rank 1, five at rank 5) gather in front of him " +
+            "for half a second, each towards a different monster within 240 of him, the nearest first, then fly to it and follow " +
+            "it. Every second a swarm is on its monster it stings it for the rank's damage from him (piercing, which a shield " +
+            "can't block; resistances count, and his kills give him the experience) and poisons it with the game's own poison " +
+            "(5 seconds; 1 for a monster that resists poison, none for one immune to it), whose bites count as his too. When its " +
+            "monster dies, a swarm moves on to the nearest other monster within 240 of it, until its time is up. Never a player. " +
+            "The cast crackles like an electric shock; its HUD shows a sting's damage.",
         _ =>
             "Ilivarra's might: for 10 seconds he grows to 1.3 times his size in a green glow, his melee hits do the rank's " +
             "percentage more damage and physical hits on him the rank's percentage less (spells do their full damage). Casting it " +
@@ -260,6 +269,8 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.Entangle =>
             "Vines, and the damage of each thorn (least to most, once a second), how much slower a wrapped monster walks and how " +
             "long a vine holds it, by rank",
+        BorrowedSpell.InsectPlague =>
+            "Swarms, and the damage of each sting (least to most, once a second), and how long a swarm lasts, by rank",
         _ => "Percentage more melee damage and less physical damage taken, by rank"
     };
 
@@ -282,6 +293,8 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.RighteousMight => "How much more damage his melee hits do: 0 to 200 percent.",
         BorrowedSpell.XantamOrbs => "The least damage of each orb: 0 to 255.",
         BorrowedSpell.Entangle => "The least damage of each thorn (a thorn a second while a vine holds its monster): 0 to 255.",
+        BorrowedSpell.InsectPlague =>
+            "The least damage of each sting (a sting a second while a swarm is on its monster; the poison does more): 0 to 255.",
         _ => "The least damage: 0 to 255."
     };
 
@@ -290,25 +303,45 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.RighteousMight => "How much less damage physical hits on him do: 0 to 90 percent.",
         BorrowedSpell.XantamOrbs => "The most damage of each orb: 0 to 255.",
         BorrowedSpell.Entangle => "The most damage of each thorn: 0 to 255.",
+        BorrowedSpell.InsectPlague => "The most damage of each sting: 0 to 255.",
         _ => "The most damage: 0 to 255."
     };
 
     /// <summary>After the third box ("[3] ×  [8] – [12]": three orbs of 8 to 12) and its tooltip.</summary>
     public string ThirdSuffix => Info.HasThird ? "×" : "";
 
-    public string ThirdTip => !Info.HasThird ? "" :
-        Spell == BorrowedSpell.Entangle
-            ? $"How many vines crawl out, each to a different monster within 240 of him: {Info.ThirdMin} to {Info.ThirdMax}."
-            : $"How many orbs she hurls: {Info.ThirdMin} to {Info.ThirdMax}.";
+    public string ThirdTip => !Info.HasThird ? "" : Spell switch
+    {
+        BorrowedSpell.Entangle =>
+            $"How many vines crawl out, each to a different monster within 240 of him: {Info.ThirdMin} to {Info.ThirdMax}.",
+        BorrowedSpell.InsectPlague =>
+            $"How many swarms gather, each to a different monster within 240 of him: {Info.ThirdMin} to {Info.ThirdMax}.",
+        _ => $"How many orbs she hurls: {Info.ThirdMin} to {Info.ThirdMax}."
+    };
 
-    /// <summary>What goes before and after a further box ("blast [72]", "for [3] s"; "slower [40] %"), and its tooltip (Inferno Arrow's, Entangle's).</summary>
-    public string MorePrefix(int k) => Spell == BorrowedSpell.Entangle
-        ? (k == 0 ? "slower" : "for")
-        : k switch { 0 => "blast", 1 => "flames", 2 => "for", 3 => "burning", _ => "–" };
+    /// <summary>What goes before and after a further box ("blast [72]", "for [3] s"; "slower [40] %"), and its tooltip (Inferno Arrow's, Entangle's, Insect Plague's).</summary>
+    public string MorePrefix(int k) => Spell switch
+    {
+        BorrowedSpell.Entangle => k == 0 ? "slower" : "for",
+        BorrowedSpell.InsectPlague => "for",
+        _ => k switch { 0 => "blast", 1 => "flames", 2 => "for", 3 => "burning", _ => "–" }
+    };
 
-    public string MoreSuffix(int k) => Spell == BorrowedSpell.Entangle ? (k == 0 ? "%" : "s") : k == 2 ? "s" : "";
+    public string MoreSuffix(int k) => Spell switch
+    {
+        BorrowedSpell.Entangle => k == 0 ? "%" : "s",
+        BorrowedSpell.InsectPlague => "s",
+        _ => k == 2 ? "s" : ""
+    };
 
-    public string MoreTip(int k) => Spell == BorrowedSpell.Entangle ? EntangleTip(k) : InfernoTip(k);
+    public string MoreTip(int k) => Spell switch
+    {
+        BorrowedSpell.Entangle => EntangleTip(k),
+        BorrowedSpell.InsectPlague =>
+            "How long a swarm lasts, from the cast: 0.1 to 25.5 seconds (a tenth at a time; the shaman's: 10). Its first half " +
+            "second it gathers; then a sting every second it is on its monster.",
+        _ => InfernoTip(k)
+    };
 
     private static string EntangleTip(int k) => k == 0
         ? "How much slower a wrapped monster walks: an even percentage from 2 to 98 (the game counts in fiftieths; its own " +
@@ -353,6 +386,15 @@ public sealed class SpellCard : ObservableObject
                                           string.Join(", ", d.First.Select((f, r) => $"{f}-{d.Second[r]}")) + ", " +
                                           string.Join(", ", d.MoreValues[0]) + " percent slower for " +
                                           string.Join(", ", d.MoreValues[1].Select(t => NumberText.Format(t / 10.0))) + " seconds",
+                BorrowedSpell.InsectPlague => string.Join(", ", d.ThirdValues) + " swarms, stings of " +
+                                              (d.First.Distinct().Count() == 1 && d.Second.Distinct().Count() == 1
+                                                  ? $"{d.First[0]}-{d.Second[0]}"
+                                                  : string.Join(", ", d.First.Select((f, r) => $"{f}-{d.Second[r]}"))) +
+                                              " for " +
+                                              (d.MoreValues[0].Distinct().Count() == 1
+                                                  ? NumberText.Format(d.MoreValues[0][0] / 10.0)
+                                                  : string.Join(", ", d.MoreValues[0].Select(t => NumberText.Format(t / 10.0)))) +
+                                              " seconds",
                 _ => string.Join(", ", d.First.Select((f, r) => $"{f}-{d.Second[r]}"))
             };
             return $"Price {d.Price}, {NumberText.Format(d.Mana)} mana, and {values}: what featpatch.py writes.";
@@ -626,7 +668,7 @@ public sealed class EnhancementsModel : ObservableObject
         foreach (var card in Spells) card.On = true;
     }
 
-    /// <summary>The nine spells' cards in the library's order (Card() indexes it): Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle. The tab shows Groups.</summary>
+    /// <summary>The ten spells' cards in the library's order (Card() indexes it): Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague. The tab shows Groups.</summary>
     public IReadOnlyList<SpellCard> Spells { get; }
 
     public SpellCard Card(BorrowedSpell spell) => Spells[(int)spell];
@@ -841,7 +883,7 @@ public sealed class EnhancementsModel : ObservableObject
             var used = WillBeIn.Count > 0 ? BgdaExecutable.BorrowedSpellsBytes : 0;
             return $"New feats go into game code that nothing ever runs: {BgdaExecutable.FeatPoolStretches} stretches, " +
                    $"{BgdaExecutable.FeatPoolBytes:N0} bytes, the same in the stock executable and every three-player build. " +
-                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all nine); " : "") +
+                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all ten); " : "") +
                    $"{BgdaExecutable.FeatPoolBytes - used:N0} bytes are free for more.";
         }
     }

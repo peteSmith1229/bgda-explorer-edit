@@ -40,7 +40,7 @@
             <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
         </Style>
 
-        <!-- a further box of a rank's row (Inferno Arrow's, Entangle's): "blast [72]", "for [3] s", "slower [40] %" -->
+        <!-- a further box of a rank's row (Inferno Arrow's, Entangle's, Insect Plague's): "blast [72]", "for [3] s", "slower [40] %" -->
         <DataTemplate DataType="{x:Type local:SpellValueBox}">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Style="{StaticResource Mark}" Margin="10,0,4,0" Text="{Binding Prefix}" />
@@ -156,7 +156,7 @@
 
             <TextBlock Text="NEW FEATS: SPELLS BORROWED FROM THE GAME'S MONSTERS, AND THE GAME'S OWN CUT FEATS" Style="{StaticResource Heading}" Margin="0,8,0,6" />
             <TextBlock Style="{StaticResource Help}" Text="{Binding StateText}" />
-            <TextBlock Style="{StaticResource Help}" Text="Each is a feat on its hero's level-up screen. Five are spells borrowed from the game's monsters, and Entangle is the game's own vines, which nothing in it casts; Power Attack, Sorcerer's Blood and Inferno Arrow are the game's own feats, which it never offers. The spells, Power Attack and Inferno Arrow have 5 ranks, cost mana like the game's own spells, and the HUD shows their icons and their numbers for the rank. Sorcerer's Blood is passive: it adds to Adrianna's mana as she gains levels." />
+            <TextBlock Style="{StaticResource Help}" Text="Each is a feat on its hero's level-up screen. Six are spells borrowed from the game's monsters, and Entangle is the game's own vines, which nothing in it casts; Power Attack, Sorcerer's Blood and Inferno Arrow are the game's own feats, which it never offers. The spells, Power Attack and Inferno Arrow have 5 ranks, cost mana like the game's own spells, and the HUD shows their icons and their numbers for the rank. Sorcerer's Blood is passive: it adds to Adrianna's mana as she gains levels." />
             <WrapPanel Margin="0,2,0,2">
                 <Button Content="Enable all" Click="EnableAll_Click" IsEnabled="{Binding Usable}" Margin="0,0,12,4"
                         ToolTip="Ticks every spell's box. Each keeps the settings shown on its card (unticked cards show the tested settings)." />
