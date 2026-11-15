@@ -89,7 +89,7 @@ Alliance II files are read with the Dark Alliance formats for now.
   (in all five languages) go in `GTEXT.LMP` and the item card's acid drop in `INVENTRY.LMP`, each saved after the
   executable. "Take Corrosive out" takes all three out again, and the acid glow is one click away.
 - **Add enhancements** on Executable Tuning's Enhancements tab: additions to the game that work with or without
-  three players, each turned on or off by itself. Six spells borrowed from the game's monsters, the game's own
+  three players, each turned on or off by itself. Seven spells borrowed from the game's monsters, the game's own
   unused vines and three feats the game has but never offers, each a feat on its hero's level-up screen (5 ranks;
   price, mana and the values of each rank can be set; Sorcerer's Blood has a price and 1 to 5 ranks). The tab
   groups them by hero (Adrianna's, Kromlech's, Vahn's, each in alphabetical order); each card shows its tick box and
@@ -124,13 +124,19 @@ Alliance II files are read with the Dark Alliance formats for now.
     nearest one no swarm is on first, and follows it. Every second a swarm is on its monster it stings it (piercing
     damage a shield can't block; his kills give him the experience) and poisons it with the game's own poison,
     whose bites count as his too. When its monster dies, the swarm moves on to the nearest other monster until its
-    time is up. Each rank's swarms, sting damage and time can be set. It never touches a player.
+    time is up. Each rank's swarms, sting damage and time can be set. It never touches a player;
+  - Poison Gas Arrow for Vahn: the monsters' poison gas (the kobold shamans', the lizardmen's, the zombies'), on an
+    arrow shot from his bow. The arrow trails a thin wisp of dark green gas and sounds like Melf's Acid Arrow; where
+    it strikes, the game's own cloud of poison gas bursts, and once a second every monster in it is hurt (his kills
+    give him the experience) and poisoned with the game's own poison, whose bites count as his too. Each rank's
+    arrow damage, cloud reach, time and gas damage can be set. Unlike the monsters' clouds, it never touches a
+    player.
 
   They go into game code nothing ever runs (about 32 KB of it, the same in the stock executable and every
   three-player build, so three players can still be turned on or off), the borrowed spells' names and
   descriptions (in all five languages) into `GTEXT.LMP` and their HUD icons into `ICONS.LMP`, each saved after
   the executable. Unticking one puts the game's own code back exactly. A file with an earlier test version
-  (Kromlech's spells, Power Attack, Sorcerer's Blood, either Xantam's Orbs, Inferno Arrow, Entangle) is brought
+  (Kromlech's spells, Power Attack, Sorcerer's Blood, either Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague) is brought
   up to date when it is saved, every spell keeping its settings.
 - **Pick colours** by clicking a colour box: a glow style's halo or core on the Glow tab, or a player's automap
   marker on the Three Players tab. Drag in the square and the hue bar, type red, green and blue or a `#RRGGBB`
