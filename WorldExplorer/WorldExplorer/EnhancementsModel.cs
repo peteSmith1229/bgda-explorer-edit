@@ -2,18 +2,19 @@
 // NEW FILE: WorldExplorer/WorldExplorer/EnhancementsModel.cs
 //
 // The Enhancements tab of Executable Tuning (Views/EnhancementsView.xaml): additions to the game that
-// work with or without three players, each turned on or off by itself. Seven spells borrowed from the
+// work with or without three players, each turned on or off by itself. Eight spells borrowed from the
 // game's monsters, the game's own unused vines and three feats the game has but never offers
-// (BgdaExecutable.BorrowedSpells.cs), one card each: Xantam's Fire, Sorcerer's Blood and Xantam's Orbs for
-// Adrianna; Power Attack, Blade Barrier, Antimagic Field and Righteous Might for Kromlech; Inferno Arrow,
-// Entangle, Insect Plague and Poison Gas Arrow for Vahn. Each card has its tick box, price, mana (not Power
-// Attack's: its record's, on the Feats & Spells tab) and values by rank (Xantam's Orbs: three, the number of orbs
-// with the least and most damage of each; Inferno Arrow: seven, the arrow's damage, the blast's reach, the flames'
-// spread and time, and their damage; Entangle: five, the number of vines with the least and most damage of each
-// thorn, how much slower a wrapped monster walks and how long a vine holds it; Insect Plague: four, the number of
-// swarms with the least and most damage of each sting, and how long a swarm lasts; Poison Gas Arrow: six, the
-// arrow's damage, the cloud's reach and time, and the damage of its hits); Sorcerer's Blood, a passive,
-// has the number of ranks its entry offers instead of mana and values. The names they need in GTEXT.LMP
+// (BgdaExecutable.BorrowedSpells.cs), one card each: Xantam's Fire, Sorcerer's Blood, Xantam's Orbs and
+// Dimension Door for Adrianna; Power Attack, Blade Barrier, Antimagic Field and Righteous Might for Kromlech;
+// Inferno Arrow, Entangle, Insect Plague and Poison Gas Arrow for Vahn. Each card has its tick box, price, mana
+// (not Power Attack's: its record's, on the Feats & Spells tab) and values by rank (Xantam's Orbs: three, the
+// number of orbs with the least and most damage of each; Inferno Arrow: seven, the arrow's damage, the blast's
+// reach, the flames' spread and time, and their damage; Entangle: five, the number of vines with the least and most
+// damage of each thorn, how much slower a wrapped monster walks and how long a vine holds it; Insect Plague: four,
+// the number of swarms with the least and most damage of each sting, and how long a swarm lasts; Poison Gas Arrow:
+// six, the arrow's damage, the cloud's reach and time, and the damage of its hits; Dimension Door: one, how far
+// ahead she goes, at each of its 3 ranks); Sorcerer's Blood, a passive, has the number of ranks its entry offers
+// instead of mana and values. The names they need in GTEXT.LMP
 // (the Items tab's copy, so one save writes both tabs' texts) and their icons in ICONS.LMP are shared
 // (Power Attack's, Sorcerer's Blood's and Inferno Arrow's names, and Power Attack's icon, are the game's own).
 // Every box is text so a half-typed value never throws; SettingsProblem says what is wrong. No WPF types,
@@ -183,7 +184,7 @@ public sealed class SpellCard : ObservableObject
         _owner = owner;
         Spell = spell;
         Info = BorrowedSpells.Info(spell);
-        Ranks = Enumerable.Range(1, BorrowedSpellSettings.Ranks).Select(r => new SpellRankRow(r, this, Edited)).ToList();
+        Ranks = Enumerable.Range(1, Info.FixedRanks).Select(r => new SpellRankRow(r, this, Edited)).ToList();
     }
 
     public BorrowedSpell Spell { get; }
@@ -258,6 +259,14 @@ public sealed class SpellCard : ObservableObject
             "own poison (5 seconds; 1 for a monster that resists poison, none for one immune to it), whose bites count as his too. " +
             "Never a player, nor him: the monsters' clouds hurt everyone in them, this one doesn't. The arrow sounds like Melf's " +
             "Acid Arrow; its HUD shows the arrow's damage.",
+        BorrowedSpell.DimensionDoor =>
+            "Ilivarra's teleport: she vanishes in a burst of Ilivarra's purple and gold sparks and reappears the rank's distance " +
+            "ahead, the way she faces, in another burst, with the shimmer of Otiluke's Resilient Sphere. Walls, closed doors and " +
+            "anything too high for her to walk up stop her a little short; a ledge, a pit or the end of the level brings her down " +
+            "nearer, where the floor is no more than a step above her feet or a short drop below; and she never goes past the " +
+            "edge of the screen. With no room that way she stays where she is (the sparks still burst and the mana is spent). " +
+            "Three ranks; " +
+            "its HUD shows the rank's distance (she runs 180 a second; Ilivarra's own step is 300).",
         _ =>
             "Ilivarra's might: for 10 seconds he grows to 1.3 times his size in a green glow, his melee hits do the rank's " +
             "percentage more damage and physical hits on him the rank's percentage less (spells do their full damage). Casting it " +
@@ -284,6 +293,7 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.PoisonGasArrow =>
             "The arrow's damage (least to most), the cloud's reach, how long it lasts and the damage of its hits (least to most, " +
             "once a second), by rank",
+        BorrowedSpell.DimensionDoor => "How far ahead she goes, at each of its 3 ranks",
         _ => "Percentage more melee damage and less physical damage taken, by rank"
     };
 
@@ -292,7 +302,8 @@ public sealed class SpellCard : ObservableObject
 
     public string FirstSuffix => Spell switch
     {
-        BorrowedSpell.AntimagicField => "s", BorrowedSpell.RighteousMight => "%", BorrowedSpell.PowerAttack => "hits", _ => ""
+        BorrowedSpell.AntimagicField => "s", BorrowedSpell.RighteousMight => "%", BorrowedSpell.PowerAttack => "hits",
+        BorrowedSpell.DimensionDoor => "ahead", _ => ""
     };
 
     public string Between => Spell == BorrowedSpell.RighteousMight ? "−" : "–";
@@ -309,6 +320,9 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.InsectPlague =>
             "The least damage of each sting (a sting a second while a swarm is on its monster; the poison does more): 0 to 255.",
         BorrowedSpell.PoisonGasArrow => "The least damage of the arrow itself, to what it hits: 0 to 255.",
+        BorrowedSpell.DimensionDoor =>
+            $"How far ahead she goes: {Info.FirstMin} to {Info.FirstMax} (she runs 180 a second; Ilivarra's step is 300). A wall, a " +
+            "closed door, a ledge or the edge of the screen stops her short.",
         _ => "The least damage: 0 to 255."
     };
 
@@ -399,6 +413,7 @@ public sealed class SpellCard : ObservableObject
             var values = Spell switch
             {
                 BorrowedSpell.AntimagicField => string.Join(", ", d.First) + " seconds",
+                BorrowedSpell.DimensionDoor => string.Join(", ", d.First) + " ahead at its 3 ranks",
                 BorrowedSpell.RighteousMight => string.Join(", ", d.First.Select((f, r) => $"+{f}/−{d.Second[r]}%")),
                 BorrowedSpell.XantamOrbs => string.Join(", ", d.ThirdValues) + " orbs of " +
                                             (d.First.Distinct().Count() == 1 && d.Second.Distinct().Count() == 1
@@ -502,7 +517,7 @@ public sealed class SpellCard : ObservableObject
         }
     }
 
-    /// <summary>The boxes of ranks 1-5.</summary>
+    /// <summary>The boxes of ranks 1-5 (Dimension Door's 1-3).</summary>
     public IReadOnlyList<SpellRankRow> Ranks { get; }
 
     internal void Load(bool on, BorrowedSpellSettings settings)
@@ -587,7 +602,7 @@ public sealed class SpellCard : ObservableObject
             }
         }
 
-        var s = new BorrowedSpellSettings(price, (float)mana, first, second, Third: third,
+        var s = new BorrowedSpellSettings(price, (float)mana, first, second, RankCount: Info.FixedRanks, Third: third,
                                           More: more.Length > 0 ? more.Select(m => (IReadOnlyList<int>)m).ToArray() : null);
         problem = s.Problem(Spell);
         return problem == null ? s : null;
@@ -596,9 +611,9 @@ public sealed class SpellCard : ObservableObject
     /// <summary>What is wrong with the boxes (only while the spell is to be in), or null.</summary>
     public string? SettingsProblem => _on && TrySettings(out var p) == null ? p : null;
 
-    /// <summary>The ranks the level-up screen offers as the boxes say (5, or Sorcerer's Blood's box), or 0 when its box isn't a number.</summary>
+    /// <summary>The ranks the level-up screen offers as the boxes say (5, Dimension Door's 3, or Sorcerer's Blood's box), or 0 when its box isn't a number.</summary>
     private int OfferedRanks =>
-        !Info.Passive ? BorrowedSpellSettings.Ranks
+        !Info.Passive ? Info.FixedRanks
         : NumberText.TryParseInteger(_rankCount, out var n) && n is >= 1 and <= BorrowedSpellSettings.MaxRankCount ? n : 0;
 
     /// <summary>What the ranks cost with the price in the box ("10, 11, 13, 15 and 19 feat points"), or "" when it isn't a price.</summary>
@@ -701,7 +716,7 @@ public sealed class EnhancementsModel : ObservableObject
         foreach (var card in Spells) card.On = true;
     }
 
-    /// <summary>The eleven spells' cards in the library's order (Card() indexes it): Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow. The tab shows Groups.</summary>
+    /// <summary>The twelve spells' cards in the library's order (Card() indexes it): Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door. The tab shows Groups.</summary>
     public IReadOnlyList<SpellCard> Spells { get; }
 
     public SpellCard Card(BorrowedSpell spell) => Spells[(int)spell];
@@ -916,7 +931,7 @@ public sealed class EnhancementsModel : ObservableObject
             var used = WillBeIn.Count > 0 ? BgdaExecutable.BorrowedSpellsBytes : 0;
             return $"New feats go into game code that nothing ever runs: {BgdaExecutable.FeatPoolStretches} stretches, " +
                    $"{BgdaExecutable.FeatPoolBytes:N0} bytes, the same in the stock executable and every three-player build. " +
-                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all eleven); " : "") +
+                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all twelve); " : "") +
                    $"{BgdaExecutable.FeatPoolBytes - used:N0} bytes are free for more.";
         }
     }

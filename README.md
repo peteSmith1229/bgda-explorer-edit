@@ -89,9 +89,10 @@ Alliance II files are read with the Dark Alliance formats for now.
   (in all five languages) go in `GTEXT.LMP` and the item card's acid drop in `INVENTRY.LMP`, each saved after the
   executable. "Take Corrosive out" takes all three out again, and the acid glow is one click away.
 - **Add enhancements** on Executable Tuning's Enhancements tab: additions to the game that work with or without
-  three players, each turned on or off by itself. Seven spells borrowed from the game's monsters, the game's own
-  unused vines and three feats the game has but never offers, each a feat on its hero's level-up screen (5 ranks;
-  price, mana and the values of each rank can be set; Sorcerer's Blood has a price and 1 to 5 ranks). The tab
+  three players, each turned on or off by itself. Eight spells borrowed from the game's monsters, the game's own
+  unused vines and three feats the game has but never offers, each a feat on its hero's level-up screen (5 ranks,
+  Dimension Door 3; price, mana and the values of each rank can be set; Sorcerer's Blood has a price and 1 to 5
+  ranks). The tab
   groups them by hero (Adrianna's, Kromlech's, Vahn's, each in alphabetical order); each card shows its tick box and
   opens to its settings, and Enable all ticks every one at once:
   - Xantam's Fire for Adrianna: the beholder Xantam's fire trails, which burn the monsters in their path;
@@ -108,6 +109,11 @@ Alliance II files are read with the Dark Alliance formats for now.
     set), hurled in a fan 12 degrees apart, the middle of the fan at the nearest monster in front of her
     (straight ahead when there is none); each bursts on the first thing it touches: a monster takes 8-12 damage
     (her kills give her the experience), and barrels, crates, pots and the like break. They never hurt a player;
+  - Dimension Door for Adrianna: Ilivarra's teleport. She vanishes in a burst of Ilivarra's purple and gold sparks
+    and reappears ahead of her, the way she faces, in another burst: 100, 150 or 200 at ranks 1 to 3 (20 to 400 can
+    be set). Walls, closed doors and anything too high to walk up stop her a little short, a ledge, a pit or the
+    end of the level brings her down nearer, and she never goes past the edge of the screen; with no room that way
+    she stays where she is. Its HUD line shows the rank's distance;
   - Inferno Arrow for Vahn: the game's own cut feat ("This feat will enchant an arrow so that it erupts into
     flames on impact."), made to work: an arrow that flies like a Flaming Arrow and bursts where it strikes.
     Every monster within the blast's reach takes up to the arrow's damage (less towards the edge) and catches
@@ -136,8 +142,8 @@ Alliance II files are read with the Dark Alliance formats for now.
   three-player build, so three players can still be turned on or off), the borrowed spells' names and
   descriptions (in all five languages) into `GTEXT.LMP` and their HUD icons into `ICONS.LMP`, each saved after
   the executable. Unticking one puts the game's own code back exactly. A file with an earlier test version
-  (Kromlech's spells, Power Attack, Sorcerer's Blood, either Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague) is brought
-  up to date when it is saved, every spell keeping its settings.
+  (Kromlech's spells, Power Attack, Sorcerer's Blood, either Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison
+  Gas Arrow) is brought up to date when it is saved, every spell keeping its settings.
 - **Pick colours** by clicking a colour box: a glow style's halo or core on the Glow tab, or a player's automap
   marker on the Three Players tab. Drag in the square and the hue bar, type red, green and blue or a `#RRGGBB`
   value, or click a ready-made colour; OK puts the colour in the red, green and blue boxes.

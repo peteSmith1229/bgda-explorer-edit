@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // NEW FILE: WorldExplorer/JetBlackEngineLib/Data/Executable/BgdaExecutable.BorrowedSpells.cs
 //
-// BORROWED SPELLS (the Enhancements tab): seven spells the heroes learn from the game's monsters, the game's own
+// BORROWED SPELLS (the Enhancements tab): eight spells the heroes learn from the game's monsters, the game's own
 // vines that nothing in it casts, and three feats the game has but never offers, each a feat on a hero's level-up
 // screen, each turned on or off by itself:
 //   Xantam's Fire for Adrianna    the beholder Xantam's fire trails, which burn the monsters in their path;
@@ -9,6 +9,9 @@
 //                                 1, up to five at rank 5) in a fan whose middle goes at the nearest monster in
 //                                 front of her, each 8-12 damage to the first monster it touches, or breaking the
 //                                 barrel, crate or pot it touches;
+//   Dimension Door for Adrianna   Ilivarra's teleport: she vanishes in a burst of Ilivarra's purple and gold
+//                                 sparks and reappears the rank's distance ahead (100, 150 or 200 at ranks
+//                                 1-3), stopping short at walls, closed doors, ledges and the edge of the screen;
 //   Sorcerer's Blood for Adrianna the game's own cut feat, passive: each level she gains once she has it gives
 //                                 her 1 more mana a rank ("+1 Mana Point gain per level. This is not
 //                                 retroactive."); 1 rank by default, up to 5;
@@ -34,7 +37,7 @@
 //                                 on an arrow: it bursts into a cloud of the game's own dark green gas where it
 //                                 strikes, and once a second every monster in the cloud is hurt from him and
 //                                 poisoned with the game's own poison; a thin wisp of the gas trails the arrow.
-// It is featpatch.py version 13, written from the data in BgdaFeatPatch.cs (generated from that script), so
+// It is featpatch.py version 14, written from the data in BgdaFeatPatch.cs (generated from that script), so
 // the bytes are the ones tested in the emulator.
 //
 // POWER ATTACK is the game's: its ability record (0x0030E2E0, bit 34, cast type 18, 5 mana), its grant, its
@@ -110,6 +113,19 @@
 // ICONS.LMP as the other borrowed spells'; its HUD line is the game's "Damage: %d-%d" (the arrow's). Its list entry goes
 // after Insect Plague's in his list.
 //
+// DIMENSION DOOR is Ilivarra's teleport (her FUN_001DEDE8 sparkle and FUN_0010CF50 step), given to Adrianna as a spell
+// of 3 ranks (type 39). Its cast case works out where she lands: the rank's distance along the way she faces, cut short
+// at the first of the screen's four edges she would cross (the game's own FUN_00183450 edges round her height, with
+// the game's margins, from where the camera is), then by the game's own sweep of her circle (FUN_00148C20 with her
+// walk's mask: walls, closed doors and steps higher than her walk climbs) 2 short of what would stop her walking, then
+// 8 nearer a try until the floor there (the game's FUN_00147800 round her circle) is at most 12 above her feet and 32
+// below (a ledge, a pit she can't land in, the level's end). With less than 16 of the way left she stays. Ilivarra's
+// sparkle (50 of her purple and gold sparks on the vertices of the hero's body) bursts where she was and where she is,
+// with Otiluke's Resilient Sphere's shimmer, and the game's own grid relink puts her in the cell she has come to. Its
+// list entry, ability record and distances are in a fifth data block, laid out as the third (the distances 20-400 by
+// rank); its name, description and icon go in GTEXT.LMP and ICONS.LMP as the other borrowed spells'; its HUD line is its
+// own ("Distance: %d units"). Its list entry goes after Xantam's Orbs in her list.
+//
 // XANTAM'S ORBS are Xantam's DodgeBalls (his third attack; vtable 0x0031C3C8, built by the game's own constructor
 // FUN_001E8320), flying and bursting as his do, but with a vtable copy whose touch hurts monsters and breakable
 // things only (barrels, crates, pots, baskets and pallets: flag 8, which the game's hit function breaks), once an
@@ -123,13 +139,14 @@
 // WHERE IT GOES. The pool: 61 stretches of the game's own code that nothing ever runs (unused library
 // functions and leftover routines, 32,724 bytes; see featpool.py). They are the same addresses and bytes
 // in the stock executable and in every three-player build, the game's own segment loads them, and no
-// other patch WorldExplorer knows writes there. The patch takes 16,788 bytes of it: its data block at
-// 0x00221B88 (every earlier version's was at 0x00132D90), its second block at 0x00224B68 (the icons of types 32-38
+// other patch WorldExplorer knows writes there. The patch takes 18,056 bytes of it: its data block at
+// 0x00221B88 (every earlier version's was at 0x00132D90), its second block at 0x00224B68 (the icons of types 32-39
 // and Entangle's settings, since version 11), its third at 0x0020B890 (Insect Plague's list entry, ability record
-// and settings, since version 12), its fourth at 0x0020BA70 (Poison Gas Arrow's, since version 13), its code in
-// twenty-seven pieces, its vtable copies (the swarm's a creature's whole 0xA0 bytes) and its cast table (37 types).
-// The code is the same whichever spells are on; only the hooks of the spells that are on are written (29 words when
-// all eleven are), and the data block says which ones are. Nothing else changes: no program header, no start-up copy,
+// and settings, since version 12), its fourth at 0x0020BA70 (Poison Gas Arrow's, since version 13), its fifth at
+// 0x0020BB90 (Dimension Door's, since version 14), its code in twenty-seven pieces, its vtable copies (the swarm's a
+// creature's whole 0xA0 bytes) and its cast table (39 types). The code is the same whichever spells are on; only
+// the hooks of the spells that are on are written (29 words when all twelve are), and the data block says which
+// ones are. Nothing else changes: no program header, no start-up copy,
 // the same file length.
 //
 // SO IT NEEDS NO THREE-PLAYER BUILD, and the Three Players tab can turn three players on or off
@@ -139,8 +156,9 @@
 // as well: Righteous Might and Power Attack hook the instruction before the melee hit's call, which
 // Corrosive changes.
 //
-// STATES. Off: the hooks and the pool are the game's. On: version 13 is in, with the spells its data
-// block names. Outdated: version 12 (insect-plague-test2: all ten, Insect Plague the newest), version 11
+// STATES. Off: the hooks and the pool are the game's. On: version 14 is in, with the spells its data
+// block names. Outdated: version 13 (poison-gas-arrow-test1: all eleven, Poison Gas Arrow the newest), version 12
+// (insect-plague-test2: all ten, Insect Plague the newest), version 11
 // (entangle-test1: all nine, Entangle the newest), version 10
 // (inferno-arrow-test1: all eight, Inferno Arrow the newest), version 9
 // (xantam-orbs-test2: all seven, the orbs in a fan), version 8
@@ -148,7 +166,7 @@
 // six without Xantam's Orbs), version 6 (power-attack-test1: the five without Sorcerer's Blood either),
 // version 5 (kromlech-spells-test1: the four borrowed spells of then), or Xantam's Fire alone as the fourth or
 // third test version (test4: in the pool; test3: a 12 KB spell area copied into low memory at start-up);
-// saving takes it out and puts version 13 in, every spell it had with its settings. Unrecognized: anything
+// saving takes it out and puts version 14 in, every spell it had with its settings. Unrecognized: anything
 // else (earlier test versions, or another patch in those places).
 //
 // SETTINGS (the data block; the code reads them while the game runs): each spell's level-up price
@@ -167,7 +185,8 @@
 // of a second). Insect Plague has four: a sting's least and most damage, the number of swarms (1-10) and how long
 // a swarm lasts (tenths of a second); its settings are in the third block. Poison Gas Arrow has six: the arrow's least
 // and most damage, the cloud's reach (10-255, measured to a monster's edge), how long it lasts (tenths of a second) and
-// the least and most damage of its hits (once a second); its settings are in the fourth block.
+// the least and most damage of its hits (once a second); its settings are in the fourth block. Dimension Door has 3
+// ranks (its entry offers no more), each with how far ahead she goes (20-400); its settings are in the fifth block.
 //
 // THE GAME'S FILES. GTEXT.LMP needs each borrowed spell's name and description (and two HUD lines;
 // BorrowedSpellTexts, in the five languages), or the level-up screen and the HUD show NF:<name>_name.
@@ -200,16 +219,17 @@ public enum BorrowedSpell
     InfernoArrow,
     Entangle,
     InsectPlague,
-    PoisonGasArrow
+    PoisonGasArrow,
+    DimensionDoor
 }
 
 public enum BorrowedSpellsState
 {
     /// <summary>The game's code and the free pool: the spells can be put in.</summary>
     Off,
-    /// <summary>Version 13 is in: which spells, and their settings, can be read and changed.</summary>
+    /// <summary>Version 14 is in: which spells, and their settings, can be read and changed.</summary>
     On,
-    /// <summary>Version 12 (all ten, Insect Plague the newest), 11 (all nine, Entangle the newest), 10 (all eight, Inferno Arrow the newest), 9 (all seven, the orbs in a fan), 8 (all seven, the orbs aimed with a random scatter), 7 (the six without Xantam's Orbs), 6 (the five without Sorcerer's Blood either) or 5 (the four borrowed spells of then), or Xantam's Fire alone as the fourth or third test version: saving brings it to version 13.</summary>
+    /// <summary>Version 13 (all eleven, Poison Gas Arrow the newest), 12 (all ten, Insect Plague the newest), 11 (all nine, Entangle the newest), 10 (all eight, Inferno Arrow the newest), 9 (all seven, the orbs in a fan), 8 (all seven, the orbs aimed with a random scatter), 7 (the six without Xantam's Orbs), 6 (the five without Sorcerer's Blood either) or 5 (the four borrowed spells of then), or Xantam's Fire alone as the fourth or third test version: saving brings it to version 14.</summary>
     Outdated,
     /// <summary>Neither: an earlier test version, or another patch where it goes.</summary>
     Unrecognized
@@ -224,13 +244,15 @@ public enum BorrowedSpellsState
 /// <paramref name="GameRecord"/>: the game's own ability record and texts (Inferno Arrow), though the patch sets its mana and
 /// brings its icon. <paramref name="MoreValues"/>: further values by rank (Inferno Arrow's blast, flames and burns;
 /// Entangle's slow and time; Insect Plague's time; Poison Gas Arrow's cloud: its reach, time and damage).
+/// <paramref name="FixedRanks"/>: the ranks its list entry offers when that isn't a setting (5; Dimension Door 3), and so
+/// how many of each value by rank it has.
 /// </summary>
 public sealed record BorrowedSpellInfo(
     BorrowedSpell Spell, string Title, string Hero, string After, int Bit, int CastType,
     string Values, string FirstName, int FirstMin, int FirstMax, string? SecondName, int SecondMin, int SecondMax,
     bool Range, BorrowedSpellSettings Default, bool GameFeat = false, bool Passive = false,
     string? ThirdName = null, int ThirdMin = 0, int ThirdMax = 0, bool GameRecord = false,
-    IReadOnlyList<BorrowedSpellValue>? MoreValues = null)
+    IReadOnlyList<BorrowedSpellValue>? MoreValues = null, int FixedRanks = BorrowedSpellSettings.Ranks)
 {
     /// <summary>The spell has two values by rank (damage least and most, or more and less).</summary>
     public bool HasSecond => SecondName != null;
@@ -276,8 +298,10 @@ public sealed record BorrowedSpellValue(string Name, int Min, int Max, bool Tent
 /// (<see cref="Second"/>) damage, how many swarms (<see cref="Third"/>) and one more (<see cref="More"/>: how long a swarm
 /// lasts in tenths of a second); Poison Gas Arrow the arrow's least (<see cref="First"/>) and most (<see cref="Second"/>)
 /// damage and four more (<see cref="More"/>: the cloud's reach, how long it lasts in tenths of a second, the least and most
-/// damage of its hits); Sorcerer's Blood none (all empty). <see cref="RankCount"/>: the ranks its list entry offers,
-/// 5 for every spell but Sorcerer's Blood, whose setting it is (1-5; each rank adds 1 mana a level). <see cref="Third"/> is
+/// damage of its hits); Dimension Door how far ahead she goes (<see cref="First"/>; <see cref="Second"/> empty) at its 3
+/// ranks; Sorcerer's Blood none (all empty). <see cref="RankCount"/>: the ranks its list entry offers, 5 for every spell
+/// but Sorcerer's Blood, whose setting it is (1-5; each rank adds 1 mana a level), and Dimension Door (3: its values are
+/// by those 3 ranks). <see cref="Third"/> is
 /// null (none) for every spell but Xantam's Orbs, Entangle and Insect Plague, <see cref="More"/> for every one but Inferno
 /// Arrow, Entangle, Insect Plague and Poison Gas Arrow.
 /// </summary>
@@ -319,11 +343,12 @@ public sealed record BorrowedSpellSettings(int Price, float Mana, IReadOnlyList<
             return null;
         }
 
-        if (RankCount != Ranks) return $"{info.Title}: its level-up entry offers {Ranks} ranks.";
-        if (First is null || First.Count != Ranks || Second is null || Second.Count != (info.HasSecond ? Ranks : 0) ||
-            ThirdValues.Count != (info.HasThird ? Ranks : 0))
-            return $"{info.Title}: {info.Values} is given for each of the {Ranks} ranks.";
-        for (var r = 0; r < Ranks; r++)
+        var ranks = info.FixedRanks;
+        if (RankCount != ranks) return $"{info.Title}: its level-up entry offers {ranks} ranks.";
+        if (First is null || First.Count != ranks || Second is null || Second.Count != (info.HasSecond ? ranks : 0) ||
+            ThirdValues.Count != (info.HasThird ? ranks : 0))
+            return $"{info.Title}: {info.Values} is given for each of the {ranks} ranks.";
+        for (var r = 0; r < ranks; r++)
         {
             if (First[r] < info.FirstMin || First[r] > info.FirstMax)
                 return $"{info.Title}, rank {r + 1}: {info.FirstName} is {info.FirstMin} to {info.FirstMax}.";
@@ -335,9 +360,9 @@ public sealed record BorrowedSpellSettings(int Price, float Mana, IReadOnlyList<
                 return $"{info.Title}, rank {r + 1}: {info.ThirdName} is {info.ThirdMin} to {info.ThirdMax}.";
         }
 
-        if (MoreValues.Count != info.More.Count || MoreValues.Any(v => v is null || v.Count != Ranks))
-            return $"{info.Title}: {info.Values} is given for each of the {Ranks} ranks.";
-        for (var r = 0; r < Ranks; r++)
+        if (MoreValues.Count != info.More.Count || MoreValues.Any(v => v is null || v.Count != ranks))
+            return $"{info.Title}: {info.Values} is given for each of the {ranks} ranks.";
+        for (var r = 0; r < ranks; r++)
         {
             for (var k = 0; k < info.More.Count; k++)
             {
@@ -363,7 +388,7 @@ public sealed record BorrowedSpellSettings(int Price, float Mana, IReadOnlyList<
         HashCode.Combine(Price, Mana, First.Count, Second.Count, RankCount, ThirdValues.Count, MoreValues.Count);
 }
 
-/// <summary>The eleven spells: what each is, its defaults (what featpatch.py writes) and the test files' settings.</summary>
+/// <summary>The twelve spells: what each is, its defaults (what featpatch.py writes) and the test files' settings.</summary>
 public static class BorrowedSpells
 {
     /// <summary>Every spell, in the order of <see cref="BorrowedSpell"/> (the data block's).</summary>
@@ -372,7 +397,7 @@ public static class BorrowedSpells
         {
             BorrowedSpell.XantamFire, BorrowedSpell.PowerAttack, BorrowedSpell.BladeBarrier, BorrowedSpell.AntimagicField,
             BorrowedSpell.RighteousMight, BorrowedSpell.SorcerersBlood, BorrowedSpell.XantamOrbs, BorrowedSpell.InfernoArrow,
-            BorrowedSpell.Entangle, BorrowedSpell.InsectPlague, BorrowedSpell.PoisonGasArrow
+            BorrowedSpell.Entangle, BorrowedSpell.InsectPlague, BorrowedSpell.PoisonGasArrow, BorrowedSpell.DimensionDoor
         };
 
     /// <summary>Inferno Arrow's further values by rank, in the order of <see cref="BorrowedSpellSettings.More"/>.</summary>
@@ -451,7 +476,11 @@ public static class BorrowedSpells
                 {
                     new[] { 40, 45, 50, 55, 60 }, new[] { 40, 45, 50, 55, 60 }, new[] { 2, 2, 3, 3, 4 }, new[] { 3, 4, 4, 5, 6 }
                 }),
-            MoreValues: GasValues)
+            MoreValues: GasValues),
+        new(BorrowedSpell.DimensionDoor, "Dimension Door", "Adrianna", "her own feats, Xantam's Fire, Sorcerer's Blood and Xantam's Orbs",
+            50, 39, "how far she goes", "the distance", FeatPatch.DoorDistanceMin, FeatPatch.DoorDistanceMax, null, 0, 0, false,
+            new BorrowedSpellSettings(12, 10f, new[] { 100, 150, 200 }, Array.Empty<int>(), RankCount: FeatPatch.DoorRanks),
+            FixedRanks: FeatPatch.DoorRanks)
     };
 
     public static BorrowedSpellInfo Info(BorrowedSpell spell) => Infos[(int)spell];
@@ -473,7 +502,7 @@ public static class BorrowedSpells
 /// </summary>
 public static class BorrowedSpellTexts
 {
-    /// <summary>The keys and texts of <paramref name="spell"/> in each language (0 English ... 4 Spanish): what gtext_feats13.py writes (none for Power Attack, Sorcerer's Blood and Inferno Arrow).</summary>
+    /// <summary>The keys and texts of <paramref name="spell"/> in each language (0 English ... 4 Spanish): what gtext_feats14.py writes (none for Power Attack, Sorcerer's Blood and Inferno Arrow).</summary>
     public static IReadOnlyList<(int Language, string Key, string Text)> Of(BorrowedSpell spell)
     {
         var key = BorrowedSpells.Data(spell).Key;
@@ -514,7 +543,7 @@ public static class BorrowedSpellTexts
 /// <summary>
 /// The spells' HUD icons in ICONS.LMP (icon_xantamfire.tex, icon_bladebarrier.tex, icon_antimagicfield.tex,
 /// icon_righteousmight.tex, icon_xantamorbs.tex, icon_infernoarrow.tex, icon_entangle.tex, icon_insectplague.tex,
-/// icon_poisongasarrow.tex). Power Attack's, icon_powerattack.tex, is the game's
+/// icon_poisongasarrow.tex, icon_dimensiondoor.tex). Power Attack's, icon_powerattack.tex, is the game's
 /// own: never added or taken out. Sorcerer's Blood, a passive feat, has no HUD slot and no icon.
 /// </summary>
 public static class BorrowedSpellIcons
@@ -540,6 +569,7 @@ public static class BorrowedSpellIcons
         BorrowedSpell.Entangle => "icon_melfsacidarrow.tex (Melf's Acid Arrow's)",
         BorrowedSpell.InsectPlague => "icon_magicmissile.tex (Magic Missile's)",
         BorrowedSpell.PoisonGasArrow => "icon_melfsacidarrow.tex (Melf's Acid Arrow's)",
+        BorrowedSpell.DimensionDoor => "icon_sphere.tex (Otiluke's Resilient Sphere's)",
         _ => "icon_powerattack.tex (Power Attack's)"
     };
 
@@ -566,7 +596,7 @@ public static class BorrowedSpellIcons
 
     /// <summary>
     /// ICONS.LMP with the icons of <paramref name="spells"/> added where the game finds them (where each name sorts; when the
-    /// directory is full every file first moves on by 0x80): icons_lmp13.py's result, byte for byte. An icon that is in already
+    /// directory is full every file first moves on by 0x80): icons_lmp14.py's result, byte for byte. An icon that is in already
     /// is left as it is, and Power Attack and Sorcerer's Blood bring none (the game's is used; a passive needs none).
     /// </summary>
     public static byte[] AddTo(byte[] icons, IEnumerable<BorrowedSpell> spells)
@@ -603,10 +633,10 @@ public partial class BgdaExecutable
     private static readonly byte[] FeatMark = "FEAT"u8.ToArray();
 
     private static readonly Lazy<(byte[] Pool, (int Va, byte[] Bytes)[] Code, byte[] Data, byte[] V4Code, byte[] Data2, byte[] Data3,
-        byte[] Data4)> FeatPatchData = new(LoadFeatPatchData);
+        byte[] Data4, byte[] Data5)> FeatPatchData = new(LoadFeatPatchData);
 
-    private static (byte[] Pool, (int Va, byte[] Bytes)[] Code, byte[] Data, byte[] V4Code, byte[] Data2, byte[] Data3, byte[] Data4)
-        LoadFeatPatchData()
+    private static (byte[] Pool, (int Va, byte[] Bytes)[] Code, byte[] Data, byte[] V4Code, byte[] Data2, byte[] Data3, byte[] Data4,
+        byte[] Data5) LoadFeatPatchData()
     {
         using var packed = new MemoryStream(Convert.FromBase64String(FeatPatch.PoolOriginalBase64));
         using var unpack = new ZLibStream(packed, CompressionMode.Decompress);
@@ -622,15 +652,18 @@ public partial class BgdaExecutable
         var data2 = Convert.FromBase64String(FeatPatch.Data2CommonBase64);
         var data3 = Convert.FromBase64String(FeatPatch.Data3CommonBase64);
         var data4 = Convert.FromBase64String(FeatPatch.Data4CommonBase64);
+        var data5 = Convert.FromBase64String(FeatPatch.Data5CommonBase64);
         if (data.Length != FeatPatch.DataSize || v4.Length != FeatPatch.V4CodeEndVa - FeatPatch.V4CodeVa ||
             data2.Length != FeatPatch.Data2Size || !data2.AsSpan(0, 4).SequenceEqual(Encoding.ASCII.GetBytes(FeatPatch.Data2Mark)) ||
             BitConverter.ToInt32(data2, 4) != FeatPatch.Version ||
             data3.Length != FeatPatch.Data3Size || !data3.AsSpan(0, 4).SequenceEqual(Encoding.ASCII.GetBytes(FeatPatch.Data3Mark)) ||
             BitConverter.ToInt32(data3, 4) != FeatPatch.Version ||
             data4.Length != FeatPatch.Data4Size || !data4.AsSpan(0, 4).SequenceEqual(Encoding.ASCII.GetBytes(FeatPatch.Data4Mark)) ||
-            BitConverter.ToInt32(data4, 4) != FeatPatch.Version)
+            BitConverter.ToInt32(data4, 4) != FeatPatch.Version ||
+            data5.Length != FeatPatch.Data5Size || !data5.AsSpan(0, 4).SequenceEqual(Encoding.ASCII.GetBytes(FeatPatch.Data5Mark)) ||
+            BitConverter.ToInt32(data5, 4) != FeatPatch.Version)
             throw new InvalidDataException("The built-in feats patch data is damaged.");
-        return (bytes, code, data, v4, data2, data3, data4);
+        return (bytes, code, data, v4, data2, data3, data4, data5);
     }
 
     /// <summary>The end of everything the patch reads or writes in the game's part of the file (a shorter file isn't the game's).</summary>
@@ -638,6 +671,9 @@ public partial class BgdaExecutable
         new[] { FeatPatch.Pool[^1].End, FeatPatch.AbilityTableEndVa + 4, FeatPatch.GameCastTableVa + 4 * FeatPatch.GameCastTypes }
             .Concat(FeatPatch.Checks.Select(c => c.Va + 4))
             .Concat(FeatPatch.Hooks.Select(h => h.Va + 4))
+            .Concat(FeatPatch.V13Hooks.Select(h => h.Va + 4))
+            .Concat(FeatPatch.V13Code.Select(c => c.Va + c.Length))
+            .Concat(FeatPatch.V13VTables.Select(v => v.GameVa + FeatPatch.VTableSize))
             .Concat(FeatPatch.V12Hooks.Select(h => h.Va + 4))
             .Concat(FeatPatch.V12Code.Select(c => c.Va + c.Length))
             .Concat(FeatPatch.V12VTables.Select(v => v.GameVa + FeatPatch.VTableSize))
@@ -693,29 +729,35 @@ public partial class BgdaExecutable
     private bool BytesAre(int va, ReadOnlySpan<byte> bytes) =>
         _data.Length >= FileOffset(va) + bytes.Length && _data.AsSpan(FileOffset(va), bytes.Length).SequenceEqual(bytes);
 
-    /// <summary>The file offset of <paramref name="offset"/> in the data block at <paramref name="dataVa"/> (version 13's, 12's, 11's and 10's, or every earlier version's at <see cref="FeatPatch.LegacyDataVa"/>).</summary>
+    /// <summary>The file offset of <paramref name="offset"/> in the data block at <paramref name="dataVa"/> (version 14's, 13's, 12's, 11's and 10's, or every earlier version's at <see cref="FeatPatch.LegacyDataVa"/>).</summary>
     private int FeatDataAt(int offset, int dataVa = FeatPatch.DataVa) => FileOffset(dataVa) + offset;
 
-    /// <summary>Where a version's data block is: version 13's, 12's, 11's and 10's in the pool's stretch 59, every earlier one's at 0x00132D90.</summary>
+    /// <summary>Where a version's data block is: version 14's, 13's, 12's, 11's and 10's in the pool's stretch 59, every earlier one's at 0x00132D90.</summary>
     private static int DataVaOf(int version) => version >= FeatPatch.V10Version ? FeatPatch.DataVa : FeatPatch.LegacyDataVa;
 
-    /// <summary>The second data block's mark ("FEA2" and the version: 13, or 12 or 11 for <paramref name="version"/> 12 or 11), which version 11 on writes with its data block.</summary>
+    /// <summary>The second data block's mark ("FEA2" and the version: 14, or 13, 12 or 11 for <paramref name="version"/> 13, 12 or 11), which version 11 on writes with its data block.</summary>
     private bool Data2Marked(int version = FeatPatch.Version) =>
         BytesAre(FeatPatch.Data2Va, Encoding.ASCII.GetBytes(FeatPatch.Data2Mark)) &&
         ReadU32(FileOffset(FeatPatch.Data2Va) + 4) == version;
 
-    /// <summary>The third data block's mark ("FEA3" and the version: 13, or 12 for <paramref name="version"/> 12), which version 12 on writes with its data block.</summary>
+    /// <summary>The third data block's mark ("FEA3" and the version: 14, or 13 or 12 for <paramref name="version"/> 13 or 12), which version 12 on writes with its data block.</summary>
     private bool Data3Marked(int version = FeatPatch.Version) =>
         BytesAre(FeatPatch.Data3Va, Encoding.ASCII.GetBytes(FeatPatch.Data3Mark)) &&
         ReadU32(FileOffset(FeatPatch.Data3Va) + 4) == version;
 
-    /// <summary>The fourth data block's mark ("FEA4" and the version, 13), which version 13 writes with its data block.</summary>
-    private bool Data4Marked() =>
+    /// <summary>The fourth data block's mark ("FEA4" and the version: 14, or 13 for <paramref name="version"/> 13), which version 13 on writes with its data block.</summary>
+    private bool Data4Marked(int version = FeatPatch.Version) =>
         BytesAre(FeatPatch.Data4Va, Encoding.ASCII.GetBytes(FeatPatch.Data4Mark)) &&
-        ReadU32(FileOffset(FeatPatch.Data4Va) + 4) == FeatPatch.Version;
+        ReadU32(FileOffset(FeatPatch.Data4Va) + 4) == version;
 
-    /// <summary>The spell's list entry and ability record are in the main data block (every one but Insect Plague, whose are the third block's, and Poison Gas Arrow, whose are the fourth's).</summary>
-    private static bool InMainBlock(BorrowedSpell spell) => spell is not (BorrowedSpell.InsectPlague or BorrowedSpell.PoisonGasArrow);
+    /// <summary>The fifth data block's mark ("FEA5" and the version, 14), which version 14 writes with its data block.</summary>
+    private bool Data5Marked() =>
+        BytesAre(FeatPatch.Data5Va, Encoding.ASCII.GetBytes(FeatPatch.Data5Mark)) &&
+        ReadU32(FileOffset(FeatPatch.Data5Va) + 4) == FeatPatch.Version;
+
+    /// <summary>The spell's list entry and ability record are in the main data block (every one but Insect Plague, whose are the third block's, Poison Gas Arrow, whose are the fourth's, and Dimension Door, whose are the fifth's).</summary>
+    private static bool InMainBlock(BorrowedSpell spell) =>
+        spell is not (BorrowedSpell.InsectPlague or BorrowedSpell.PoisonGasArrow or BorrowedSpell.DimensionDoor);
 
     private bool PoolIsGame() => FeatPatch.Pool.All(s => BytesAre(s.Start, PoolOriginal(s.Start, s.End)));
 
@@ -745,7 +787,7 @@ public partial class BgdaExecutable
         return SpellsOf((int)ReadU32(FeatDataAt(FeatPatch.SpellsAt, at)));
     }
 
-    /// <summary>The spells version 13 says it has (its data block's mask), or null when the file doesn't have version 13's mark.</summary>
+    /// <summary>The spells version 14 says it has (its data block's mask), or null when the file doesn't have version 14's mark.</summary>
     private List<BorrowedSpell>? CurrentSpells() => MarkedSpells(FeatPatch.Version);
 
     /// <summary>
@@ -772,35 +814,52 @@ public partial class BgdaExecutable
         return Convert.ToHexString(sha.GetHashAndReset()).ToLowerInvariant() == sha256 ? spells : null;
     }
 
+    /// <summary>Version 13 (all eleven, Poison Gas Arrow the newest; its second, third and fourth blocks marked 13): see <see cref="EarlierSpells"/>.</summary>
+    private List<BorrowedSpell>? V13Spells() =>
+        Data2Marked(FeatPatch.V13Version) && Data3Marked(FeatPatch.V13Version) && Data4Marked(FeatPatch.V13Version)
+            ? EarlierSpells(FeatPatch.V13Version, new[] { BorrowedSpell.DimensionDoor }, FeatPatch.V13Hooks, FeatPatch.V13Code,
+                            FeatPatch.V13CodeSha256, FeatPatch.V13VTables)
+            : null;
+
     /// <summary>Version 12 (all ten, Insect Plague the newest; its second and third blocks marked 12): see <see cref="EarlierSpells"/>.</summary>
     private List<BorrowedSpell>? V12Spells() =>
         Data2Marked(FeatPatch.V12Version) && Data3Marked(FeatPatch.V12Version)
-            ? EarlierSpells(FeatPatch.V12Version, new[] { BorrowedSpell.PoisonGasArrow }, FeatPatch.V12Hooks, FeatPatch.V12Code,
-                            FeatPatch.V12CodeSha256, FeatPatch.V12VTables)
+            ? EarlierSpells(FeatPatch.V12Version, new[] { BorrowedSpell.PoisonGasArrow, BorrowedSpell.DimensionDoor }, FeatPatch.V12Hooks,
+                            FeatPatch.V12Code, FeatPatch.V12CodeSha256, FeatPatch.V12VTables)
             : null;
 
     /// <summary>Version 11 (all nine, Entangle the newest; its second block marked 11): see <see cref="EarlierSpells"/>.</summary>
     private List<BorrowedSpell>? V11Spells() =>
         Data2Marked(FeatPatch.V11Version)
-            ? EarlierSpells(FeatPatch.V11Version, new[] { BorrowedSpell.InsectPlague, BorrowedSpell.PoisonGasArrow }, FeatPatch.V11Hooks,
-                            FeatPatch.V11Code, FeatPatch.V11CodeSha256, FeatPatch.V11VTables)
+            ? EarlierSpells(FeatPatch.V11Version,
+                            new[] { BorrowedSpell.InsectPlague, BorrowedSpell.PoisonGasArrow, BorrowedSpell.DimensionDoor },
+                            FeatPatch.V11Hooks, FeatPatch.V11Code, FeatPatch.V11CodeSha256, FeatPatch.V11VTables)
             : null;
 
     /// <summary>Version 10 (all eight, Inferno Arrow the newest): see <see cref="EarlierSpells"/>.</summary>
     private List<BorrowedSpell>? V10Spells() =>
-        EarlierSpells(FeatPatch.V10Version, new[] { BorrowedSpell.Entangle, BorrowedSpell.InsectPlague, BorrowedSpell.PoisonGasArrow },
+        EarlierSpells(FeatPatch.V10Version,
+                      new[] { BorrowedSpell.Entangle, BorrowedSpell.InsectPlague, BorrowedSpell.PoisonGasArrow, BorrowedSpell.DimensionDoor },
                       FeatPatch.V10Hooks, FeatPatch.V10Code, FeatPatch.V10CodeSha256, FeatPatch.V10VTables);
 
     /// <summary>Version 9 (all seven, the orbs in a fan): see <see cref="EarlierSpells"/>.</summary>
     private List<BorrowedSpell>? V9Spells() =>
         EarlierSpells(FeatPatch.V9Version,
-                      new[] { BorrowedSpell.InfernoArrow, BorrowedSpell.Entangle, BorrowedSpell.InsectPlague, BorrowedSpell.PoisonGasArrow },
+                      new[]
+                      {
+                          BorrowedSpell.InfernoArrow, BorrowedSpell.Entangle, BorrowedSpell.InsectPlague, BorrowedSpell.PoisonGasArrow,
+                          BorrowedSpell.DimensionDoor
+                      },
                       FeatPatch.V9Hooks, FeatPatch.V9Code, FeatPatch.V9CodeSha256, FeatPatch.V9VTables);
 
     /// <summary>Version 8 (all seven, the orbs aimed with a random scatter): see <see cref="EarlierSpells"/>.</summary>
     private List<BorrowedSpell>? V8Spells() =>
         EarlierSpells(FeatPatch.V8Version,
-                      new[] { BorrowedSpell.InfernoArrow, BorrowedSpell.Entangle, BorrowedSpell.InsectPlague, BorrowedSpell.PoisonGasArrow },
+                      new[]
+                      {
+                          BorrowedSpell.InfernoArrow, BorrowedSpell.Entangle, BorrowedSpell.InsectPlague, BorrowedSpell.PoisonGasArrow,
+                          BorrowedSpell.DimensionDoor
+                      },
                       FeatPatch.V8Hooks, FeatPatch.V8Code, FeatPatch.V8CodeSha256, FeatPatch.V8VTables);
 
     /// <summary>Version 7 (the six, without Xantam's Orbs): see <see cref="EarlierSpells"/>.</summary>
@@ -809,7 +868,7 @@ public partial class BgdaExecutable
                       new[]
                       {
                           BorrowedSpell.XantamOrbs, BorrowedSpell.InfernoArrow, BorrowedSpell.Entangle, BorrowedSpell.InsectPlague,
-                          BorrowedSpell.PoisonGasArrow
+                          BorrowedSpell.PoisonGasArrow, BorrowedSpell.DimensionDoor
                       },
                       FeatPatch.V7Hooks, FeatPatch.V7Code, FeatPatch.V7CodeSha256, FeatPatch.V7VTables);
 
@@ -819,7 +878,7 @@ public partial class BgdaExecutable
                       new[]
                       {
                           BorrowedSpell.SorcerersBlood, BorrowedSpell.XantamOrbs, BorrowedSpell.InfernoArrow, BorrowedSpell.Entangle,
-                          BorrowedSpell.InsectPlague, BorrowedSpell.PoisonGasArrow
+                          BorrowedSpell.InsectPlague, BorrowedSpell.PoisonGasArrow, BorrowedSpell.DimensionDoor
                       },
                       FeatPatch.V6Hooks, FeatPatch.V6Code, FeatPatch.V6CodeSha256, FeatPatch.V6VTables);
 
@@ -829,12 +888,12 @@ public partial class BgdaExecutable
                       new[]
                       {
                           BorrowedSpell.PowerAttack, BorrowedSpell.SorcerersBlood, BorrowedSpell.XantamOrbs, BorrowedSpell.InfernoArrow,
-                          BorrowedSpell.Entangle, BorrowedSpell.InsectPlague, BorrowedSpell.PoisonGasArrow
+                          BorrowedSpell.Entangle, BorrowedSpell.InsectPlague, BorrowedSpell.PoisonGasArrow, BorrowedSpell.DimensionDoor
                       },
                       FeatPatch.V5Hooks, FeatPatch.V5Code, FeatPatch.V5CodeSha256, FeatPatch.V5VTables);
 
     /// <summary>
-    /// Off, On, Outdated (version 12, 11, 10, 9, 8, 7, 6 or 5, or Xantam's Fire alone as the fourth or third test version: updated on save) or
+    /// Off, On, Outdated (version 13, 12, 11, 10, 9, 8, 7, 6 or 5, or Xantam's Fire alone as the fourth or third test version: updated on save) or
     /// Unrecognized; <paramref name="detail"/> says what was found, in a sentence.
     /// </summary>
     public BorrowedSpellsState GetBorrowedSpellsState(out string detail)
@@ -845,17 +904,19 @@ public partial class BgdaExecutable
             return BorrowedSpellsState.Unrecognized;
         }
 
-        var (_, code, _, v4Code, _, _, _) = FeatPatchData.Value;
+        var (_, code, _, v4Code, _, _, _, _) = FeatPatchData.Value;
         if (CurrentSpells() is { } spells)
         {
             var mask = FeatMask(spells);
             var hooks = FeatPatch.Hooks.All(h => ReadU32(FileOffset(h.Va)) == ((h.Spells & mask) != 0 ? h.Patched : h.Game));
             if (spells.Count > 0 && hooks && code.All(c => BytesAre(c.Va, c.Bytes)) && FeatPatch.VTables.All(v => BytesAre(v.Va, FeatVTable(v))) &&
                 BytesAre(FeatPatch.CastTableVa, FeatCastTable(spells)) && Data2Marked() && Data3Marked() && Data4Marked() &&
+                Data5Marked() &&
                 ReadU32(Data3At(FeatPatch.Data3CountAt)) == (spells.Contains(BorrowedSpell.InsectPlague) ? 1u : 0u) &&
-                ReadU32(Data4At(FeatPatch.Data3CountAt)) == (spells.Contains(BorrowedSpell.PoisonGasArrow) ? 1u : 0u))
+                ReadU32(Data4At(FeatPatch.Data3CountAt)) == (spells.Contains(BorrowedSpell.PoisonGasArrow) ? 1u : 0u) &&
+                ReadU32(Data5At(FeatPatch.Data3CountAt)) == (spells.Contains(BorrowedSpell.DimensionDoor) ? 1u : 0u))
             {
-                detail = $"In (version 13, in game code nothing runs): {Names(spells)}. It works with or without three players.";
+                detail = $"In (version 14, in game code nothing runs): {Names(spells)}. It works with or without three players.";
                 return BorrowedSpellsState.On;
             }
 
@@ -863,78 +924,87 @@ public partial class BgdaExecutable
             return BorrowedSpellsState.Unrecognized;
         }
 
+        if (V13Spells() is { } thirteen)
+        {
+            detail = $"In as version 13 (the first test of Poison Gas Arrow): {Names(thirteen)}. Saving brings it to version 14, " +
+                     "which adds Dimension Door for Adrianna; every spell keeps its settings.";
+            return BorrowedSpellsState.Outdated;
+        }
+
         if (V12Spells() is { } twelve)
         {
-            detail = $"In as version 12 (the second test of Insect Plague): {Names(twelve)}. Saving brings it to version 13, which " +
-                     "adds Poison Gas Arrow for Vahn; every spell keeps its settings.";
+            detail = $"In as version 12 (the second test of Insect Plague): {Names(twelve)}. Saving brings it to version 14, which " +
+                     "adds Poison Gas Arrow for Vahn and Dimension Door for Adrianna; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V11Spells() is { } eleven)
         {
-            detail = $"In as version 11 (the first test of Entangle): {Names(eleven)}. Saving brings it to version 13, which " +
-                     "adds Insect Plague and Poison Gas Arrow for Vahn; every spell keeps its settings.";
+            detail = $"In as version 11 (the first test of Entangle): {Names(eleven)}. Saving brings it to version 14, which " +
+                     "adds Insect Plague and Poison Gas Arrow for Vahn and Dimension Door for Adrianna; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V10Spells() is { } ten)
         {
-            detail = $"In as version 10 (the first test of Inferno Arrow): {Names(ten)}. Saving brings it to version 13, which " +
-                     "adds Entangle, Insect Plague and Poison Gas Arrow for Vahn; every spell keeps its settings.";
+            detail = $"In as version 10 (the first test of Inferno Arrow): {Names(ten)}. Saving brings it to version 14, which " +
+                     "adds Entangle, Insect Plague and Poison Gas Arrow for Vahn and Dimension Door for Adrianna; every spell keeps " +
+                     "its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V9Spells() is { } nine)
         {
-            detail = $"In as version 9 (the second test of Xantam's Orbs): {Names(nine)}. Saving brings it to version 13, which " +
-                     "adds Inferno Arrow, Entangle, Insect Plague and Poison Gas Arrow for Vahn; every spell keeps its settings.";
+            detail = $"In as version 9 (the second test of Xantam's Orbs): {Names(nine)}. Saving brings it to version 14, which " +
+                     "adds Inferno Arrow, Entangle, Insect Plague and Poison Gas Arrow for Vahn and Dimension Door for Adrianna; " +
+                     "every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V8Spells() is { } eight)
         {
-            detail = $"In as version 8 (the first test of Xantam's Orbs): {Names(eight)}. Saving brings it to version 13, which " +
+            detail = $"In as version 8 (the first test of Xantam's Orbs): {Names(eight)}. Saving brings it to version 14, which " +
                      "fans the orbs out, lets them break barrels and crates, and adds Inferno Arrow, Entangle, Insect Plague and " +
-                     "Poison Gas Arrow for Vahn; every spell keeps its settings.";
+                     "Poison Gas Arrow for Vahn and Dimension Door for Adrianna; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V7Spells() is { } seven)
         {
-            detail = $"In as version 7 (the first test of Sorcerer's Blood): {Names(seven)}. Saving brings it to version 13, which " +
-                     "adds Xantam's Orbs for Adrianna and Inferno Arrow, Entangle, Insect Plague and Poison Gas Arrow for Vahn; every " +
-                     "spell keeps its settings.";
+            detail = $"In as version 7 (the first test of Sorcerer's Blood): {Names(seven)}. Saving brings it to version 14, which " +
+                     "adds Xantam's Orbs and Dimension Door for Adrianna and Inferno Arrow, Entangle, Insect Plague and Poison Gas " +
+                     "Arrow for Vahn; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V6Spells() is { } six)
         {
-            detail = $"In as version 6 (the first test of Power Attack): {Names(six)}. Saving brings it to version 13, which adds " +
-                     "Sorcerer's Blood and Xantam's Orbs for Adrianna and Inferno Arrow, Entangle, Insect Plague and Poison Gas Arrow " +
-                     "for Vahn; every spell keeps its settings.";
+            detail = $"In as version 6 (the first test of Power Attack): {Names(six)}. Saving brings it to version 14, which adds " +
+                     "Sorcerer's Blood, Xantam's Orbs and Dimension Door for Adrianna and Inferno Arrow, Entangle, Insect Plague and " +
+                     "Poison Gas Arrow for Vahn; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V5Spells() is { } old)
         {
-            detail = $"In as version 5 (the first test of Kromlech's spells): {Names(old)}. Saving brings it to version 13, which adds " +
-                     "Power Attack for Kromlech, Sorcerer's Blood and Xantam's Orbs for Adrianna, and Inferno Arrow, Entangle, " +
-                     "Insect Plague and Poison Gas Arrow for Vahn; every spell keeps its settings.";
+            detail = $"In as version 5 (the first test of Kromlech's spells): {Names(old)}. Saving brings it to version 14, which adds " +
+                     "Power Attack for Kromlech, Sorcerer's Blood, Xantam's Orbs and Dimension Door for Adrianna, and Inferno Arrow, " +
+                     "Entangle, Insect Plague and Poison Gas Arrow for Vahn; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V4Present(v4Code))
         {
-            detail = "Xantam's Fire is in as the fourth test version (Adrianna's spell alone). Saving brings it to version 13, which " +
-                     "also has Sorcerer's Blood, Xantam's Orbs, Kromlech's spells and Vahn's Inferno Arrow, Entangle, Insect Plague " +
-                     "and Poison Gas Arrow; its price, mana and damage are kept.";
+            detail = "Xantam's Fire is in as the fourth test version (Adrianna's spell alone). Saving brings it to version 14, which " +
+                     "also has Sorcerer's Blood, Xantam's Orbs, Dimension Door, Kromlech's spells and Vahn's Inferno Arrow, Entangle, " +
+                     "Insect Plague and Poison Gas Arrow; its price, mana and damage are kept.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V3Present())
         {
             detail = "Xantam's Fire is in as the third test version (its spell area, which only a three-player build loads). " +
-                     "Saving brings it to version 13, which works with or without three players; its price, mana and damage are kept.";
+                     "Saving brings it to version 14, which works with or without three players; its price, mana and damage are kept.";
             return BorrowedSpellsState.Outdated;
         }
 
@@ -1041,12 +1111,12 @@ public partial class BgdaExecutable
         FeatPatch.V3Hooks.All(h => ReadU32(FileOffset(h.Va)) == h.Patched);
 
     /// <summary>
-    /// Where a version's data block is and keeps the settings (version 13's, 12's, 11's and 10's at <see cref="FeatPatch.DataVa"/>,
-    /// every earlier one's at <see cref="FeatPatch.LegacyDataVa"/>; the entries are where the others' are; the orbs' tables are
-    /// versions 13's, 12's, 11's, 10's, 9's and 8's alone, Inferno Arrow's (<see cref="Inferno"/>: its mana, its least and most
-    /// damage, then its five further tables) versions 13's, 12's, 11's and 10's, Entangle's versions 13's, 12's and 11's, in their
-    /// second block, Insect Plague's versions 13's and 12's, in their third, Poison Gas Arrow's version 13's, in its fourth).
-    /// Version 12's and 11's layouts are version 13's.
+    /// Where a version's data block is and keeps the settings (version 14's, 13's, 12's, 11's and 10's at
+    /// <see cref="FeatPatch.DataVa"/>, every earlier one's at <see cref="FeatPatch.LegacyDataVa"/>; the entries are where the
+    /// others' are; the orbs' tables are versions 14's to 8's alone, Inferno Arrow's (<see cref="Inferno"/>: its mana, its least
+    /// and most damage, then its five further tables) versions 14's to 10's, Entangle's versions 14's to 11's, in their second
+    /// block, Insect Plague's versions 14's to 12's, in their third, Poison Gas Arrow's versions 14's and 13's, in their fourth,
+    /// Dimension Door's version 14's, in its fifth). Version 13's, 12's and 11's layouts are version 14's.
     /// </summary>
     private sealed record FeatLayout(int DataVa, int Entries, int Abilities, int BarrierMin, int BarrierMax, int FieldFrames,
                                      int MightDamage, int MightDefence, int PowerHits, int OrbsCount = -1, int OrbsMin = -1,
@@ -1092,7 +1162,7 @@ public partial class BgdaExecutable
         FeatPatch.V5BarrierDamageMaxAt, FeatPatch.V5FieldFramesAt, FeatPatch.V5MightDamageAt, FeatPatch.V5MightDefenceAt, -1);
 
     /// <summary>
-    /// The spells in the file and their settings (On; Outdated: version 12's, 11's, 10's, 9's, 8's, 7's, 6's or 5's spells, or Xantam's Fire's), or none (Off,
+    /// The spells in the file and their settings (On; Outdated: version 13's, 12's, 11's, 10's, 9's, 8's, 7's, 6's or 5's spells, or Xantam's Fire's), or none (Off,
     /// Unrecognized). Power Attack's mana is 0: its record's is the Feats &amp; Spells tab's. Sorcerer's Blood's is 0 too: it
     /// is passive.
     /// </summary>
@@ -1100,6 +1170,8 @@ public partial class BgdaExecutable
     {
         var found = new Dictionary<BorrowedSpell, BorrowedSpellSettings>();
         var state = GetBorrowedSpellsState(out _);
+        if (state == BorrowedSpellsState.Outdated && V13Spells() is { } thirteen)
+            return ReadAll(thirteen, CurrentLayout);
         if (state == BorrowedSpellsState.Outdated && V12Spells() is { } twelve)
             return ReadAll(twelve, CurrentLayout);
         if (state == BorrowedSpellsState.Outdated && V11Spells() is { } eleven)
@@ -1131,8 +1203,8 @@ public partial class BgdaExecutable
 
     /// <summary>
     /// The settings of <paramref name="spells"/> (in the data block's order) where <paramref name="layout"/> keeps them; Insect
-    /// Plague's from the third block and Poison Gas Arrow's from the fourth (their entries and records are there, not among the
-    /// main block's).
+    /// Plague's from the third block, Poison Gas Arrow's from the fourth and Dimension Door's from the fifth (their entries and
+    /// records are there, not among the main block's).
     /// </summary>
     private Dictionary<BorrowedSpell, BorrowedSpellSettings> ReadAll(List<BorrowedSpell> spells, FeatLayout layout)
     {
@@ -1143,7 +1215,12 @@ public partial class BgdaExecutable
         {
             if (!InMainBlock(spell))
             {
-                found[spell] = spell == BorrowedSpell.InsectPlague ? ReadInsectPlague() : ReadPoisonGasArrow();
+                found[spell] = spell switch
+                {
+                    BorrowedSpell.InsectPlague => ReadInsectPlague(),
+                    BorrowedSpell.PoisonGasArrow => ReadPoisonGasArrow(),
+                    _ => ReadDimensionDoor()
+                };
                 continue;
             }
 
@@ -1171,6 +1248,16 @@ public partial class BgdaExecutable
 
     /// <summary>Poison Gas Arrow's further tables by rank in the fourth block, in the order of <see cref="BorrowedSpellSettings.More"/>.</summary>
     private static readonly int[] GasTables = { FeatPatch.GasReachAt, FeatPatch.GasTimeAt, FeatPatch.GasMinAt, FeatPatch.GasMaxAt };
+
+    /// <summary>
+    /// Dimension Door's settings from the fifth block: the price and the ranks in its entry, the mana in its record, its distances
+    /// at ranks 1-3 (u16s).
+    /// </summary>
+    private BorrowedSpellSettings ReadDimensionDoor() =>
+        new(_data[Data5At(FeatPatch.Data3EntryAt + FeatPatch.EntryPriceAt)],
+            BitConverter.ToSingle(_data, Data5At(FeatPatch.Data3AbilityAt + FeatPatch.AbilityManaAt)),
+            Enumerable.Range(1, FeatPatch.DoorRanks).Select(r => (int)ReadU16(Data5At(FeatPatch.DoorDistanceAt + 2 * r))).ToArray(),
+            Array.Empty<int>(), _data[Data5At(FeatPatch.Data3EntryAt + FeatPatch.EntryRanksAt)]);
 
     /// <summary>
     /// One spell's settings from the data block: the price (and Sorcerer's Blood's ranks) from its entry (at
@@ -1218,20 +1305,23 @@ public partial class BgdaExecutable
         FeatPatch.InfernoFlameMaxAt
     };
 
-    /// <summary>The file offset of <paramref name="offset"/> in the second data block (version 13's, 12's and 11's).</summary>
+    /// <summary>The file offset of <paramref name="offset"/> in the second data block (version 14's, 13's, 12's and 11's).</summary>
     private int Data2At(int offset) => FileOffset(FeatPatch.Data2Va) + offset;
 
-    /// <summary>The file offset of <paramref name="offset"/> in the third data block (version 13's and 12's).</summary>
+    /// <summary>The file offset of <paramref name="offset"/> in the third data block (version 14's, 13's and 12's).</summary>
     private int Data3At(int offset) => FileOffset(FeatPatch.Data3Va) + offset;
 
-    /// <summary>The file offset of <paramref name="offset"/> in the fourth data block (version 13's).</summary>
+    /// <summary>The file offset of <paramref name="offset"/> in the fourth data block (version 14's and 13's).</summary>
     private int Data4At(int offset) => FileOffset(FeatPatch.Data4Va) + offset;
+
+    /// <summary>The file offset of <paramref name="offset"/> in the fifth data block (version 14's).</summary>
+    private int Data5At(int offset) => FileOffset(FeatPatch.Data5Va) + offset;
 
     /// <summary>Ranks 1-5 of a by-rank byte table (its entry 0 is rank 0's).</summary>
     private int[] ByRank(int at) => Enumerable.Range(1, BorrowedSpellSettings.Ranks).Select(r => (int)_data[at + r]).ToArray();
 
     /// <summary>
-    /// Puts in, updates (Outdated: to version 13), changes or takes out the borrowed spells so that exactly
+    /// Puts in, updates (Outdated: to version 14), changes or takes out the borrowed spells so that exactly
     /// <paramref name="spells"/> are in, with their settings (none: <see cref="RemoveBorrowedSpells"/>). Throws
     /// <see cref="ArgumentException"/> on bad settings and <see cref="InvalidOperationException"/> when the state is
     /// Unrecognized; nothing is changed then.
@@ -1263,7 +1353,7 @@ public partial class BgdaExecutable
             }
         }
 
-        var (_, code, _, _, _, _, _) = FeatPatchData.Value;
+        var (_, code, _, _, _, _, _, _) = FeatPatchData.Value;
         if (state != BorrowedSpellsState.On)
         {
             foreach (var (va, bytes) in code) bytes.CopyTo(_data, FileOffset(va));
@@ -1274,6 +1364,7 @@ public partial class BgdaExecutable
         FeatData2Block(spells).CopyTo(_data, FileOffset(FeatPatch.Data2Va));
         FeatData3Block(spells).CopyTo(_data, FileOffset(FeatPatch.Data3Va));
         FeatData4Block(spells).CopyTo(_data, FileOffset(FeatPatch.Data4Va));
+        FeatData5Block(spells).CopyTo(_data, FileOffset(FeatPatch.Data5Va));
         FeatCastTable(spells.Keys).CopyTo(_data, FileOffset(FeatPatch.CastTableVa));
         var mask = FeatMask(spells.Keys);
         foreach (var (va, game, patched, need) in FeatPatch.Hooks) WriteInt(FileOffset(va), (int)((need & mask) != 0 ? patched : game));
@@ -1281,9 +1372,9 @@ public partial class BgdaExecutable
 
     /// <summary>
     /// The data block for <paramref name="spells"/>, as featpatch.py's data_block makes it: the mask of every one that is on, a
-    /// list entry for each but Insect Plague and Poison Gas Arrow (the third and fourth blocks'), in the order of
-    /// <see cref="BorrowedSpells.All"/>, an ability record for each but Power Attack, Sorcerer's Blood, Inferno Arrow, Insect
-    /// Plague and Poison Gas Arrow, and each one's tables.
+    /// list entry for each but Insect Plague, Poison Gas Arrow and Dimension Door (the third, fourth and fifth blocks'), in the
+    /// order of <see cref="BorrowedSpells.All"/>, an ability record for each but Power Attack, Sorcerer's Blood, Inferno Arrow,
+    /// Insect Plague, Poison Gas Arrow and Dimension Door, and each one's tables.
     /// </summary>
     private byte[] FeatDataBlock(IReadOnlyDictionary<BorrowedSpell, BorrowedSpellSettings> spells)
     {
@@ -1453,10 +1544,33 @@ public partial class BgdaExecutable
     }
 
     /// <summary>
+    /// The fifth data block for <paramref name="spells"/>, as featpatch.py's data5_block makes it: its mark, Dimension Door's list
+    /// entry and ability record (with the counts, 1 and 1) when it is on, the names of its icon and its fallback, its distances (its
+    /// defaults when it is off: the template's; ranks 4 and 5, which its entry doesn't offer, as rank 3), its HUD line's key and its
+    /// fixed values.
+    /// </summary>
+    private static byte[] FeatData5Block(IReadOnlyDictionary<BorrowedSpell, BorrowedSpellSettings> spells)
+    {
+        var block = (byte[])FeatPatchData.Value.Data5.Clone();
+        if (!spells.TryGetValue(BorrowedSpell.DimensionDoor, out var s)) return block;
+        var data = BorrowedSpells.Data(BorrowedSpell.DimensionDoor);
+        BitConverter.GetBytes(1).CopyTo(block, FeatPatch.Data3CountAt);
+        BitConverter.GetBytes(1).CopyTo(block, FeatPatch.Data3AbilityCountAt);
+        Convert.FromBase64String(data.EntryBase64).CopyTo(block, FeatPatch.Data3EntryAt);
+        block[FeatPatch.Data3EntryAt + FeatPatch.EntryPriceAt] = (byte)s.Price;
+        block[FeatPatch.Data3EntryAt + FeatPatch.EntryRanksAt] = (byte)s.RankCount;
+        Convert.FromBase64String(data.AbilityBase64).CopyTo(block, FeatPatch.Data3AbilityAt);
+        BitConverter.GetBytes(s.Mana).CopyTo(block, FeatPatch.Data3AbilityAt + FeatPatch.AbilityManaAt);
+        for (var r = 1; r <= BorrowedSpellSettings.Ranks; r++)
+            BitConverter.GetBytes((ushort)s.First[Math.Min(r, s.First.Count) - 1]).CopyTo(block, FeatPatch.DoorDistanceAt + 2 * r);
+        return block;
+    }
+
+    /// <summary>
     /// The cast table for <paramref name="spells"/> (its own piece of the pool), as featpatch.py's cast_table makes it: the game's
     /// 23 cases from this file, the default for the rest, and the case of each spell that is on but Sorcerer's Blood (a passive)
     /// and Inferno Arrow and Poison Gas Arrow (types 9 and 38: the game's own case, the arrows'); Entangle's is type 36, Insect
-    /// Plague's 37.
+    /// Plague's 37, Dimension Door's 39.
     /// The state checks it as it checks the code: a table that isn't this one is not WorldExplorer's.
     /// </summary>
     private byte[] FeatCastTable(IEnumerable<BorrowedSpell> spells)
@@ -1505,10 +1619,11 @@ public partial class BgdaExecutable
         foreach (var (a, b) in FeatPatch.Pool) PoolOriginal(a, b).CopyTo(_data.AsSpan(FileOffset(a)));
     }
 
-    /// <summary>Takes out the earlier version that is in (Outdated): version 12, 11, 10, 9, 8, 7, 6 or 5, or the fourth or third test version.</summary>
+    /// <summary>Takes out the earlier version that is in (Outdated): version 13, 12, 11, 10, 9, 8, 7, 6 or 5, or the fourth or third test version.</summary>
     private void RemoveOutdated()
     {
-        if (V12Spells() != null) RemoveV12();
+        if (V13Spells() != null) RemoveV13();
+        else if (V12Spells() != null) RemoveV12();
         else if (V11Spells() != null) RemoveV11();
         else if (V10Spells() != null) RemoveV10();
         else if (V9Spells() != null) RemoveV9();
@@ -1518,6 +1633,13 @@ public partial class BgdaExecutable
         else if (V5Spells() != null) RemoveV5();
         else if (V3Present()) RemoveV3();
         else RemoveV4();
+    }
+
+    /// <summary>Takes version 13 out: the game's words back at its hooks, the game's bytes back in the pool.</summary>
+    private void RemoveV13()
+    {
+        foreach (var (va, game, _, _) in FeatPatch.V13Hooks) WriteInt(FileOffset(va), (int)game);
+        RestorePool();
     }
 
     /// <summary>Takes version 12 out: the game's words back at its hooks, the game's bytes back in the pool.</summary>
