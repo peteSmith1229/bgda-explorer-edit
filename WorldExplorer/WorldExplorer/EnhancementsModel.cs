@@ -3,18 +3,20 @@
 //
 // The Enhancements tab of Executable Tuning (Views/EnhancementsView.xaml): additions to the game that
 // work with or without three players, each turned on or off by itself. Eight spells borrowed from the
-// game's monsters, the game's own unused vines and three feats the game has but never offers
+// game's monsters, the game's own unused vines, three feats the game has but never offers and a new one
 // (BgdaExecutable.BorrowedSpells.cs), one card each: Xantam's Fire, Sorcerer's Blood, Xantam's Orbs and
 // Dimension Door for Adrianna; Power Attack, Blade Barrier, Antimagic Field and Righteous Might for Kromlech;
-// Inferno Arrow, Entangle, Insect Plague and Poison Gas Arrow for Vahn. Each card has its tick box, price, mana
+// Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow and Expert Focus for Vahn. Each card has its tick
+// box, price, mana
 // (not Power Attack's: its record's, on the Feats & Spells tab) and values by rank (Xantam's Orbs: three, the
 // number of orbs with the least and most damage of each; Inferno Arrow: seven, the arrow's damage, the blast's
 // reach, the flames' spread and time, and their damage; Entangle: five, the number of vines with the least and most
 // damage of each thorn, how much slower a wrapped monster walks and how long a vine holds it; Insect Plague: four,
 // the number of swarms with the least and most damage of each sting, and how long a swarm lasts; Poison Gas Arrow:
 // six, the arrow's damage, the cloud's reach and time, and the damage of its hits; Dimension Door: one, how far
-// ahead she goes, at each of its 3 ranks); Sorcerer's Blood, a passive, has the number of ranks its entry offers
-// instead of mana and values. The names they need in GTEXT.LMP
+// ahead she goes, at each of its 3 ranks; Expert Focus: two, the percentage more damage his arrows do and how long
+// the focus lasts); Sorcerer's Blood, a passive, has the number of ranks its entry offers instead of mana and
+// values. The names they need in GTEXT.LMP
 // (the Items tab's copy, so one save writes both tabs' texts) and their icons in ICONS.LMP are shared
 // (Power Attack's, Sorcerer's Blood's and Inferno Arrow's names, and Power Attack's icon, are the game's own).
 // Every box is text so a half-typed value never throws; SettingsProblem says what is wrong. No WPF types,
@@ -83,7 +85,7 @@ public sealed class SpellValueBox : ObservableObject
     }
 }
 
-/// <summary>One rank's boxes on a spell's card: one value, two, or three (Xantam's Orbs, Entangle, Insect Plague: how many, then least and most damage), and any further ones (Inferno Arrow's, Entangle's, Insect Plague's, Poison Gas Arrow's).</summary>
+/// <summary>One rank's boxes on a spell's card: one value, two, or three (Xantam's Orbs, Entangle, Insect Plague: how many, then least and most damage), and any further ones (Inferno Arrow's, Entangle's, Insect Plague's, Poison Gas Arrow's, Expert Focus's).</summary>
 public sealed class SpellRankRow : ObservableObject
 {
     private readonly Action _edited;
@@ -99,7 +101,7 @@ public sealed class SpellRankRow : ObservableObject
             .ToList();
     }
 
-    /// <summary>The further boxes, after the others (Inferno Arrow's: the blast's reach, the flames' spread and time, their damage; Entangle's: the slow and the time; Insect Plague's: the time; Poison Gas Arrow's: the cloud's reach and time, its damage).</summary>
+    /// <summary>The further boxes, after the others (Inferno Arrow's: the blast's reach, the flames' spread and time, their damage; Entangle's: the slow and the time; Insect Plague's: the time; Poison Gas Arrow's: the cloud's reach and time, its damage; Expert Focus's: the time).</summary>
     public IReadOnlyList<SpellValueBox> More { get; }
 
     public bool HasMore => More.Count > 0;
@@ -267,6 +269,12 @@ public sealed class SpellCard : ObservableObject
             "edge of the screen. With no room that way she stays where she is (the sparks still burst and the mana is spent). " +
             "Three ranks; " +
             "its HUD shows the rank's distance (she runs 180 a second; Ilivarra's own step is 300).",
+        BorrowedSpell.ExpertFocus =>
+            "A new feat, Power Attack for his bow: casting it focuses him for the rank's time, and every arrow he looses " +
+            "meanwhile, his arrow feats' included, does the rank's percentage more damage (its least and its most damage, " +
+            "rounded) and trails Ilivarra's purple and gold sparks. A multishot's arrows all count. Casting it again starts its " +
+            "time again. His melee hits are as they were. The cast sounds like Magic Missile; its HUD shows the rank's percentage " +
+            "and time.",
         _ =>
             "Ilivarra's might: for 10 seconds he grows to 1.3 times his size in a green glow, his melee hits do the rank's " +
             "percentage more damage and physical hits on him the rank's percentage less (spells do their full damage). Casting it " +
@@ -294,16 +302,17 @@ public sealed class SpellCard : ObservableObject
             "The arrow's damage (least to most), the cloud's reach, how long it lasts and the damage of its hits (least to most, " +
             "once a second), by rank",
         BorrowedSpell.DimensionDoor => "How far ahead she goes, at each of its 3 ranks",
+        BorrowedSpell.ExpertFocus => "Percentage more damage of every arrow he looses, and how long the focus lasts, by rank",
         _ => "Percentage more melee damage and less physical damage taken, by rank"
     };
 
     /// <summary>What goes before, between and after a rank's boxes ("4 – 8", "6 s", "+10 % / −10 %").</summary>
-    public string FirstPrefix => Spell == BorrowedSpell.RighteousMight ? "+" : "";
+    public string FirstPrefix => Spell is BorrowedSpell.RighteousMight or BorrowedSpell.ExpertFocus ? "+" : "";
 
     public string FirstSuffix => Spell switch
     {
         BorrowedSpell.AntimagicField => "s", BorrowedSpell.RighteousMight => "%", BorrowedSpell.PowerAttack => "hits",
-        BorrowedSpell.DimensionDoor => "ahead", _ => ""
+        BorrowedSpell.DimensionDoor => "ahead", BorrowedSpell.ExpertFocus => "%", _ => ""
     };
 
     public string Between => Spell == BorrowedSpell.RighteousMight ? "−" : "–";
@@ -323,6 +332,9 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.DimensionDoor =>
             $"How far ahead she goes: {Info.FirstMin} to {Info.FirstMax} (she runs 180 a second; Ilivarra's step is 300). A wall, a " +
             "closed door, a ledge or the edge of the screen stops her short.",
+        BorrowedSpell.ExpertFocus =>
+            $"How much more damage each arrow he looses does while the focus lasts: {Info.FirstMin} to {Info.FirstMax} percent " +
+            "(its least and its most damage, rounded; 100 doubles it, as Power Attack does his melee hits).",
         _ => "The least damage: 0 to 255."
     };
 
@@ -348,11 +360,11 @@ public sealed class SpellCard : ObservableObject
         _ => $"How many orbs she hurls: {Info.ThirdMin} to {Info.ThirdMax}."
     };
 
-    /// <summary>What goes before and after a further box ("blast [72]", "for [3] s"; "slower [40] %"; "cloud [50]  for [5] s  gas [3] – [4]"), and its tooltip (Inferno Arrow's, Entangle's, Insect Plague's, Poison Gas Arrow's).</summary>
+    /// <summary>What goes before and after a further box ("blast [72]", "for [3] s"; "slower [40] %"; "cloud [50]  for [5] s  gas [3] – [4]"), and its tooltip (Inferno Arrow's, Entangle's, Insect Plague's, Poison Gas Arrow's, Expert Focus's).</summary>
     public string MorePrefix(int k) => Spell switch
     {
         BorrowedSpell.Entangle => k == 0 ? "slower" : "for",
-        BorrowedSpell.InsectPlague => "for",
+        BorrowedSpell.InsectPlague or BorrowedSpell.ExpertFocus => "for",
         BorrowedSpell.PoisonGasArrow => k switch { 0 => "cloud", 1 => "for", 2 => "gas", _ => "–" },
         _ => k switch { 0 => "blast", 1 => "flames", 2 => "for", 3 => "burning", _ => "–" }
     };
@@ -360,7 +372,7 @@ public sealed class SpellCard : ObservableObject
     public string MoreSuffix(int k) => Spell switch
     {
         BorrowedSpell.Entangle => k == 0 ? "%" : "s",
-        BorrowedSpell.InsectPlague => "s",
+        BorrowedSpell.InsectPlague or BorrowedSpell.ExpertFocus => "s",
         BorrowedSpell.PoisonGasArrow => k == 1 ? "s" : "",
         _ => k == 2 ? "s" : ""
     };
@@ -372,6 +384,9 @@ public sealed class SpellCard : ObservableObject
             "How long a swarm lasts, from the cast: 0.1 to 25.5 seconds (a tenth at a time; the shaman's: 10). Its first half " +
             "second it gathers; then a sting every second it is on its monster.",
         BorrowedSpell.PoisonGasArrow => GasTip(k),
+        BorrowedSpell.ExpertFocus =>
+            "How long the focus lasts, from the cast: 0.1 to 25.5 seconds (a tenth at a time; Power Attack's hits: within 10). " +
+            "Every arrow he looses in that time does the more damage.",
         _ => InfernoTip(k)
     };
 
@@ -414,6 +429,9 @@ public sealed class SpellCard : ObservableObject
             {
                 BorrowedSpell.AntimagicField => string.Join(", ", d.First) + " seconds",
                 BorrowedSpell.DimensionDoor => string.Join(", ", d.First) + " ahead at its 3 ranks",
+                BorrowedSpell.ExpertFocus => (d.First.Distinct().Count() == 1 ? $"+{d.First[0]}%" : string.Join(", ", d.First.Select(f => $"+{f}%"))) +
+                                             " for " + string.Join(", ", d.MoreValues[0].Select(t => NumberText.Format(t / 10.0))) +
+                                             " seconds",
                 BorrowedSpell.RighteousMight => string.Join(", ", d.First.Select((f, r) => $"+{f}/−{d.Second[r]}%")),
                 BorrowedSpell.XantamOrbs => string.Join(", ", d.ThirdValues) + " orbs of " +
                                             (d.First.Distinct().Count() == 1 && d.Second.Distinct().Count() == 1
@@ -716,7 +734,7 @@ public sealed class EnhancementsModel : ObservableObject
         foreach (var card in Spells) card.On = true;
     }
 
-    /// <summary>The twelve spells' cards in the library's order (Card() indexes it): Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door. The tab shows Groups.</summary>
+    /// <summary>The thirteen spells' cards in the library's order (Card() indexes it): Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus. The tab shows Groups.</summary>
     public IReadOnlyList<SpellCard> Spells { get; }
 
     public SpellCard Card(BorrowedSpell spell) => Spells[(int)spell];
@@ -931,7 +949,7 @@ public sealed class EnhancementsModel : ObservableObject
             var used = WillBeIn.Count > 0 ? BgdaExecutable.BorrowedSpellsBytes : 0;
             return $"New feats go into game code that nothing ever runs: {BgdaExecutable.FeatPoolStretches} stretches, " +
                    $"{BgdaExecutable.FeatPoolBytes:N0} bytes, the same in the stock executable and every three-player build. " +
-                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all twelve); " : "") +
+                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all thirteen); " : "") +
                    $"{BgdaExecutable.FeatPoolBytes - used:N0} bytes are free for more.";
         }
     }
