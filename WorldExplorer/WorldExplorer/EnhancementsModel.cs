@@ -3,11 +3,11 @@
 //
 // The Enhancements tab of Executable Tuning (Views/EnhancementsView.xaml): additions to the game that
 // work with or without three players, each turned on or off by itself. Eight spells borrowed from the
-// game's monsters, the game's own unused vines, three feats the game has but never offers and a new one
+// game's monsters, the game's own unused vines, three feats the game has but never offers and two new ones
 // (BgdaExecutable.BorrowedSpells.cs), one card each: Xantam's Fire, Sorcerer's Blood, Xantam's Orbs and
-// Dimension Door for Adrianna; Power Attack, Blade Barrier, Antimagic Field and Righteous Might for Kromlech;
-// Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow and Expert Focus for Vahn. Each card has its tick
-// box, price, mana
+// Dimension Door for Adrianna; Power Attack, Blade Barrier, Antimagic Field, Righteous Might and Phase Axe for
+// Kromlech; Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow and Expert Focus for Vahn. Each card has its
+// tick box, price, mana
 // (not Power Attack's: its record's, on the Feats & Spells tab) and values by rank (Xantam's Orbs: three, the
 // number of orbs with the least and most damage of each; Inferno Arrow: seven, the arrow's damage, the blast's
 // reach, the flames' spread and time, and their damage; Entangle: five, the number of vines with the least and most
@@ -275,6 +275,13 @@ public sealed class SpellCard : ObservableObject
             "rounded) and trails Ilivarra's purple and gold sparks. A multishot's arrows all count. Casting it again starts its " +
             "time again. His melee hits are as they were. The cast sounds like Magic Missile; its HUD shows the rank's percentage " +
             "and time.",
+        BorrowedSpell.PhaseAxe =>
+            "A new feat: he hurls a magic axe, the game's double-bitted axe spinning flat and trailing lilac sparks, at the nearest " +
+            "monster in front of him (straight ahead when there is none). It passes through every monster in its path, hitting " +
+            "each one once for the rank's damage from him (magic, which a shield can't block; his kills give him the " +
+            "experience), and breaks the barrels, crates and pots it meets. After its first hit it flies level. A wall or the " +
+            "floor stops it with a clang; otherwise it vanishes in a ring of lilac sparks after 400 (a little over a second). " +
+            "Never a player. It sounds like Mordenkainen's Sword; its HUD shows the rank's damage.",
         _ =>
             "Ilivarra's might: for 10 seconds he grows to 1.3 times his size in a green glow, his melee hits do the rank's " +
             "percentage more damage and physical hits on him the rank's percentage less (spells do their full damage). Casting it " +
@@ -303,6 +310,7 @@ public sealed class SpellCard : ObservableObject
             "once a second), by rank",
         BorrowedSpell.DimensionDoor => "How far ahead she goes, at each of its 3 ranks",
         BorrowedSpell.ExpertFocus => "Percentage more damage of every arrow he looses, and how long the focus lasts, by rank",
+        BorrowedSpell.PhaseAxe => "Damage of each hit (each monster once), by rank (least to most)",
         _ => "Percentage more melee damage and less physical damage taken, by rank"
     };
 
@@ -335,6 +343,8 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.ExpertFocus =>
             $"How much more damage each arrow he looses does while the focus lasts: {Info.FirstMin} to {Info.FirstMax} percent " +
             "(its least and its most damage, rounded; 100 doubles it, as Power Attack does his melee hits).",
+        BorrowedSpell.PhaseAxe =>
+            "The least damage of each hit (every monster and breakable thing the axe passes through takes one): 0 to 255.",
         _ => "The least damage: 0 to 255."
     };
 
@@ -345,6 +355,7 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.Entangle => "The most damage of each thorn: 0 to 255.",
         BorrowedSpell.InsectPlague => "The most damage of each sting: 0 to 255.",
         BorrowedSpell.PoisonGasArrow => "The most damage of the arrow itself: 0 to 255.",
+        BorrowedSpell.PhaseAxe => "The most damage of each hit: 0 to 255.",
         _ => "The most damage: 0 to 255."
     };
 
@@ -734,7 +745,7 @@ public sealed class EnhancementsModel : ObservableObject
         foreach (var card in Spells) card.On = true;
     }
 
-    /// <summary>The thirteen spells' cards in the library's order (Card() indexes it): Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus. The tab shows Groups.</summary>
+    /// <summary>The fourteen spells' cards in the library's order (Card() indexes it): Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe. The tab shows Groups.</summary>
     public IReadOnlyList<SpellCard> Spells { get; }
 
     public SpellCard Card(BorrowedSpell spell) => Spells[(int)spell];
@@ -949,7 +960,7 @@ public sealed class EnhancementsModel : ObservableObject
             var used = WillBeIn.Count > 0 ? BgdaExecutable.BorrowedSpellsBytes : 0;
             return $"New feats go into game code that nothing ever runs: {BgdaExecutable.FeatPoolStretches} stretches, " +
                    $"{BgdaExecutable.FeatPoolBytes:N0} bytes, the same in the stock executable and every three-player build. " +
-                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all thirteen); " : "") +
+                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all fourteen); " : "") +
                    $"{BgdaExecutable.FeatPoolBytes - used:N0} bytes are free for more.";
         }
     }

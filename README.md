@@ -90,7 +90,7 @@ Alliance II files are read with the Dark Alliance formats for now.
   executable. "Take Corrosive out" takes all three out again, and the acid glow is one click away.
 - **Add enhancements** on Executable Tuning's Enhancements tab: additions to the game that work with or without
   three players, each turned on or off by itself. Eight spells borrowed from the game's monsters, the game's own
-  unused vines, three feats the game has but never offers and a new one, each a feat on its hero's level-up screen (5 ranks,
+  unused vines, three feats the game has but never offers and two new ones, each a feat on its hero's level-up screen (5 ranks,
   Dimension Door 3; price, mana and the values of each rank can be set; Sorcerer's Blood has a price and 1 to 5
   ranks). The tab
   groups them by hero (Adrianna's, Kromlech's, Vahn's, each in alphabetical order); each card shows its tick box and
@@ -102,6 +102,11 @@ Alliance II files are read with the Dark Alliance formats for now.
   - Blade Barrier for Kromlech: Ilivarra's whirling axes, which hit every monster in reach once a second;
   - Antimagic Field for Kromlech: fire, cold, electricity and magic do him no harm while it lasts;
   - Righteous Might for Kromlech: he grows, his melee hits do more damage and physical hits on him less;
+  - Phase Axe for Kromlech: a new feat, a magic axe he hurls at the nearest monster in front of him (straight ahead
+    when there is none). Spinning flat and trailing lilac sparks, it passes through every monster in its path,
+    hitting each one once for the rank's damage (8-12 at rank 1 up to 16-24 at rank 5; 0 to 255 can be set; his
+    kills give him the experience), and breaks the barrels, crates and pots it meets, until a wall stops it or it
+    has flown 400. It never hurts a player;
   - Sorcerer's Blood for Adrianna: the game's own cut passive feat, finished: once she has it, every level she
     gains gives her 1 more mana for each rank (1 rank, as the game's description says, unless set otherwise; not
     retroactive). Its texts are the game's; it takes no mana and has no icon;
@@ -147,7 +152,7 @@ Alliance II files are read with the Dark Alliance formats for now.
   descriptions (in all five languages) into `GTEXT.LMP` and their HUD icons into `ICONS.LMP`, each saved after
   the executable. Unticking one puts the game's own code back exactly. A file with an earlier test version
   (Kromlech's spells, Power Attack, Sorcerer's Blood, either Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison
-  Gas Arrow, Dimension Door) is brought up to date when it is saved, every spell keeping its settings.
+  Gas Arrow, Dimension Door, Expert Focus) is brought up to date when it is saved, every spell keeping its settings.
 - **Pick colours** by clicking a colour box: a glow style's halo or core on the Glow tab, or a player's automap
   marker on the Three Players tab. Drag in the square and the hue bar, type red, green and blue or a `#RRGGBB`
   value, or click a ready-made colour; OK puts the colour in the red, green and blue boxes.
