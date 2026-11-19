@@ -13,17 +13,18 @@ namespace JetBlackEngineLib.Tests;
 
 /// <summary>
 /// The borrowed spells, the Enhancements tab (BgdaExecutable.BorrowedSpells.cs): Xantam's Fire, Sorcerer's Blood (the game's own
-/// feat), Xantam's Orbs and Dimension Door (Ilivarra's teleport) for Adrianna; Power Attack (the game's own feat), Blade Barrier,
-/// Antimagic Field, Righteous Might and Phase Axe (new: a thrown axe that passes through monsters) for Kromlech; Inferno Arrow (the
-/// game's own cut feat), Entangle (the game's own unused vines), Insect Plague (the kobold shaman's swarm), Poison Gas Arrow (the
-/// monsters' poison gas, on an arrow) and Expert Focus (new: Power Attack for his bow) for Vahn. On the stock PAL executable in
-/// Test_files (skipped when it is not present), with the Three Players tab switching three players underneath them, and versions 15,
-/// 14, 13, 12, 11, 10, 9, 8, 7, 6 and 5 (the first test of Expert Focus, of Dimension Door, of Poison Gas Arrow, the second of
-/// Insect Plague, the first of Entangle and of Inferno Arrow, the second and first of Xantam's Orbs, the first of Sorcerer's Blood,
-/// of Power Attack and of Kromlech's spells) brought up to date; their names in GTEXT.LMP and their icons in ICONS.LMP (archives
-/// built here). The patch is featpatch.py version 16 (Phase Axe; its seventh data block after the sixth, in the pool's stretch 51):
-/// the checksums are of the files featpatch.py writes, and what it does in the game was checked by emulation (test_feats16.py on
-/// sixty-three files: 450 checks on each with all fourteen; 583 broken copies on two bases).
+/// feat), Xantam's Orbs, Dimension Door (Ilivarra's teleport) and Shatter (new: a ring of frost that freezes the monsters round
+/// her) for Adrianna; Power Attack (the game's own feat), Blade Barrier, Antimagic Field, Righteous Might and Phase Axe (new: a
+/// thrown axe that passes through monsters) for Kromlech; Inferno Arrow (the game's own cut feat), Entangle (the game's own unused
+/// vines), Insect Plague (the kobold shaman's swarm), Poison Gas Arrow (the monsters' poison gas, on an arrow) and Expert Focus (new:
+/// Power Attack for his bow) for Vahn. On the stock PAL executable in Test_files (skipped when it is not present), with the Three
+/// Players tab switching three players underneath them, and versions 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6 and 5 (the first test
+/// of Phase Axe, of Expert Focus, of Dimension Door, of Poison Gas Arrow, the second of Insect Plague, the first of Entangle and of
+/// Inferno Arrow, the second and first of Xantam's Orbs, the first of Sorcerer's Blood, of Power Attack and of Kromlech's spells)
+/// brought up to date; their names in GTEXT.LMP and their icons in ICONS.LMP (archives built here). The patch is featpatch.py
+/// version 17 (Shatter; its eighth data block at the start of the pool's stretch 52): the checksums are of the files featpatch.py
+/// writes, and what it does in the game was checked by emulation (test_feats17.py on seventy-five files: 466 checks
+/// on each with all fifteen; 675 broken copies on two bases).
 /// </summary>
 [TestFixture]
 public class BgdaBorrowedSpellsTests
@@ -32,35 +33,38 @@ public class BgdaBorrowedSpellsTests
     private const string StockMd5 = "34874fe1aaed80fe52ad3911a7f304aa";
 
     /// <summary>
-    /// featpatch.py version 16 on the stock executable: all fourteen at the tested settings, all but Phase Axe (the thirteen of
-    /// version 15), all but Expert Focus and Phase Axe (the twelve of version 14), all but Dimension Door, Expert Focus and Phase Axe
-    /// (the eleven of version 13), all but Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe (the ten of version 12), all
-    /// but Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe (the nine of version 11), all but Entangle,
-    /// Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe (the eight of version 10), all but Inferno Arrow,
-    /// Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe (the seven of version 9), all fourteen at
-    /// the test files' settings (price 0, 4 mana), Kromlech's first four alone, Power Attack alone, Sorcerer's Blood alone,
-    /// Sorcerer's Blood alone with 3 ranks at price 4, Xantam's Orbs alone, Xantam's Orbs alone with its own settings (OrbsCustom),
-    /// Inferno Arrow alone, Inferno Arrow alone with its own settings (InfernoCustom), Entangle alone, Entangle alone with its own
-    /// settings (EntangleCustom), Insect Plague alone, Insect Plague alone with its own settings (InsectCustom), Poison Gas Arrow
-    /// alone, Poison Gas Arrow alone with its own settings (GasCustom), Dimension Door alone, Dimension Door alone with its own
-    /// settings (DoorCustom), Expert Focus alone, Expert Focus alone with its own settings (FocusCustom), Phase Axe alone, and Phase
-    /// Axe alone with its own settings (AxeCustom).
+    /// featpatch.py version 17 on the stock executable: all fifteen at the tested settings, all but Shatter (the fourteen of version
+    /// 16), all but Phase Axe and Shatter (the thirteen of version 15), all but Expert Focus, Phase Axe and Shatter (the twelve of
+    /// version 14), all but Dimension Door, Expert Focus, Phase Axe and Shatter (the eleven of version 13), all but Poison Gas Arrow,
+    /// Dimension Door, Expert Focus, Phase Axe and Shatter (the ten of version 12), all but Insect Plague, Poison Gas Arrow, Dimension
+    /// Door, Expert Focus, Phase Axe and Shatter (the nine of version 11), all but Entangle, Insect Plague, Poison Gas Arrow, Dimension
+    /// Door, Expert Focus, Phase Axe and Shatter (the eight of version 10), all but Inferno Arrow, Entangle, Insect Plague, Poison Gas
+    /// Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter (the seven of version 9), all fifteen at the test files' settings
+    /// (price 0, 4 mana), Kromlech's first four alone, Power Attack alone, Sorcerer's Blood alone, Sorcerer's Blood alone with 3 ranks
+    /// at price 4, Xantam's Orbs alone, Xantam's Orbs alone with its own settings (OrbsCustom), Inferno Arrow alone, Inferno Arrow
+    /// alone with its own settings (InfernoCustom), Entangle alone, Entangle alone with its own settings (EntangleCustom), Insect
+    /// Plague alone, Insect Plague alone with its own settings (InsectCustom), Poison Gas Arrow alone, Poison Gas Arrow alone with its
+    /// own settings (GasCustom), Dimension Door alone, Dimension Door alone with its own settings (DoorCustom), Expert Focus alone,
+    /// Expert Focus alone with its own settings (FocusCustom), Phase Axe alone, Phase Axe alone with its own settings (AxeCustom),
+    /// Shatter alone, Shatter alone with its own settings (ShatterCustom), and Adrianna's five alone.
     /// </summary>
-    private const string AllFourteenMd5 = "6c87b6eca521c9779b0debec3325b74b", ThirteenMd5 = "79ab8cc5ba52e9d29a11add71688fc21",
-                         TwelveMd5 = "5fee69fb13d33ff1c86427eeb10b37a0", ElevenMd5 = "ee1699f848919109c95a5c5034404ecb",
-                         TenMd5 = "fa739fafaf10155f01e784c023ca6bf1", NineMd5 = "4e58d203851695f56e283087c9ffa7a1",
-                         EightMd5 = "d07b11653b7d7ac872f8370c7869d0b2", SevenMd5 = "faae0a26730849335755eb6b792ec4b0",
-                         TestSettingsMd5 = "d8d7337542771e51de3b0f199c640e2a", KromlechMd5 = "35cb31a17ae04f266062b3106c24efbb",
-                         PowerAttackMd5 = "8ce924c5789ace605f2e7c899d710072", SorcerersMd5 = "b6e791dcbcc4f70cb2daeea7b54947e8",
-                         SorcerersThreeRanksMd5 = "4b258db25029095687823132c9779e03",
-                         OrbsMd5 = "1f26c7187f51f395f02433dcaf2ef740", OrbsCustomMd5 = "cefee056731d94e4680c85bbff81cf35",
-                         InfernoMd5 = "096763ca7e22bcec116cfd875bcee068", InfernoCustomMd5 = "6336324e9e7a8addc9aadc4ad2a2aea2",
-                         EntangleMd5 = "60d967820cbbd0ea33bb42b642134140", EntangleCustomMd5 = "aa22cf600810e79db0949aacaaef2a24",
-                         InsectMd5 = "ef320b2f40a40caaeb2756fafaedac3e", InsectCustomMd5 = "7f578446342a6c98066c7c493ac94896",
-                         GasMd5 = "d4e048d52f8d2ceb19ede091f82c6a6b", GasCustomMd5 = "284cc5a9baf262f5f4822b3e5d3b268e",
-                         DoorMd5 = "f05aed9c135631c08e0495174b67d646", DoorCustomMd5 = "3346fcacd14985e66b008583544d1507",
-                         FocusMd5 = "3e8d9e1ac546598060633e6f2576ead4", FocusCustomMd5 = "52e23366c05db0fc38c04dabf4db4e2e",
-                         AxeMd5 = "1de973c4d8ff9413b496091e65158112", AxeCustomMd5 = "040ff8931c30bc46e77ba89ed810ff55";
+    private const string AllFifteenMd5 = "2e1ab067e57ca7577850079cccbc24be", FourteenMd5 = "075ca079ff57885e206689debe726d50",
+                         ThirteenMd5 = "868be6d8714762f96f8f5ca02fbc0041", TwelveMd5 = "5d8c61391538e5da0bc7a20e1de2cefc",
+                         ElevenMd5 = "7a99d0c6498ca5603ba280b201b3fbbb", TenMd5 = "32d907e869a1778bb56c2a570334a87e",
+                         NineMd5 = "b8e88f5807c5571ddf3affc690ea9a8d", EightMd5 = "1f6d445ec2f8465a3c0ed60ecbde5868",
+                         SevenMd5 = "3a869d913bc30bf13047fbe2a58f25df", TestSettingsMd5 = "c0529fc4215263542e6b0d41d74d7506",
+                         KromlechMd5 = "db32215fc832e65d4bff0b2d458f18ca", PowerAttackMd5 = "a6166487ece58c14b7ac467e7f686c09",
+                         SorcerersMd5 = "9dfd122e147a2cc85fa18224b592557f", SorcerersThreeRanksMd5 = "ae54c0a40eb37678c2362ddc6411e998",
+                         OrbsMd5 = "aa8531a383fbdf155cb751b64c821d74", OrbsCustomMd5 = "451d97083f34658ea8511c3b434796bd",
+                         InfernoMd5 = "09619acb85b11970030cb8dc8eb9e4c7", InfernoCustomMd5 = "9104aec9143b102d929f46e55cd87f41",
+                         EntangleMd5 = "5728ee27c07525c668af3e7f46ba6859", EntangleCustomMd5 = "d2df5e805e4e240076da421a864802bd",
+                         InsectMd5 = "8e9ab180eb6859ff00ff391c4a0f5412", InsectCustomMd5 = "9bd1098116bdf75a5bf12eb9bfa60b32",
+                         GasMd5 = "06c687ce017e819bdb562cde2279d9d8", GasCustomMd5 = "ec946a5af2a292b55a7306f57a3b9c1f",
+                         DoorMd5 = "d515a50b4a699256237045f6e08bbbba", DoorCustomMd5 = "d298326c2cc0ba02e56153bc0707cc3f",
+                         FocusMd5 = "19a5f4fb5c10242aa291fbb280c57a88", FocusCustomMd5 = "2c49da678071298918d6ee69437d2638",
+                         AxeMd5 = "baeb919399aa54d6cc601c8901eb0e17", AxeCustomMd5 = "792211c3888938530329878879feff66",
+                         ShatterMd5 = "f620235ba8b7e54237a9b982846b4060", ShatterCustomMd5 = "0c241d6a21c5931380b095f264860d04",
+                         AdriannaMd5 = "861dc3c4c7fccfb838e40d0ee4dc22bd";
 
     /// <summary>
     /// featpatch.py --spells xantamorbs --xantamorbs-price 4 --xantamorbs-energy 6.5 --xantamorbs-orbs 2,3,5,7,10
@@ -123,8 +127,142 @@ public class BgdaBorrowedSpellsTests
     /// <summary>featpatch.py --spells phaseaxe --phaseaxe-price 4 --phaseaxe-energy 6.5 --phaseaxe-dmin 0,1,9,20,0 --phaseaxe-dmax 0,2,30,20,255.</summary>
     private static readonly BorrowedSpellSettings AxeCustom = new(4, 6.5f, new[] { 0, 1, 9, 20, 0 }, new[] { 0, 2, 30, 20, 255 });
 
-    /// <summary>featpatch.py version 16 (all fourteen) on ADRIANNA26 (the stock file with three players turned on).</summary>
-    private const string ThreePlayersMd5 = "fe48ee5f7e0a983c344d85fdb1afaccd";
+    /// <summary>
+    /// featpatch.py --spells shatter --shatter-price 4 --shatter-energy 6.5 --shatter-dmin 0,1,9,20,0 --shatter-dmax 0,2,30,20,255
+    /// --shatter-reach 10,30,100,200,255 --shatter-freeze 0.1,1,2.5,10,25.5 --shatter-cooldown 0,1,2.5,10,25.5.
+    /// </summary>
+    private static readonly BorrowedSpellSettings ShatterCustom =
+        new(4, 6.5f, new[] { 0, 1, 9, 20, 0 }, new[] { 0, 2, 30, 20, 255 },
+            More: new IReadOnlyList<int>[] { new[] { 10, 30, 100, 200, 255 }, new[] { 1, 10, 25, 100, 255 }, new[] { 0, 10, 25, 100, 255 } });
+
+    /// <summary>featpatch.py version 17 (all fifteen) on ADRIANNA26 (the stock file with three players turned on).</summary>
+    private const string ThreePlayersMd5 = "733df08f9450e0e2f22d46730915ca16";
+
+    /// <summary>
+    /// Version 16 on the stock executable (featpatch.py version 16, all fourteen at its tested settings: MD5 below), as the changes it
+    /// made: {u32 file offset, u32 length, the bytes} runs, zlib, then base64.
+    /// </summary>
+    private const string Version16Md5 = "6c87b6eca521c9779b0debec3325b74b";
+
+    private const string Version16RunsBase64 =
+        "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"
+        + "8nVgtn/n5nXNG+6EPty4IZ96yn6e1z678227ifYx/Y33rrt74/q7Nm7Y3Dy1h5zneeyDkk9cJ9rftvHulh0btn5h+718MbX9nOfvbX98U9f377ZuW79h"
+        + "24Zt25dt3rq1eeryZT9vmMogyZYHveTKz9Ztd25/L/nRn19FfizjD099vGLLXRu2bdlan9+KZj9veC+9ehUsswHD23L35qvqo4nn16KP4vn2Tf5+3bp9"
+        + "k4QctEJvr6V5ut7mfZqlj+y5cpyvPZ+OF+1ChFvrR+gFQniCVkorpfty9ZuSK7dT29P09ibtysuwntxID8LEU/SlmiunU9ubn9Vea/1aeku3UzvR4s5c"
+        + "O+Wzyk1+/pXr8H9Sn2doB+JxzL9xas1tLzy5jlezD359fLLQMeH6CD4iYNjUjn9BoDm3PV5nuxMWQLcD01TEq16XJnBzvYHnRjDDhdLnpC5j2u6SeYEl"
+        + "k5TrQ8d/zMTlr5vMMXG6wn9sX/hPd4SXv3Pwy7c4Zv7sZrYDOXpHN805ukIvE36BvkkmUaMxR922sBlje8VmjMMlJWXzyhlUhBuiq9lPCN4YWhbNsjP6"
+        + "+Hho03es/eh/No5v+UwxXTHwxRLVtHPWzSHmp5dnM0l/opdnM2qyfFLoJrhk4CUhPBYr6gMOuAzszbjp8tHgJA43129GUcmsMiv+FvYZ/y9QTH9rEl9e"
+        + "65/9hM/AxXPK5orL1ofm/H8Mjts7";
+
 
     /// <summary>
     /// Version 15 on the stock executable (featpatch.py version 15, all thirteen at its tested settings: MD5 below), as the changes it
@@ -983,13 +1121,13 @@ public class BgdaBorrowedSpellsTests
         + "ILS0r8FtW/2JhbYja6vwG2N5X4W3Tu0f7ynHO98MLA7Di1HMnY2im1ZcB9sUJHBjrmufLIHX4cVjDUfktF7hva3EIUjj+ydLHMrfy/M+8csSJz1e"
         + "K31lYgWEBE4Pqg3/u8IZ8MAuVUu8l3v+kyHVP1HwvHqz5gz/y0b1SG0pfM7/zdb23SS1NVlQzxlOZ+q5wGr3ceJbgf8DJ6YW9Q==";
 
-    /// <summary>The words that send the game to it (all fourteen on: Dimension Door and Phase Axe need none of their own), and the stretches of the pool it takes.</summary>
+    /// <summary>The words that send the game to it (all fifteen on: Dimension Door and Phase Axe need none of their own), and the stretches of the pool it takes.</summary>
     private static readonly int[] Hooks =
     {
-        0x0010F4AC, 0x0010F648, 0x001109C0, 0x0011B758, 0x0015E220, 0x0015E424, 0x0015E43C, 0x0015E50C, 0x0015F160, 0x0015F278,
-        0x0015F354, 0x00161EF8, 0x00161F00, 0x00161F08, 0x001676E4, 0x00167AFC, 0x0016DD2C, 0x0016DD44, 0x0017A4BC, 0x0017B594,
-        0x0017E52C, 0x0017EA44, 0x0017EAB4, 0x0018331C, 0x001B177C, 0x001B1784, 0x001BED7C, 0x001BED94, 0x001BEFD0, 0x001BF004,
-        0x0030A104, 0x0030A11C
+        0x0010F4AC, 0x0010F648, 0x001109C0, 0x0011B758, 0x0011B7D8, 0x0015E220, 0x0015E424, 0x0015E43C, 0x0015E50C, 0x0015F160,
+        0x0015F278, 0x0015F354, 0x00161EF8, 0x00161F00, 0x00161F08, 0x001676E4, 0x00167AFC, 0x0016DD2C, 0x0016DD44, 0x0017A4BC,
+        0x0017B594, 0x0017E52C, 0x0017EA44, 0x0017EAB4, 0x0018331C, 0x001B177C, 0x001B1784, 0x001BED7C, 0x001BED94, 0x001BEFD0,
+        0x001BF004, 0x0030A104, 0x0030A11C
     };
 
     /// <summary>Xantam's Fire's two (its maker's trail vtable); none of Kromlech's spells needs them.</summary>
@@ -1044,17 +1182,24 @@ public class BgdaBorrowedSpellsTests
     /// </summary>
     private static readonly int[] FocusOnly = { 0x0015F160, 0x0015F278, 0x0015F354 };
 
+    /// <summary>
+    /// Shatter's own one: the status effects' (FUN_0011B3C8's) one way out, the game's ld s1, 0x30(sp), now a jump to its thaw (a
+    /// monster it froze is held still till its time is up), which ends as the game's did. With the six every spell needs and the
+    /// HUD's three, the ten it takes alone.
+    /// </summary>
+    private static readonly int[] ShatterOnly = { 0x0011B7D8 };
+
     private static readonly (int Start, int End)[] Used =
     {
-        (0x00102910, 0x00102B5C), (0x00102D80, 0x00103000), (0x0010C338, 0x0010C6D0), (0x0010CD50, 0x0010CF30), (0x00118978, 0x00118D68),
-        (0x00129318, 0x00129520), (0x00129C48, 0x00129D64), (0x0012A710, 0x0012A8A0), (0x0012BAE8, 0x0012BF90), (0x0012CD30, 0x0012D068),
-        (0x0012F790, 0x0012FA08), (0x00130540, 0x001306E4), (0x00131170, 0x001312B8), (0x00132018, 0x0013216C), (0x00132D90, 0x00133364),
-        (0x00133370, 0x001333F0), (0x00134CE0, 0x00134DF8), (0x00134F18, 0x001350D4), (0x0013CDF8, 0x0013CEFC), (0x0013CF00, 0x0013D000),
-        (0x0013D220, 0x0013D414), (0x00166E28, 0x00166FC0), (0x0016ACB8, 0x0016AE7C), (0x00191A20, 0x00191D14), (0x00196AB8, 0x00196C18),
-        (0x00198968, 0x00198A34), (0x00198A40, 0x00198AC0), (0x00199A60, 0x00199B88), (0x001A28B0, 0x001A29FC), (0x001A9A38, 0x001A9B50),
-        (0x001AE930, 0x001AEA2C), (0x001B8DA0, 0x001B8F14), (0x001B9570, 0x001B9680), (0x001B9E70, 0x001B9F58), (0x001BB000, 0x001BB100),
-        (0x001C36F0, 0x001C3854), (0x001CBA38, 0x001CBB24), (0x001D32D8, 0x001D337C), (0x0020B890, 0x0020BCB0), (0x0020E6E8, 0x0020E928),
-        (0x00221B88, 0x002222C0), (0x00224B68, 0x00224C60)
+        (0x00102910, 0x00102B5C), (0x00102D80, 0x00103000), (0x0010C338, 0x0010C6CC), (0x0010CD50, 0x0010CF30), (0x00118978, 0x00118D68),
+        (0x00129318, 0x00129520), (0x00129C48, 0x00129D64), (0x0012A710, 0x0012A8A0), (0x0012BAE8, 0x0012BF90), (0x0012CD30, 0x0012D080),
+        (0x0012F790, 0x0012FA08), (0x00130540, 0x00130704), (0x00131170, 0x001312B8), (0x00132018, 0x0013216C), (0x00132D90, 0x001333EC),
+        (0x00134CE0, 0x00134DF8), (0x00134F18, 0x001350D8), (0x0013CDF8, 0x0013D000), (0x0013D218, 0x0013D430), (0x00166E28, 0x00166FB4),
+        (0x0016ACB8, 0x0016AE88), (0x00191A20, 0x00191D14), (0x00196AB8, 0x00196C10), (0x00198968, 0x00198AB4), (0x00199A60, 0x00199B8C),
+        (0x001A28B0, 0x001A2A08), (0x001A9A38, 0x001A9B44), (0x001AE930, 0x001AEA30), (0x001B8DA0, 0x001B8F14), (0x001B9570, 0x001B966C),
+        (0x001B9E68, 0x001B9F54), (0x001BAFF8, 0x001BB0E4), (0x001C36F0, 0x001C3868), (0x001CBA38, 0x001CBB48), (0x001D32D8, 0x001D3368),
+        (0x001D3370, 0x001D341C), (0x001E8560, 0x001E8760), (0x001FF340, 0x001FF494), (0x00204DE0, 0x00204EA4), (0x0020B890, 0x0020BCB0),
+        (0x0020E6E8, 0x0020E928), (0x0020F6A8, 0x0020F958), (0x00221B88, 0x002222C0), (0x00224B68, 0x00224C68)
     };
 
     /// <summary>The address is in one of the stretches of the pool the patch takes.</summary>
@@ -1128,55 +1273,65 @@ public class BgdaBorrowedSpellsTests
     /// <summary>All five of Kromlech's (his first four and Phase Axe).</summary>
     private static readonly BorrowedSpell[] KromlechAll = Kromlech.Append(BorrowedSpell.PhaseAxe).ToArray();
 
+    /// <summary>All five of Adrianna's (Xantam's Fire, Sorcerer's Blood, Xantam's Orbs, Dimension Door and Shatter).</summary>
+    private static readonly BorrowedSpell[] AdriannaAll =
+    {
+        BorrowedSpell.XantamFire, BorrowedSpell.SorcerersBlood, BorrowedSpell.XantamOrbs, BorrowedSpell.DimensionDoor, BorrowedSpell.Shatter
+    };
+
     /// <summary>The four version 5 had (all but Power Attack and Sorcerer's Blood).</summary>
     private static readonly BorrowedSpell[] Version5Spells =
         { BorrowedSpell.XantamFire, BorrowedSpell.BladeBarrier, BorrowedSpell.AntimagicField, BorrowedSpell.RighteousMight };
 
-    /// <summary>The five version 6 had (all but Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe).</summary>
+    /// <summary>The five version 6 had (all but Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter).</summary>
     private static readonly BorrowedSpell[] Version6Spells =
         BorrowedSpells.All.Where(s => s is not (BorrowedSpell.SorcerersBlood or BorrowedSpell.XantamOrbs or BorrowedSpell.InfernoArrow or
                                                 BorrowedSpell.Entangle or BorrowedSpell.InsectPlague or BorrowedSpell.PoisonGasArrow or
                                                 BorrowedSpell.DimensionDoor or
-                                                BorrowedSpell.ExpertFocus or BorrowedSpell.PhaseAxe)).ToArray();
+                                                BorrowedSpell.ExpertFocus or BorrowedSpell.PhaseAxe or BorrowedSpell.Shatter)).ToArray();
 
-    /// <summary>The six version 7 had (all but Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe).</summary>
+    /// <summary>The six version 7 had (all but Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter).</summary>
     private static readonly BorrowedSpell[] Version7Spells =
         BorrowedSpells.All.Where(s => s is not (BorrowedSpell.XantamOrbs or BorrowedSpell.InfernoArrow or BorrowedSpell.Entangle or
                                                 BorrowedSpell.InsectPlague or BorrowedSpell.PoisonGasArrow or BorrowedSpell.DimensionDoor or
-                                                BorrowedSpell.ExpertFocus or BorrowedSpell.PhaseAxe)).ToArray();
+                                                BorrowedSpell.ExpertFocus or BorrowedSpell.PhaseAxe or BorrowedSpell.Shatter)).ToArray();
 
-    /// <summary>The seven versions 9 and 8 had (all but Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe).</summary>
+    /// <summary>The seven versions 9 and 8 had (all but Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter).</summary>
     private static readonly BorrowedSpell[] Version9Spells =
         BorrowedSpells.All.Where(s => s is not (BorrowedSpell.InfernoArrow or BorrowedSpell.Entangle or BorrowedSpell.InsectPlague or
                                                 BorrowedSpell.PoisonGasArrow or BorrowedSpell.DimensionDoor or
-                                                BorrowedSpell.ExpertFocus or BorrowedSpell.PhaseAxe)).ToArray();
+                                                BorrowedSpell.ExpertFocus or BorrowedSpell.PhaseAxe or BorrowedSpell.Shatter)).ToArray();
 
-    /// <summary>The eight version 10 had (all but Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe).</summary>
+    /// <summary>The eight version 10 had (all but Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter).</summary>
     private static readonly BorrowedSpell[] Version10Spells =
         BorrowedSpells.All.Where(s => s is not (BorrowedSpell.Entangle or BorrowedSpell.InsectPlague or BorrowedSpell.PoisonGasArrow or
                                                 BorrowedSpell.DimensionDoor or
-                                                BorrowedSpell.ExpertFocus or BorrowedSpell.PhaseAxe)).ToArray();
+                                                BorrowedSpell.ExpertFocus or BorrowedSpell.PhaseAxe or BorrowedSpell.Shatter)).ToArray();
 
-    /// <summary>The nine version 11 had (all but Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe).</summary>
+    /// <summary>The nine version 11 had (all but Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter).</summary>
     private static readonly BorrowedSpell[] Version11Spells =
         BorrowedSpells.All.Where(s => s is not (BorrowedSpell.InsectPlague or BorrowedSpell.PoisonGasArrow or BorrowedSpell.DimensionDoor or
-                                                BorrowedSpell.ExpertFocus or BorrowedSpell.PhaseAxe)).ToArray();
+                                                BorrowedSpell.ExpertFocus or BorrowedSpell.PhaseAxe or BorrowedSpell.Shatter)).ToArray();
 
-    /// <summary>The ten version 12 had (all but Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe).</summary>
+    /// <summary>The ten version 12 had (all but Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter).</summary>
     private static readonly BorrowedSpell[] Version12Spells =
         BorrowedSpells.All.Where(s => s is not (BorrowedSpell.PoisonGasArrow or BorrowedSpell.DimensionDoor or
-                                                BorrowedSpell.ExpertFocus or BorrowedSpell.PhaseAxe)).ToArray();
+                                                BorrowedSpell.ExpertFocus or BorrowedSpell.PhaseAxe or BorrowedSpell.Shatter)).ToArray();
 
-    /// <summary>The eleven version 13 had (all but Dimension Door, Expert Focus and Phase Axe).</summary>
+    /// <summary>The eleven version 13 had (all but Dimension Door, Expert Focus, Phase Axe and Shatter).</summary>
     private static readonly BorrowedSpell[] Version13Spells =
-        BorrowedSpells.All.Where(s => s is not (BorrowedSpell.DimensionDoor or BorrowedSpell.ExpertFocus or BorrowedSpell.PhaseAxe)).ToArray();
+        BorrowedSpells.All.Where(s => s is not (BorrowedSpell.DimensionDoor or BorrowedSpell.ExpertFocus or BorrowedSpell.PhaseAxe or BorrowedSpell.Shatter)).ToArray();
 
-    /// <summary>The twelve version 14 had (all but Expert Focus and Phase Axe).</summary>
+    /// <summary>The twelve version 14 had (all but Expert Focus, Phase Axe and Shatter).</summary>
     private static readonly BorrowedSpell[] Version14Spells =
-        BorrowedSpells.All.Where(s => s is not (BorrowedSpell.ExpertFocus or BorrowedSpell.PhaseAxe)).ToArray();
+        BorrowedSpells.All.Where(s => s is not (BorrowedSpell.ExpertFocus or BorrowedSpell.PhaseAxe or BorrowedSpell.Shatter)).ToArray();
 
-    /// <summary>The thirteen version 15 had (all but Phase Axe).</summary>
-    private static readonly BorrowedSpell[] Version15Spells = BorrowedSpells.All.Where(s => s != BorrowedSpell.PhaseAxe).ToArray();
+    /// <summary>The thirteen version 15 had (all but Phase Axe and Shatter).</summary>
+    private static readonly BorrowedSpell[] Version15Spells =
+        BorrowedSpells.All.Where(s => s is not (BorrowedSpell.PhaseAxe or BorrowedSpell.Shatter)).ToArray();
+
+    /// <summary>The fourteen version 16 had (all but Shatter).</summary>
+    private static readonly BorrowedSpell[] Version16Spells = BorrowedSpells.All.Where(s => s != BorrowedSpell.Shatter).ToArray();
 
     /// <summary>The stock executable with an earlier version in, as featpatch.py wrote it (its runs, checked by their MD5).</summary>
     private byte[] Earlier(string runsBase64, string md5)
@@ -1221,6 +1376,8 @@ public class BgdaBorrowedSpellsTests
 
     private byte[] Version15() => Earlier(Version15RunsBase64, Version15Md5);
 
+    private byte[] Version16() => Earlier(Version16RunsBase64, Version16Md5);
+
     private static Dictionary<BorrowedSpell, BorrowedSpellSettings> Defaults(IEnumerable<BorrowedSpell> spells) =>
         spells.ToDictionary(s => s, s => BorrowedSpells.Info(s).Default);
 
@@ -1240,7 +1397,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(exe.GetBorrowedSpellsState(out var detail), Is.EqualTo(BorrowedSpellsState.Off), detail);
         exe.SetBorrowedSpells(Defaults(BorrowedSpells.All));
         var on = Bytes(exe, "on");
-        Assert.That(Md5(on), Is.EqualTo(AllFourteenMd5), "the same bytes as featpatch.py");
+        Assert.That(Md5(on), Is.EqualTo(AllFifteenMd5), "the same bytes as featpatch.py");
         Assert.That(on.Length, Is.EqualTo(_stockBytes.Length), "the file doesn't grow");
         var reopened = OpenBytes(on, "on2");
         Assert.That(reopened.GetBorrowedSpellsState(out detail), Is.EqualTo(BorrowedSpellsState.On), detail);
@@ -1275,32 +1432,36 @@ public class BgdaBorrowedSpellsTests
         exe = Stock();
         exe.SetBorrowedSpells(Defaults(Version9Spells));
         Assert.That(Md5(Bytes(exe, "seven")), Is.EqualTo(SevenMd5),
-                    "all but Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe");
+                    "all but Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter");
 
         exe = Stock();
         exe.SetBorrowedSpells(Defaults(Version10Spells));
         Assert.That(Md5(Bytes(exe, "eight")), Is.EqualTo(EightMd5),
-                    "all but Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe");
+                    "all but Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter");
 
         exe = Stock();
         exe.SetBorrowedSpells(Defaults(Version11Spells));
-        Assert.That(Md5(Bytes(exe, "nine")), Is.EqualTo(NineMd5), "all but Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe");
+        Assert.That(Md5(Bytes(exe, "nine")), Is.EqualTo(NineMd5), "all but Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter");
 
         exe = Stock();
         exe.SetBorrowedSpells(Defaults(Version12Spells));
-        Assert.That(Md5(Bytes(exe, "ten")), Is.EqualTo(TenMd5), "all but Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe");
+        Assert.That(Md5(Bytes(exe, "ten")), Is.EqualTo(TenMd5), "all but Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter");
 
         exe = Stock();
         exe.SetBorrowedSpells(Defaults(Version13Spells));
-        Assert.That(Md5(Bytes(exe, "eleven")), Is.EqualTo(ElevenMd5), "all but Dimension Door, Expert Focus and Phase Axe");
+        Assert.That(Md5(Bytes(exe, "eleven")), Is.EqualTo(ElevenMd5), "all but Dimension Door, Expert Focus, Phase Axe and Shatter");
 
         exe = Stock();
         exe.SetBorrowedSpells(Defaults(Version14Spells));
-        Assert.That(Md5(Bytes(exe, "twelve")), Is.EqualTo(TwelveMd5), "all but Expert Focus and Phase Axe");
+        Assert.That(Md5(Bytes(exe, "twelve")), Is.EqualTo(TwelveMd5), "all but Expert Focus, Phase Axe and Shatter");
 
         exe = Stock();
         exe.SetBorrowedSpells(Defaults(Version15Spells));
-        Assert.That(Md5(Bytes(exe, "thirteen")), Is.EqualTo(ThirteenMd5), "all but Phase Axe");
+        Assert.That(Md5(Bytes(exe, "thirteen")), Is.EqualTo(ThirteenMd5), "all but Phase Axe and Shatter");
+
+        exe = Stock();
+        exe.SetBorrowedSpells(Defaults(Version16Spells));
+        Assert.That(Md5(Bytes(exe, "fourteen")), Is.EqualTo(FourteenMd5), "all but Shatter");
 
         exe = Stock();
         exe.SetBorrowedSpells(Defaults(new[] { BorrowedSpell.InfernoArrow }));
@@ -1329,6 +1490,10 @@ public class BgdaBorrowedSpellsTests
         exe = Stock();
         exe.SetBorrowedSpells(Defaults(new[] { BorrowedSpell.PhaseAxe }));
         Assert.That(Md5(Bytes(exe, "axe")), Is.EqualTo(AxeMd5), "Phase Axe alone: featpatch.py --spells phaseaxe");
+
+        exe = Stock();
+        exe.SetBorrowedSpells(Defaults(new[] { BorrowedSpell.Shatter }));
+        Assert.That(Md5(Bytes(exe, "shatter")), Is.EqualTo(ShatterMd5), "Shatter alone: featpatch.py --spells shatter");
     }
 
     [Test]
@@ -1405,15 +1570,15 @@ public class BgdaBorrowedSpellsTests
 
         // the cast table: type 36 is Entangle's case, in the pool
         var table = FeatPatch.CastTableVa - VaToFile;
-        Assert.That(FeatPatch.CastTypes, Is.EqualTo(41));
+        Assert.That(FeatPatch.CastTypes, Is.EqualTo(42));
         var cast = BitConverter.ToUInt32(bytes, table + 4 * 35);
         Assert.That(InUsed(cast), Is.True, "type 36: its own cast");
-        Assert.That(Enumerable.Range(23, 12).Concat(new[] { 36, 37, 38, 39, 40 }).Select(t => BitConverter.ToUInt32(bytes, table + 4 * t)).Distinct(),
+        Assert.That(Enumerable.Range(23, 12).Concat(new[] { 36, 37, 38, 39, 40, 41 }).Select(t => BitConverter.ToUInt32(bytes, table + 4 * t)).Distinct(),
                     Is.EqualTo(new[] { 0x001628F0u }),
                     "types 24-35, 37 (Insect Plague's, off), 38 (Poison Gas Arrow's: an arrow, never cast), 39 (Dimension Door's, off), " +
-                    "40 (Expert Focus's, off) and 41 (Phase Axe's, off): the default");
+                    "40 (Expert Focus's, off), 41 (Phase Axe's, off) and 42 (Shatter's, off): the default");
 
-        // a second block that isn't version 16's: not WorldExplorer's
+        // a second block that isn't version 17's: not WorldExplorer's
         var unmarked = (byte[])bytes.Clone();
         unmarked[data2 + 4] = 11;
         Assert.That(OpenBytes(unmarked, "entangle-unmarked").GetBorrowedSpellsState(out detail), Is.EqualTo(BorrowedSpellsState.Unrecognized), detail);
@@ -1542,7 +1707,7 @@ public class BgdaBorrowedSpellsTests
         var cast = BitConverter.ToUInt32(bytes, FeatPatch.CastTableVa - VaToFile + 4 * 36);
         Assert.That(InUsed(cast), Is.True, "type 37: its own cast");
 
-        // a third block that isn't version 16's, or not saying it has its entry: not WorldExplorer's
+        // a third block that isn't version 17's, or not saying it has its entry: not WorldExplorer's
         foreach (var (at, value) in new[] { (4, (byte)11), (FeatPatch.Data3CountAt, (byte)0) })
         {
             var unmarked = (byte[])bytes.Clone();
@@ -1568,6 +1733,157 @@ public class BgdaBorrowedSpellsTests
             if (at == 0x20) changed[0x0030E1F0 - VaToFile + 0x21] = 0;
             Assert.That(OpenBytes(changed, "insect-taken").GetBorrowedSpellsState(out detail), Is.EqualTo(BorrowedSpellsState.Unrecognized), $"+0x{at:X2}");
             Assert.That(detail, Does.Contain("Insect Plague"));
+        }
+    }
+
+    [Test]
+    public void Shatter_IsARingOfFrostThatFreezesTheMonstersRoundHer_WithItsSettingsInAnEighthBlock()
+    {
+        RequireStock();
+        var sh = BorrowedSpell.Shatter;
+        var info = BorrowedSpells.Info(sh);
+        Assert.That((info.Bit, info.CastType, info.GameFeat, info.GameRecord, info.Passive, info.HasMana, info.HasSecond, info.HasThird,
+                     info.Range, info.Hero, info.More.Count),
+                    Is.EqualTo((53, 42, false, false, false, true, true, false, true, "Adrianna", 3)));
+        Assert.That((info.FixedRanks, info.FirstMin, info.FirstMax, info.SecondMin, info.SecondMax), Is.EqualTo((5, 0, 255, 0, 255)),
+                    "5 ranks, the least and most damage 0 to 255");
+        Assert.That(info.More.Select(v => (v.Min, v.Max, v.Tenths, v.AtMost, v.Step)),
+                    Is.EqualTo(new[] { (10, 255, false, -1, 1), (1, 255, true, -1, 1), (0, 255, true, -1, 1) }),
+                    "a reach of 10 to 255; frozen for 0.1 to 25.5 seconds and a cooldown of 0 to 25.5 seconds, in tenths");
+        Assert.That((info.HasOwnTexts, info.UsesGameRecord, BorrowedSpellIcons.HasOwnIcon(sh)), Is.EqualTo((true, false, true)),
+                    "its own record, texts and icon");
+        Assert.That(info.Default.Equals(new BorrowedSpellSettings(12, 10f, new[] { 1, 2, 3, 4, 5 }, new[] { 3, 4, 5, 6, 8 },
+                        More: new IReadOnlyList<int>[] { new[] { 60, 70, 80, 90, 100 }, new[] { 10, 15, 20, 25, 30 }, new[] { 20, 25, 30, 35, 40 } })),
+                    Is.True, "price 12, 10 mana; 1-3 damage, a reach of 60, frozen 1 second and a cooldown of 2 at rank 1, up to 5-8, 100, 3 and 4 at rank 5");
+        Assert.That(BorrowedSpellTexts.NameKey(sh), Is.EqualTo("shatter_name"));
+        Assert.That(BorrowedSpellTexts.Of(sh).Select(t => (t.Language, t.Key)),
+                    Is.EqualTo(Enumerable.Range(0, 5).SelectMany(l => new[] { (l, "shatter_name"), (l, "shatter_desc"), (l, "shatter_hud") })));
+        Assert.That(BorrowedSpellTexts.Of(sh).Where(t => t.Key == "shatter_name").Select(t => t.Text),
+                    Is.EqualTo(new[] { "Shatter", "Fracassement", "Zerschmettern", "Frantumare", "Estallar" }));
+        Assert.That(BorrowedSpellTexts.Of(sh).Where(t => t.Key == "shatter_hud").Select(t => t.Text),
+                    Is.EqualTo(new[]
+                    {
+                        "Reach %d, frozen for %d.%d seconds", "Portée %d, gel de %d,%d secondes", "Reichweite %d, %d,%d Sekunden eingefroren",
+                        "Portata %d, congelati per %d,%d secondi", "Alcance %d, congelados %d,%d segundos"
+                    }), "its own HUD line: the rank's reach, then its freeze in seconds and tenths");
+        Assert.That(BorrowedSpellIcons.EntryName(sh), Is.EqualTo("icon_shatter.tex"));
+        Assert.That(BorrowedSpellIcons.FallbackName(sh), Is.EqualTo("icon_coneofcold.tex (Cone of Cold's)"));
+
+        // its own settings: featpatch.py's file, read back
+        var exe = Stock();
+        exe.SetBorrowedSpells(new Dictionary<BorrowedSpell, BorrowedSpellSettings> { [sh] = ShatterCustom });
+        var bytes = Bytes(exe, "shatter-custom");
+        Assert.That(Md5(bytes), Is.EqualTo(ShatterCustomMd5));
+        var reopened = OpenBytes(bytes, "shatter-custom2");
+        Assert.That(reopened.GetBorrowedSpellsState(out var detail), Is.EqualTo(BorrowedSpellsState.On), detail);
+        var read = reopened.GetBorrowedSpells();
+        Assert.That(read.Keys, Is.EqualTo(new[] { sh }));
+        Assert.That(read[sh].Equals(ShatterCustom), Is.True, "read back: 0-0 to 0-255, a reach of 10 to 255, 0.1 to 25.5 s, 0 to 25.5 s");
+
+        // its hooks: the six every spell needs, the HUD's three and its own one, the status effects' way out, now a jump into the pool
+        var hooks = Hooks.Where(va => BitConverter.ToUInt32(bytes, va - VaToFile) != BitConverter.ToUInt32(_stockBytes, va - VaToFile)).ToList();
+        Assert.That(hooks, Is.EqualTo(OrbsHooks.Concat(ShatterOnly).OrderBy(va => va)));
+        var thaw = BitConverter.ToUInt32(bytes, 0x0011B7D8 - VaToFile);
+        Assert.That((thaw >> 26, InUsed((thaw & 0x03FFFFFF) << 2)), Is.EqualTo((2u, true)), "j into the pool");
+        Assert.That(BitConverter.ToUInt32(_stockBytes, 0x0011B7D8 - VaToFile), Is.EqualTo(0xDFB10030u), "(the game's ld s1, 0x30(sp))");
+
+        // the cast table: type 42 its case, in the pool; type 41 (Phase Axe's, off) the default
+        var table = FeatPatch.CastTableVa - VaToFile;
+        var cast = BitConverter.ToUInt32(bytes, table + 4 * 41);
+        Assert.That(FeatPatch.CastTypes, Is.EqualTo(42));
+        Assert.That(InUsed(cast) && cast == BorrowedSpells.Data(sh).Cast, Is.True, "type 42: its cast case, in the pool");
+        Assert.That(BitConverter.ToUInt32(bytes, table + 4 * 40), Is.EqualTo(FeatPatch.CastDefault));
+
+        // the main block names it (its bit in the mask) but has no entry for it; the eighth block has its entry, record and settings
+        var data = FeatPatch.DataVa - VaToFile;
+        Assert.That(BitConverter.ToUInt32(bytes, data + FeatPatch.SpellsAt), Is.EqualTo(0x4000u), "its bit in the main block's mask");
+        Assert.That((BitConverter.ToInt32(bytes, data + FeatPatch.CountAt), BitConverter.ToInt32(bytes, data + FeatPatch.AbilityCountAt)),
+                    Is.EqualTo((0, 0)), "no entry or record there");
+        Assert.That(FeatPatch.Data8Va, Is.EqualTo(0x0020F6A8), "the start of the pool's stretch 52 (stretch 51 hasn't the room left)");
+        Assert.That(InUsed((uint)FeatPatch.Data8Va) && InUsed((uint)(FeatPatch.Data8Va + FeatPatch.Data8Size - 1)), Is.True);
+        var data8 = FeatPatch.Data8Va - VaToFile;
+        Assert.That(Encoding.ASCII.GetString(bytes, data8, 4), Is.EqualTo("FEA8"));
+        Assert.That((BitConverter.ToInt32(bytes, data8 + 4), FeatPatch.Version), Is.EqualTo((17, 17)));
+        Assert.That((BitConverter.ToInt32(bytes, data8 + FeatPatch.Data3CountAt), BitConverter.ToInt32(bytes, data8 + FeatPatch.Data3AbilityCountAt)),
+                    Is.EqualTo((1, 1)), "its list entry and its ability record, where the third block has Insect Plague's");
+        Assert.That((bytes[data8 + FeatPatch.Data3EntryAt + FeatPatch.EntryPriceAt], bytes[data8 + FeatPatch.Data3EntryAt + FeatPatch.EntryRanksAt]),
+                    Is.EqualTo(((byte)4, (byte)5)), "price 4; its entry offers 5 ranks");
+        var record = data8 + FeatPatch.Data3AbilityAt;
+        Assert.That(Encoding.ASCII.GetString(bytes, record, 8), Is.EqualTo("shatter\0"));
+        Assert.That((BitConverter.ToInt16(bytes, record + 0x20), BitConverter.ToUInt64(bytes, record + 0x48)), Is.EqualTo(((short)42, 1UL << 53)),
+                    "type 42, bit 53");
+        Assert.That(BitConverter.ToSingle(bytes, record + FeatPatch.AbilityManaAt), Is.EqualTo(6.5f));
+        Assert.That((BitConverter.ToUInt16(bytes, record + FeatPatch.AbilityDamageAt), BitConverter.ToUInt16(bytes, record + FeatPatch.AbilityDamageAt + 2)),
+                    Is.EqualTo(((ushort)0, (ushort)0)), "its record's damage, rank 1's");
+        Assert.That(Encoding.ASCII.GetString(bytes, data8 + 0xC0, 17), Is.EqualTo("icon_shatter.tex\0"));
+        Assert.That(BitConverter.ToUInt32(bytes, data8 + 0xD8), Is.EqualTo(0x0030A9D8u), "its fallback: the game's icon_coneofcold.tex");
+        Assert.That(bytes.Skip(data8 + FeatPatch.ShatterDamageMinAt).Take(8), Is.EqualTo(new byte[] { 0, 0, 1, 9, 20, 0, 0, 0 }),
+                    "the least damage by rank (entry 0 is rank 0's)");
+        Assert.That(bytes.Skip(data8 + FeatPatch.ShatterDamageMaxAt).Take(8), Is.EqualTo(new byte[] { 0, 0, 2, 30, 20, 255, 0, 0 }),
+                    "the most damage by rank");
+        Assert.That(bytes.Skip(data8 + FeatPatch.ShatterReachAt).Take(8), Is.EqualTo(new byte[] { 0, 10, 30, 100, 200, 255, 0, 0 }), "the reach");
+        Assert.That(bytes.Skip(data8 + FeatPatch.ShatterFreezeAt).Take(8), Is.EqualTo(new byte[] { 0, 1, 10, 25, 100, 255, 0, 0 }),
+                    "the freeze, in tenths of a second");
+        Assert.That(bytes.Skip(data8 + FeatPatch.ShatterCooldownAt).Take(8), Is.EqualTo(new byte[] { 0, 0, 10, 25, 100, 255, 0, 0 }),
+                    "the cooldown, in tenths of a second");
+        Assert.That(Encoding.ASCII.GetString(bytes, data8 + 0x108, 12), Is.EqualTo("shatter_hud\0"), "its HUD line's key");
+        Assert.That(bytes.Skip(data8 + FeatPatch.ShatterRunTimeAt).Take(FeatPatch.Data8Size - FeatPatch.ShatterRunTimeAt).All(b => b == 0), Is.True,
+                    "its run-time fields (the last frame, the particle type, the holds) zero");
+        Assert.That((FeatPatch.ShatterHolds, FeatPatch.ShatterReachMin, FeatPatch.ShatterReachMax), Is.EqualTo((32, 10, 255)),
+                    "32 monsters held at once");
+
+        // with all fifteen: Adrianna's five each in her list, in the order of BorrowedSpell, and read back
+        exe = Stock();
+        exe.SetBorrowedSpells(Defaults(AdriannaAll));
+        var hers = Bytes(exe, "shatter-adrianna");
+        Assert.That(Md5(hers), Is.EqualTo(AdriannaMd5), "featpatch.py --spells xantam,sorcerersblood,xantamorbs,dimensiondoor,shatter");
+        reopened = OpenBytes(hers, "shatter-adrianna2");
+        Assert.That(reopened.GetBorrowedSpellsState(out detail), Is.EqualTo(BorrowedSpellsState.On), detail);
+        AssertSame(reopened.GetBorrowedSpells(), Defaults(AdriannaAll));
+
+        // off: the eighth block is there with its defaults and no entry; type 42 the default; the status effects' way out the game's
+        var off = Stock();
+        off.SetBorrowedSpells(Defaults(new[] { BorrowedSpell.XantamOrbs }));
+        var orbs = Bytes(off, "shatter-off");
+        Assert.That(Encoding.ASCII.GetString(orbs, data8, 4), Is.EqualTo("FEA8"));
+        Assert.That((BitConverter.ToInt32(orbs, data8 + FeatPatch.Data3CountAt), BitConverter.ToInt32(orbs, data8 + FeatPatch.Data3AbilityCountAt)),
+                    Is.EqualTo((0, 0)));
+        Assert.That(orbs.Skip(data8 + FeatPatch.ShatterDamageMinAt).Take(8), Is.EqualTo(new byte[] { 0, 1, 2, 3, 4, 5, 0, 0 }));
+        Assert.That(orbs.Skip(data8 + FeatPatch.ShatterDamageMaxAt).Take(8), Is.EqualTo(new byte[] { 0, 3, 4, 5, 6, 8, 0, 0 }));
+        Assert.That(orbs.Skip(data8 + FeatPatch.ShatterReachAt).Take(8), Is.EqualTo(new byte[] { 0, 60, 70, 80, 90, 100, 0, 0 }));
+        Assert.That(orbs.Skip(data8 + FeatPatch.ShatterFreezeAt).Take(8), Is.EqualTo(new byte[] { 0, 10, 15, 20, 25, 30, 0, 0 }));
+        Assert.That(orbs.Skip(data8 + FeatPatch.ShatterCooldownAt).Take(8), Is.EqualTo(new byte[] { 0, 20, 25, 30, 35, 40, 0, 0 }));
+        Assert.That(BitConverter.ToUInt32(orbs, table + 4 * 41), Is.EqualTo(FeatPatch.CastDefault));
+        Assert.That(BitConverter.ToUInt32(orbs, data + FeatPatch.SpellsAt) & 0x4000u, Is.EqualTo(0u));
+        Assert.That(BitConverter.ToUInt32(orbs, 0x0011B7D8 - VaToFile), Is.EqualTo(0xDFB10030u));
+
+        // an eighth block that isn't version 17's, or not saying it has its entry: not WorldExplorer's
+        foreach (var (at, value) in new[] { (4, (byte)16), (FeatPatch.Data3CountAt, (byte)0) })
+        {
+            var unmarked = (byte[])bytes.Clone();
+            unmarked[data8 + at] = value;
+            Assert.That(OpenBytes(unmarked, "shatter-unmarked").GetBorrowedSpellsState(out detail), Is.EqualTo(BorrowedSpellsState.Unrecognized),
+                        $"+0x{at:X}: {detail}");
+        }
+
+        // the game code it relies on changed (the status effects, the creature draw's blue tint by the chill, the particles' setup,
+        // the spell start's cooldown from its slot): not the game's
+        foreach (var va in new[] { 0x0011B3C8, 0x0010DD28, 0x00153F10, 0x0015E30C })
+        {
+            var changed = (byte[])_stockBytes.Clone();
+            changed[va - VaToFile] ^= 4;
+            Assert.That(OpenBytes(changed, "shatter").GetBorrowedSpellsState(out detail), Is.EqualTo(BorrowedSpellsState.Unrecognized), $"0x{va:X8}");
+            Assert.That(detail, Does.Contain($"0x{va:X8}"));
+        }
+
+        // an ability with its bit or its cast type already: refused
+        foreach (var (at, value) in new[] { (0x4E, (byte)0x20), (0x20, (byte)42) })
+        {
+            var changed = (byte[])_stockBytes.Clone();
+            changed[0x0030E1F0 - VaToFile + at] = at == 0x20 ? value : (byte)(changed[0x0030E1F0 - VaToFile + at] | value);
+            if (at == 0x20) changed[0x0030E1F0 - VaToFile + 0x21] = 0;
+            Assert.That(OpenBytes(changed, "shatter-taken").GetBorrowedSpellsState(out detail), Is.EqualTo(BorrowedSpellsState.Unrecognized), $"+0x{at:X2}");
+            Assert.That(detail, Does.Contain("Shatter"));
         }
     }
 
@@ -1613,7 +1929,7 @@ public class BgdaBorrowedSpellsTests
         // the cast table: type 41 its case, in the pool; type 40 (Expert Focus's, off) the default
         var table = FeatPatch.CastTableVa - VaToFile;
         var cast = BitConverter.ToUInt32(bytes, table + 4 * 40);
-        Assert.That(FeatPatch.CastTypes, Is.EqualTo(41));
+        Assert.That(FeatPatch.CastTypes, Is.EqualTo(42));
         Assert.That(InUsed(cast) && cast == BorrowedSpells.Data(ax).Cast, Is.True, "type 41: its cast case, in the pool");
         Assert.That(BitConverter.ToUInt32(bytes, table + 4 * 39), Is.EqualTo(FeatPatch.CastDefault));
 
@@ -1637,7 +1953,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(InUsed((uint)FeatPatch.Data7Va) && InUsed((uint)(FeatPatch.Data7Va + FeatPatch.Data7Size - 1)), Is.True);
         var data7 = FeatPatch.Data7Va - VaToFile;
         Assert.That(Encoding.ASCII.GetString(bytes, data7, 4), Is.EqualTo("FEA7"));
-        Assert.That((BitConverter.ToInt32(bytes, data7 + 4), FeatPatch.Version), Is.EqualTo((16, 16)));
+        Assert.That((BitConverter.ToInt32(bytes, data7 + 4), FeatPatch.Version), Is.EqualTo((17, 17)));
         Assert.That((BitConverter.ToInt32(bytes, data7 + FeatPatch.Data3CountAt), BitConverter.ToInt32(bytes, data7 + FeatPatch.Data3AbilityCountAt)),
                     Is.EqualTo((1, 1)), "its list entry and its ability record, where the third block has Insect Plague's");
         Assert.That((bytes[data7 + FeatPatch.Data3EntryAt + FeatPatch.EntryPriceAt], bytes[data7 + FeatPatch.Data3EntryAt + FeatPatch.EntryRanksAt]),
@@ -1660,7 +1976,7 @@ public class BgdaBorrowedSpellsTests
                     Is.EqualTo((300f, 67, 0x002A7A28)), "300 a second for 67 frames (400), the weapon table's axe4");
         Assert.That((FeatPatch.AxeSpeed, FeatPatch.AxeLife, FeatPatch.AxeRange, FeatPatch.AxeWeaponVa), Is.EqualTo((300f, 67, 400f, 0x002A7A28)));
 
-        // with all fourteen: Kromlech's five each in his list, in the order of BorrowedSpell, and read back
+        // with all five of his: Kromlech's five each in his list, in the order of BorrowedSpell, and read back
         exe = Stock();
         exe.SetBorrowedSpells(Defaults(KromlechAll));
         reopened = OpenBytes(Bytes(exe, "axe-krom"), "axe-krom2");
@@ -1679,7 +1995,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(BitConverter.ToUInt32(orbs, table + 4 * 40), Is.EqualTo(FeatPatch.CastDefault));
         Assert.That(BitConverter.ToUInt32(orbs, data + FeatPatch.SpellsAt) & 0x2000u, Is.EqualTo(0u));
 
-        // a seventh block that isn't version 16's, or not saying it has its entry: not WorldExplorer's
+        // a seventh block that isn't version 17's, or not saying it has its entry: not WorldExplorer's
         foreach (var (at, value) in new[] { (4, (byte)15), (FeatPatch.Data3CountAt, (byte)0) })
         {
             var unmarked = (byte[])bytes.Clone();
@@ -1763,7 +2079,7 @@ public class BgdaBorrowedSpellsTests
         // the cast table: type 40 its case, in the pool; type 39 (Dimension Door's, off) the default
         var table = FeatPatch.CastTableVa - VaToFile;
         var cast = BitConverter.ToUInt32(bytes, table + 4 * 39);
-        Assert.That(FeatPatch.CastTypes, Is.EqualTo(41));
+        Assert.That(FeatPatch.CastTypes, Is.EqualTo(42));
         Assert.That(InUsed(cast) && cast == BorrowedSpells.Data(ef).Cast, Is.True, "type 40: its cast case, in the pool");
         Assert.That(BitConverter.ToUInt32(bytes, table + 4 * 38), Is.EqualTo(FeatPatch.CastDefault));
 
@@ -1776,7 +2092,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(InUsed((uint)FeatPatch.Data6Va) && InUsed((uint)(FeatPatch.Data6Va + FeatPatch.Data6Size - 1)), Is.True);
         var data6 = FeatPatch.Data6Va - VaToFile;
         Assert.That(Encoding.ASCII.GetString(bytes, data6, 4), Is.EqualTo("FEA6"));
-        Assert.That((BitConverter.ToInt32(bytes, data6 + 4), FeatPatch.Version), Is.EqualTo((16, 16)));
+        Assert.That((BitConverter.ToInt32(bytes, data6 + 4), FeatPatch.Version), Is.EqualTo((17, 17)));
         Assert.That((BitConverter.ToInt32(bytes, data6 + FeatPatch.Data3CountAt), BitConverter.ToInt32(bytes, data6 + FeatPatch.Data3AbilityCountAt)),
                     Is.EqualTo((1, 1)), "its list entry and its ability record, where the third block has Insect Plague's");
         Assert.That((bytes[data6 + FeatPatch.Data3EntryAt + FeatPatch.EntryPriceAt], bytes[data6 + FeatPatch.Data3EntryAt + FeatPatch.EntryRanksAt]),
@@ -1811,7 +2127,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(FocusOnly.Append(0x0010F648).All(va => BitConverter.ToUInt32(orbs, va - VaToFile) == BitConverter.ToUInt32(_stockBytes, va - VaToFile)),
                     Is.True);
 
-        // a sixth block that isn't version 16's, or not saying it has its entry: not WorldExplorer's
+        // a sixth block that isn't version 17's, or not saying it has its entry: not WorldExplorer's
         foreach (var (at, value) in new[] { (4, (byte)14), (FeatPatch.Data3CountAt, (byte)0) })
         {
             var unmarked = (byte[])bytes.Clone();
@@ -1884,7 +2200,7 @@ public class BgdaBorrowedSpellsTests
         // the cast table: type 39 its case, in the pool; type 38 (Poison Gas Arrow's, an arrow) the default
         var table = FeatPatch.CastTableVa - VaToFile;
         var cast = BitConverter.ToUInt32(bytes, table + 4 * 38);
-        Assert.That(FeatPatch.CastTypes, Is.EqualTo(41));
+        Assert.That(FeatPatch.CastTypes, Is.EqualTo(42));
         Assert.That(InUsed(cast) && cast == BorrowedSpells.Data(dd).Cast, Is.True, "type 39: its cast case, in the pool");
         Assert.That(BitConverter.ToUInt32(bytes, table + 4 * 37), Is.EqualTo(FeatPatch.CastDefault));
 
@@ -1927,7 +2243,7 @@ public class BgdaBorrowedSpellsTests
                     Is.EqualTo(new[] { 0, 100, 150, 200, 200, 200, 0, 0 }));
         Assert.That(BitConverter.ToUInt32(orbs, table + 4 * 38), Is.EqualTo(FeatPatch.CastDefault));
 
-        // a fifth block that isn't version 16's, or not saying it has its entry: not WorldExplorer's
+        // a fifth block that isn't version 17's, or not saying it has its entry: not WorldExplorer's
         foreach (var (at, value) in new[] { (4, (byte)13), (FeatPatch.Data3CountAt, (byte)0) })
         {
             var unmarked = (byte[])bytes.Clone();
@@ -2063,7 +2379,7 @@ public class BgdaBorrowedSpellsTests
 
         Assert.That(bytes.AsSpan(gameGas, 0x80).SequenceEqual(_stockBytes.AsSpan(gameGas, 0x80)), Is.True, "the game's vtable is never written");
 
-        // a fourth block that isn't version 16's, or not saying it has its entry: not WorldExplorer's
+        // a fourth block that isn't version 17's, or not saying it has its entry: not WorldExplorer's
         foreach (var (at, value) in new[] { (4, (byte)12), (FeatPatch.Data3CountAt, (byte)0) })
         {
             var unmarked = (byte[])bytes.Clone();
@@ -2354,7 +2670,7 @@ public class BgdaBorrowedSpellsTests
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version5Spells));
 
         // saved with Power Attack, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow,
-        // Dimension Door, Expert Focus and Phase Axe added: featpatch.py version 16's file
+        // Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 17's file
         var all = new Dictionary<BorrowedSpell, BorrowedSpellSettings>(exe.GetBorrowedSpells())
         {
             [BorrowedSpell.PowerAttack] = BorrowedSpells.Info(BorrowedSpell.PowerAttack).Default,
@@ -2366,10 +2682,11 @@ public class BgdaBorrowedSpellsTests
             [BorrowedSpell.PoisonGasArrow] = BorrowedSpells.Info(BorrowedSpell.PoisonGasArrow).Default,
             [BorrowedSpell.DimensionDoor] = BorrowedSpells.Info(BorrowedSpell.DimensionDoor).Default,
             [BorrowedSpell.ExpertFocus] = BorrowedSpells.Info(BorrowedSpell.ExpertFocus).Default,
-            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default
+            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default,
+            [BorrowedSpell.Shatter] = BorrowedSpells.Info(BorrowedSpell.Shatter).Default
         };
         exe.SetBorrowedSpells(all);
-        Assert.That(Md5(Bytes(exe, "v5-updated")), Is.EqualTo(AllFourteenMd5));
+        Assert.That(Md5(Bytes(exe, "v5-updated")), Is.EqualTo(AllFifteenMd5));
 
         // its own settings (in its data block, where version 5 keeps them) are read and kept
         var custom = (byte[])v5.Clone();
@@ -2413,7 +2730,7 @@ public class BgdaBorrowedSpellsTests
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version6Spells));
 
         // saved with Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door,
-        // Expert Focus and Phase Axe added: featpatch.py version 16's file
+        // Expert Focus, Phase Axe and Shatter added: featpatch.py version 17's file
         var all = new Dictionary<BorrowedSpell, BorrowedSpellSettings>(exe.GetBorrowedSpells())
         {
             [BorrowedSpell.SorcerersBlood] = BorrowedSpells.Info(BorrowedSpell.SorcerersBlood).Default,
@@ -2424,10 +2741,11 @@ public class BgdaBorrowedSpellsTests
             [BorrowedSpell.PoisonGasArrow] = BorrowedSpells.Info(BorrowedSpell.PoisonGasArrow).Default,
             [BorrowedSpell.DimensionDoor] = BorrowedSpells.Info(BorrowedSpell.DimensionDoor).Default,
             [BorrowedSpell.ExpertFocus] = BorrowedSpells.Info(BorrowedSpell.ExpertFocus).Default,
-            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default
+            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default,
+            [BorrowedSpell.Shatter] = BorrowedSpells.Info(BorrowedSpell.Shatter).Default
         };
         exe.SetBorrowedSpells(all);
-        Assert.That(Md5(Bytes(exe, "v6-updated")), Is.EqualTo(AllFourteenMd5));
+        Assert.That(Md5(Bytes(exe, "v6-updated")), Is.EqualTo(AllFifteenMd5));
 
         // its own settings (in its data block, where version 6 keeps them) are read and kept
         var custom = (byte[])v6.Clone();
@@ -2463,6 +2781,64 @@ public class BgdaBorrowedSpellsTests
     }
 
     [Test]
+    public void Version16_IsBroughtUpToDate_KeepingItsSettings()
+    {
+        RequireStock();
+        var v16 = Version16();
+        var exe = OpenBytes(v16, "v16");
+        Assert.That(exe.GetBorrowedSpellsState(out var detail), Is.EqualTo(BorrowedSpellsState.Outdated), detail);
+        Assert.That(detail, Does.Contain("version 16"));
+        Assert.That(detail, Does.Contain("Shatter for Adrianna"));
+        AssertSame(exe.GetBorrowedSpells(), Defaults(Version16Spells));
+
+        // saved as it is, or with Shatter added: featpatch.py version 17's files
+        exe.SetBorrowedSpells(exe.GetBorrowedSpells());
+        Assert.That(Md5(Bytes(exe, "v16-updated")), Is.EqualTo(FourteenMd5));
+        exe = OpenBytes(v16, "v16b");
+        exe.SetBorrowedSpells(new Dictionary<BorrowedSpell, BorrowedSpellSettings>(exe.GetBorrowedSpells())
+        {
+            [BorrowedSpell.Shatter] = BorrowedSpells.Info(BorrowedSpell.Shatter).Default
+        });
+        Assert.That(Md5(Bytes(exe, "v16-updated-all")), Is.EqualTo(AllFifteenMd5));
+
+        // its own settings (in its seven data blocks, where version 17 keeps them too, in the same layout) are read and kept
+        var custom = (byte[])v16.Clone();
+        var data = FeatPatch.DataVa - VaToFile;
+        var data6 = FeatPatch.Data6Va - VaToFile;
+        var data7 = FeatPatch.Data7Va - VaToFile;
+        custom[data + FeatPatch.EntriesAt + FeatPatch.EntryStride + FeatPatch.EntryPriceAt] = 2;   // Power Attack's price (the second entry)
+        custom[data6 + FeatPatch.FocusTimeAt + 5] = 255;   // Expert Focus: for 25.5 seconds at rank 5
+        custom[data7 + FeatPatch.AxeDamageMinAt + 3] = 7;   // Phase Axe: 7-18 at rank 3
+        custom[data7 + FeatPatch.AxeDamageMaxAt + 5] = 255;   // ... 16-255 at rank 5
+        custom[data7 + FeatPatch.Data3EntryAt + FeatPatch.EntryPriceAt] = 9;   // ... price 9
+        BitConverter.GetBytes(3.5f).CopyTo(custom, data7 + FeatPatch.Data3AbilityAt + FeatPatch.AbilityManaAt);   // ... 3.5 mana
+        var read = OpenBytes(custom, "v16-custom").GetBorrowedSpells();
+        Assert.That(read[BorrowedSpell.PowerAttack].Price, Is.EqualTo(2));
+        Assert.That(read[BorrowedSpell.ExpertFocus].MoreValues[0], Is.EqualTo(new[] { 50, 75, 100, 125, 255 }));
+        Assert.That(read[BorrowedSpell.PhaseAxe].First, Is.EqualTo(new[] { 8, 10, 7, 14, 16 }));
+        Assert.That(read[BorrowedSpell.PhaseAxe].Second, Is.EqualTo(new[] { 12, 15, 18, 21, 255 }));
+        Assert.That((read[BorrowedSpell.PhaseAxe].Price, read[BorrowedSpell.PhaseAxe].Mana), Is.EqualTo((9, 3.5f)));
+        var updated = OpenBytes(custom, "v16-custom2");
+        updated.SetBorrowedSpells(read);
+        var reread = OpenBytes(Bytes(updated, "v16-custom-saved"), "v16-custom-saved2");
+        Assert.That(reread.GetBorrowedSpellsState(), Is.EqualTo(BorrowedSpellsState.On));
+        AssertSame(reread.GetBorrowedSpells(), read);
+
+        // taken out: the stock file
+        var removed = OpenBytes(v16, "v16-out");
+        removed.RemoveBorrowedSpells();
+        Assert.That(Bytes(removed, "v16-out-saved"), Is.EqualTo(_stockBytes));
+
+        // version 16 with its code changed, or its seventh block marked 17: not recognised
+        var broken = (byte[])v16.Clone();
+        broken[FeatPatch.V16Code[0].Va + 8 - VaToFile] ^= 4;
+        Assert.That(OpenBytes(broken, "v16-broken").GetBorrowedSpellsState(), Is.EqualTo(BorrowedSpellsState.Unrecognized));
+        var marked = (byte[])v16.Clone();
+        marked[data7 + 4] = 17;
+        Assert.That(OpenBytes(marked, "v16-marked").GetBorrowedSpellsState(), Is.EqualTo(BorrowedSpellsState.Unrecognized));
+    }
+
+    [Test]
     public void Version15_IsBroughtUpToDate_KeepingItsSettings()
     {
         RequireStock();
@@ -2470,20 +2846,21 @@ public class BgdaBorrowedSpellsTests
         var exe = OpenBytes(v15, "v15");
         Assert.That(exe.GetBorrowedSpellsState(out var detail), Is.EqualTo(BorrowedSpellsState.Outdated), detail);
         Assert.That(detail, Does.Contain("version 15"));
-        Assert.That(detail, Does.Contain("Phase Axe for Kromlech"));
+        Assert.That(detail, Does.Contain("Phase Axe for Kromlech and Shatter for Adrianna"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version15Spells));
 
-        // saved as it is, or with Phase Axe added: featpatch.py version 16's files
+        // saved as it is, or with Phase Axe and Shatter added: featpatch.py version 17's files
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v15-updated")), Is.EqualTo(ThirteenMd5));
         exe = OpenBytes(v15, "v15b");
         exe.SetBorrowedSpells(new Dictionary<BorrowedSpell, BorrowedSpellSettings>(exe.GetBorrowedSpells())
         {
-            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default
+            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default,
+            [BorrowedSpell.Shatter] = BorrowedSpells.Info(BorrowedSpell.Shatter).Default
         });
-        Assert.That(Md5(Bytes(exe, "v15-updated-all")), Is.EqualTo(AllFourteenMd5));
+        Assert.That(Md5(Bytes(exe, "v15-updated-all")), Is.EqualTo(AllFifteenMd5));
 
-        // its own settings (in its six data blocks, where version 16 keeps them too, in the same layout) are read and kept
+        // its own settings (in its six data blocks, where version 17 keeps them too, in the same layout) are read and kept
         var custom = (byte[])v15.Clone();
         var data = FeatPatch.DataVa - VaToFile;
         var data6 = FeatPatch.Data6Va - VaToFile;
@@ -2508,7 +2885,7 @@ public class BgdaBorrowedSpellsTests
         removed.RemoveBorrowedSpells();
         Assert.That(Bytes(removed, "v15-out-saved"), Is.EqualTo(_stockBytes));
 
-        // version 15 with its code changed, or its sixth block marked 16: not recognised
+        // version 15 with its code changed, or its sixth block marked 16 (version 16's): not recognised
         var broken = (byte[])v15.Clone();
         broken[FeatPatch.V15Code[0].Va + 8 - VaToFile] ^= 4;
         Assert.That(OpenBytes(broken, "v15-broken").GetBorrowedSpellsState(), Is.EqualTo(BorrowedSpellsState.Unrecognized));
@@ -2525,21 +2902,22 @@ public class BgdaBorrowedSpellsTests
         var exe = OpenBytes(v14, "v14");
         Assert.That(exe.GetBorrowedSpellsState(out var detail), Is.EqualTo(BorrowedSpellsState.Outdated), detail);
         Assert.That(detail, Does.Contain("version 14"));
-        Assert.That(detail, Does.Contain("Expert Focus for Vahn and Phase Axe for Kromlech"));
+        Assert.That(detail, Does.Contain("Expert Focus for Vahn, Phase Axe for Kromlech and Shatter for Adrianna"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version14Spells));
 
-        // saved as it is, or with Expert Focus and Phase Axe added: featpatch.py version 16's files
+        // saved as it is, or with Expert Focus, Phase Axe and Shatter added: featpatch.py version 17's files
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v14-updated")), Is.EqualTo(TwelveMd5));
         exe = OpenBytes(v14, "v14b");
         exe.SetBorrowedSpells(new Dictionary<BorrowedSpell, BorrowedSpellSettings>(exe.GetBorrowedSpells())
         {
             [BorrowedSpell.ExpertFocus] = BorrowedSpells.Info(BorrowedSpell.ExpertFocus).Default,
-            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default
+            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default,
+            [BorrowedSpell.Shatter] = BorrowedSpells.Info(BorrowedSpell.Shatter).Default
         });
-        Assert.That(Md5(Bytes(exe, "v14-updated-all")), Is.EqualTo(AllFourteenMd5));
+        Assert.That(Md5(Bytes(exe, "v14-updated-all")), Is.EqualTo(AllFifteenMd5));
 
-        // its own settings (in its five data blocks, where version 16 keeps them too, in the same layout) are read and kept
+        // its own settings (in its five data blocks, where version 17 keeps them too, in the same layout) are read and kept
         var custom = (byte[])v14.Clone();
         var data = FeatPatch.DataVa - VaToFile;
         var data5 = FeatPatch.Data5Va - VaToFile;
@@ -2579,10 +2957,10 @@ public class BgdaBorrowedSpellsTests
         var exe = OpenBytes(v13, "v13");
         Assert.That(exe.GetBorrowedSpellsState(out var detail), Is.EqualTo(BorrowedSpellsState.Outdated), detail);
         Assert.That(detail, Does.Contain("version 13"));
-        Assert.That(detail, Does.Contain("Dimension Door for Adrianna"));
+        Assert.That(detail, Does.Contain("Dimension Door and Shatter for Adrianna"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version13Spells));
 
-        // saved as it is, or with Dimension Door, Expert Focus and Phase Axe added: featpatch.py version 16's files
+        // saved as it is, or with Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 17's files
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v13-updated")), Is.EqualTo(ElevenMd5));
         exe = OpenBytes(v13, "v13b");
@@ -2590,11 +2968,12 @@ public class BgdaBorrowedSpellsTests
         {
             [BorrowedSpell.DimensionDoor] = BorrowedSpells.Info(BorrowedSpell.DimensionDoor).Default,
             [BorrowedSpell.ExpertFocus] = BorrowedSpells.Info(BorrowedSpell.ExpertFocus).Default,
-            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default
+            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default,
+            [BorrowedSpell.Shatter] = BorrowedSpells.Info(BorrowedSpell.Shatter).Default
         });
-        Assert.That(Md5(Bytes(exe, "v13-updated-all")), Is.EqualTo(AllFourteenMd5));
+        Assert.That(Md5(Bytes(exe, "v13-updated-all")), Is.EqualTo(AllFifteenMd5));
 
-        // its own settings (in its four data blocks, where version 16 keeps them too, in the same layout) are read and kept
+        // its own settings (in its four data blocks, where version 17 keeps them too, in the same layout) are read and kept
         var custom = (byte[])v13.Clone();
         var data = FeatPatch.DataVa - VaToFile;
         var data4 = FeatPatch.Data4Va - VaToFile;
@@ -2638,7 +3017,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("version 12"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version12Spells));
 
-        // saved as it is, or with Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe added: featpatch.py version 16's files
+        // saved as it is, or with Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 17's files
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v12-updated")), Is.EqualTo(TenMd5));
         exe = OpenBytes(v12, "v12b");
@@ -2647,11 +3026,12 @@ public class BgdaBorrowedSpellsTests
             [BorrowedSpell.PoisonGasArrow] = BorrowedSpells.Info(BorrowedSpell.PoisonGasArrow).Default,
             [BorrowedSpell.DimensionDoor] = BorrowedSpells.Info(BorrowedSpell.DimensionDoor).Default,
             [BorrowedSpell.ExpertFocus] = BorrowedSpells.Info(BorrowedSpell.ExpertFocus).Default,
-            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default
+            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default,
+            [BorrowedSpell.Shatter] = BorrowedSpells.Info(BorrowedSpell.Shatter).Default
         });
-        Assert.That(Md5(Bytes(exe, "v12-updated-all")), Is.EqualTo(AllFourteenMd5));
+        Assert.That(Md5(Bytes(exe, "v12-updated-all")), Is.EqualTo(AllFifteenMd5));
 
-        // its own settings (in its three data blocks, where version 16 keeps them too, in the same layout) are read and kept
+        // its own settings (in its three data blocks, where version 17 keeps them too, in the same layout) are read and kept
         var custom = (byte[])v12.Clone();
         var data = FeatPatch.DataVa - VaToFile;
         var data2 = FeatPatch.Data2Va - VaToFile;
@@ -2697,7 +3077,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("version 11"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version11Spells));
 
-        // saved as it is, or with Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe added: featpatch.py version 16's files
+        // saved as it is, or with Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 17's files
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v11-updated")), Is.EqualTo(NineMd5));
         exe = OpenBytes(v11, "v11b");
@@ -2707,11 +3087,12 @@ public class BgdaBorrowedSpellsTests
             [BorrowedSpell.PoisonGasArrow] = BorrowedSpells.Info(BorrowedSpell.PoisonGasArrow).Default,
             [BorrowedSpell.DimensionDoor] = BorrowedSpells.Info(BorrowedSpell.DimensionDoor).Default,
             [BorrowedSpell.ExpertFocus] = BorrowedSpells.Info(BorrowedSpell.ExpertFocus).Default,
-            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default
+            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default,
+            [BorrowedSpell.Shatter] = BorrowedSpells.Info(BorrowedSpell.Shatter).Default
         });
-        Assert.That(Md5(Bytes(exe, "v11-updated-all")), Is.EqualTo(AllFourteenMd5));
+        Assert.That(Md5(Bytes(exe, "v11-updated-all")), Is.EqualTo(AllFifteenMd5));
 
-        // its own settings (in its two data blocks, where version 16 keeps them too, in the same layout) are read and kept
+        // its own settings (in its two data blocks, where version 17 keeps them too, in the same layout) are read and kept
         var custom = (byte[])v11.Clone();
         var data = FeatPatch.DataVa - VaToFile;
         var data2 = FeatPatch.Data2Va - VaToFile;
@@ -2752,7 +3133,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("version 10"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version10Spells));
 
-        // saved as it is, or with Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe added: featpatch.py version 16's files
+        // saved as it is, or with Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 17's files
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v10-updated")), Is.EqualTo(EightMd5));
         exe = OpenBytes(v10, "v10b");
@@ -2763,11 +3144,12 @@ public class BgdaBorrowedSpellsTests
             [BorrowedSpell.PoisonGasArrow] = BorrowedSpells.Info(BorrowedSpell.PoisonGasArrow).Default,
             [BorrowedSpell.DimensionDoor] = BorrowedSpells.Info(BorrowedSpell.DimensionDoor).Default,
             [BorrowedSpell.ExpertFocus] = BorrowedSpells.Info(BorrowedSpell.ExpertFocus).Default,
-            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default
+            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default,
+            [BorrowedSpell.Shatter] = BorrowedSpells.Info(BorrowedSpell.Shatter).Default
         });
-        Assert.That(Md5(Bytes(exe, "v10-updated-all")), Is.EqualTo(AllFourteenMd5));
+        Assert.That(Md5(Bytes(exe, "v10-updated-all")), Is.EqualTo(AllFifteenMd5));
 
-        // its own settings (in its data block at 0x00221B88, where version 16's is too, in version 10's layout) are read and kept
+        // its own settings (in its data block at 0x00221B88, where version 17's is too, in version 10's layout) are read and kept
         var custom = (byte[])v10.Clone();
         var data = FeatPatch.DataVa - VaToFile;
         custom[data + 0x80 + 0x60 + 8 + 0x42] = 2;                          // Power Attack's price (the second entry)
@@ -2812,8 +3194,8 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("version 9"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version9Spells));
 
-        // saved as it is (its data block moves to version 16's place), or with Inferno Arrow, Entangle, Insect Plague, Poison Gas
-        // Arrow, Dimension Door, Expert Focus and Phase Axe added: featpatch.py version 16's files
+        // saved as it is (its data block moves to version 17's place), or with Inferno Arrow, Entangle, Insect Plague, Poison Gas
+        // Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 17's files
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v9-updated")), Is.EqualTo(SevenMd5));
         exe = OpenBytes(v9, "v9b");
@@ -2825,9 +3207,10 @@ public class BgdaBorrowedSpellsTests
             [BorrowedSpell.PoisonGasArrow] = BorrowedSpells.Info(BorrowedSpell.PoisonGasArrow).Default,
             [BorrowedSpell.DimensionDoor] = BorrowedSpells.Info(BorrowedSpell.DimensionDoor).Default,
             [BorrowedSpell.ExpertFocus] = BorrowedSpells.Info(BorrowedSpell.ExpertFocus).Default,
-            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default
+            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default,
+            [BorrowedSpell.Shatter] = BorrowedSpells.Info(BorrowedSpell.Shatter).Default
         });
-        Assert.That(Md5(Bytes(exe, "v9-updated-all")), Is.EqualTo(AllFourteenMd5));
+        Assert.That(Md5(Bytes(exe, "v9-updated-all")), Is.EqualTo(AllFifteenMd5));
 
         // its own settings (in its data block at 0x00132D90, where every version before 10 keeps them) are read and kept
         var custom = (byte[])v9.Clone();
@@ -2868,7 +3251,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("version 8"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version9Spells));
 
-        // saved as it is: featpatch.py version 16's file with its seven (the orbs in a fan now)
+        // saved as it is: featpatch.py version 17's file with its seven (the orbs in a fan now)
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v8-updated")), Is.EqualTo(SevenMd5));
 
@@ -2924,8 +3307,8 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("version 7"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version7Spells));
 
-        // saved with Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus and Phase Axe added: featpatch.py
-        // version 16's file
+        // saved with Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py
+        // version 17's file
         var all = new Dictionary<BorrowedSpell, BorrowedSpellSettings>(exe.GetBorrowedSpells())
         {
             [BorrowedSpell.XantamOrbs] = BorrowedSpells.Info(BorrowedSpell.XantamOrbs).Default,
@@ -2935,10 +3318,11 @@ public class BgdaBorrowedSpellsTests
             [BorrowedSpell.PoisonGasArrow] = BorrowedSpells.Info(BorrowedSpell.PoisonGasArrow).Default,
             [BorrowedSpell.DimensionDoor] = BorrowedSpells.Info(BorrowedSpell.DimensionDoor).Default,
             [BorrowedSpell.ExpertFocus] = BorrowedSpells.Info(BorrowedSpell.ExpertFocus).Default,
-            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default
+            [BorrowedSpell.PhaseAxe] = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default,
+            [BorrowedSpell.Shatter] = BorrowedSpells.Info(BorrowedSpell.Shatter).Default
         };
         exe.SetBorrowedSpells(all);
-        Assert.That(Md5(Bytes(exe, "v7-updated")), Is.EqualTo(AllFourteenMd5));
+        Assert.That(Md5(Bytes(exe, "v7-updated")), Is.EqualTo(AllFifteenMd5));
 
         // its own settings (in its data block, where version 7 keeps them) are read and kept
         var custom = (byte[])v7.Clone();
@@ -2986,7 +3370,7 @@ public class BgdaBorrowedSpellsTests
         bool Hook(int va) => Hooks.Any(h => h <= va && va < h + 4);
         Assert.That(changed.All(va => Hook(va) || Used.Any(u => u.Start <= va && va < u.End)), Is.True);
         Assert.That(Hooks.All(va => BitConverter.ToUInt32(bytes, va - VaToFile) != BitConverter.ToUInt32(_stockBytes, va - VaToFile)), Is.True,
-                    "all thirty-two hooks");
+                    "all thirty-three hooks");
         Assert.That(bytes.AsSpan(0x0030D750 - VaToFile, 0x0030E424 - 0x0030D750).SequenceEqual(_stockBytes.AsSpan(0x0030D750 - VaToFile, 0x0030E424 - 0x0030D750)),
                     Is.True, "the game's ability table (Power Attack's, Sorcerer's Blood's and Inferno Arrow's records among them) is untouched");
         Assert.That(bytes.Take(0x100), Is.EqualTo(_stockBytes.Take(0x100)), "the ELF header and program headers are the game's");
@@ -2995,18 +3379,19 @@ public class BgdaBorrowedSpellsTests
         Assert.That(BgdaExecutable.FeatPoolStretches, Is.EqualTo(61));
 
         // Kromlech's four alone: Xantam's Fire's two hooks, Sorcerer's Blood's two, Inferno Arrow's seven, Entangle's four, Insect
-        // Plague's one, Poison Gas Arrow's one and Expert Focus's three stay the game's (and with Phase Axe too: it has none of its own)
+        // Plague's one, Poison Gas Arrow's one, Expert Focus's three and Shatter's one stay the game's (and with Phase Axe too: it has
+        // none of its own)
         foreach (var kromlech in new[] { Kromlech, KromlechAll })
         {
             exe = Stock();
             exe.SetBorrowedSpells(Defaults(kromlech));
             bytes = Bytes(exe, "where-krom");
             Assert.That(XantamOnly.Concat(SorcerersOnly).Concat(InfernoOnly).Concat(EntangleOnly).Concat(InsectOnly).Concat(GasOnly).Concat(FocusOnly)
-                            .All(va => BitConverter.ToUInt32(bytes, va - VaToFile) == BitConverter.ToUInt32(_stockBytes, va - VaToFile)),
+                            .Concat(ShatterOnly).All(va => BitConverter.ToUInt32(bytes, va - VaToFile) == BitConverter.ToUInt32(_stockBytes, va - VaToFile)),
                         Is.True);
         }
 
-        // Xantam's Orbs alone: nine hooks, and the same stretches of the pool as all fourteen
+        // Xantam's Orbs alone: nine hooks, and the same stretches of the pool as all fifteen
         exe = Stock();
         exe.SetBorrowedSpells(Defaults(new[] { BorrowedSpell.XantamOrbs }));
         bytes = Bytes(exe, "where-orbs");
@@ -3075,7 +3460,8 @@ public class BgdaBorrowedSpellsTests
             [BorrowedSpell.PoisonGasArrow] = GasCustom,
             [BorrowedSpell.DimensionDoor] = DoorCustom,
             [BorrowedSpell.ExpertFocus] = FocusCustom,
-            [BorrowedSpell.PhaseAxe] = AxeCustom
+            [BorrowedSpell.PhaseAxe] = AxeCustom,
+            [BorrowedSpell.Shatter] = ShatterCustom
         };
         var exe = Stock();
         exe.SetBorrowedSpells(custom);
@@ -3083,7 +3469,7 @@ public class BgdaBorrowedSpellsTests
         AssertSame(reopened.GetBorrowedSpells(), custom);
 
         // a spell added and two taken out in place, the orbs, the flames, the vines, the swarms, the gas, the door's distances, the
-        // focus and the axe changed, then back to all fourteen at the tested settings
+        // focus, the axe and the ring changed, then back to all fifteen at the tested settings
         var changed = new Dictionary<BorrowedSpell, BorrowedSpellSettings>(custom) { [BorrowedSpell.BladeBarrier] = BorrowedSpells.Info(BorrowedSpell.BladeBarrier).Default };
         changed.Remove(BorrowedSpell.XantamFire);
         changed.Remove(BorrowedSpell.PowerAttack);
@@ -3112,10 +3498,15 @@ public class BgdaBorrowedSpellsTests
             First = new[] { 200, 1, 1, 1, 200 }, More = new IReadOnlyList<int>[] { new[] { 255, 1, 2, 3, 4 } }, Mana = 100f
         };
         changed[BorrowedSpell.PhaseAxe] = AxeCustom with { First = new[] { 255, 0, 1, 2, 3 }, Second = new[] { 255, 0, 9, 9, 9 }, Price = 30, Mana = 0.5f };
+        changed[BorrowedSpell.Shatter] = ShatterCustom with
+        {
+            First = new[] { 9, 9, 9, 9, 255 }, Second = new[] { 9, 9, 9, 9, 255 },
+            More = new IReadOnlyList<int>[] { new[] { 255, 10, 11, 12, 13 }, new[] { 255, 1, 2, 3, 4 }, new[] { 255, 0, 0, 1, 2 } }, Price = 0, Mana = 100f
+        };
         reopened.SetBorrowedSpells(changed);
         AssertSame(OpenBytes(Bytes(reopened, "changed"), "changed2").GetBorrowedSpells(), changed);
         reopened.SetBorrowedSpells(Defaults(BorrowedSpells.All));
-        Assert.That(Md5(Bytes(reopened, "custom-back")), Is.EqualTo(AllFourteenMd5));
+        Assert.That(Md5(Bytes(reopened, "custom-back")), Is.EqualTo(AllFifteenMd5));
 
         Assert.That(Enumerable.Range(0, 5).Select(h => BorrowedSpellSettings.RankCost(16, h)), Is.EqualTo(new[] { 16, 17, 19, 21, 25 }));
         Assert.That(Enumerable.Range(0, 5).Select(h => BorrowedSpellSettings.RankCost(10, h)), Is.EqualTo(new[] { 10, 11, 13, 15, 19 }));
@@ -3142,11 +3533,23 @@ public class BgdaBorrowedSpellsTests
         var dd = BorrowedSpells.Info(BorrowedSpell.DimensionDoor).Default;
         var ef = BorrowedSpells.Info(BorrowedSpell.ExpertFocus).Default;
         var ax = BorrowedSpells.Info(BorrowedSpell.PhaseAxe).Default;
+        var sh = BorrowedSpells.Info(BorrowedSpell.Shatter).Default;
+        IReadOnlyList<int>[] ShRow(int k, int[] row) => sh.MoreValues.Select((r, i) => i == k ? (IReadOnlyList<int>)row : r).ToArray();
         IReadOnlyList<int>[] PgRow(int k, int[] row) => pg.MoreValues.Select((r, i) => i == k ? (IReadOnlyList<int>)row : r).ToArray();
         IReadOnlyList<int>[] Row(int k, int[] row) => ia.MoreValues.Select((r, i) => i == k ? (IReadOnlyList<int>)row : r).ToArray();
         IReadOnlyList<int>[] EnRow(int k, int[] row) => en.MoreValues.Select((r, i) => i == k ? (IReadOnlyList<int>)row : r).ToArray();
         var bad = new (BorrowedSpell, BorrowedSpellSettings)[]
         {
+            (BorrowedSpell.Shatter, sh with { First = new[] { 1, 2, 9, 4, 5 } }), (BorrowedSpell.Shatter, sh with { Second = new[] { 3, 4, 5, 6, 256 } }),
+            (BorrowedSpell.Shatter, sh with { First = new[] { 1, 2, 3, 4, -1 } }), (BorrowedSpell.Shatter, sh with { Second = new[] { 3, 4, 5, 6 } }),
+            (BorrowedSpell.Shatter, sh with { More = ShRow(0, new[] { 60, 9, 80, 90, 100 }) }), (BorrowedSpell.Shatter, sh with { More = ShRow(0, new[] { 60, 70, 80, 90, 256 }) }),
+            (BorrowedSpell.Shatter, sh with { More = ShRow(1, new[] { 10, 0, 20, 25, 30 }) }), (BorrowedSpell.Shatter, sh with { More = ShRow(1, new[] { 10, 15, 20, 25, 256 }) }),
+            (BorrowedSpell.Shatter, sh with { More = ShRow(2, new[] { 20, -1, 30, 35, 40 }) }), (BorrowedSpell.Shatter, sh with { More = ShRow(2, new[] { 20, 25, 30, 35, 256 }) }),
+            (BorrowedSpell.Shatter, sh with { More = ShRow(2, new[] { 20, 25, 30, 35 }) }), (BorrowedSpell.Shatter, sh with { More = sh.MoreValues.Take(2).ToArray() }),
+            (BorrowedSpell.Shatter, sh with { More = null }), (BorrowedSpell.Shatter, sh with { More = ef.More }),
+            (BorrowedSpell.Shatter, sh with { Third = new[] { 1, 1, 1, 1, 1 } }), (BorrowedSpell.Shatter, sh with { RankCount = 3 }),
+            (BorrowedSpell.Shatter, sh with { Mana = 0f }), (BorrowedSpell.Shatter, sh with { Price = 31 }),
+            (BorrowedSpell.PhaseAxe, ax with { More = sh.More }), (BorrowedSpell.Entangle, en with { More = sh.More }),
             (BorrowedSpell.PhaseAxe, ax with { First = new[] { 8, 10, 19, 14, 16 } }), (BorrowedSpell.PhaseAxe, ax with { Second = new[] { 12, 15, 18, 21, 256 } }),
             (BorrowedSpell.PhaseAxe, ax with { First = new[] { 8, 10, 12, 14, -1 } }), (BorrowedSpell.PhaseAxe, ax with { Second = new[] { 12, 15, 18, 21 } }),
             (BorrowedSpell.PhaseAxe, ax with { Second = Array.Empty<int>() }), (BorrowedSpell.PhaseAxe, ax with { Third = new[] { 1, 1, 1, 1, 1 } }),
@@ -3306,6 +3709,11 @@ public class BgdaBorrowedSpellsTests
         Assert.That(saved.Get("phaseaxe_name", 2), Is.EqualTo("Phasenaxt"));
         Assert.That(saved.Get("phaseaxe_name", 3), Is.EqualTo("Ascia di Fase"));
         Assert.That(saved.Get("phaseaxe_hud"), Is.Null, "its HUD line is the game's own \"Damage: %d-%d\" too");
+        Assert.That(saved.Get("shatter_name"), Is.EqualTo("Shatter"));
+        Assert.That(saved.Get("shatter_name", 1), Is.EqualTo("Fracassement"));
+        Assert.That(saved.Get("shatter_name", 2), Is.EqualTo("Zerschmettern"));
+        Assert.That(saved.Get("shatter_hud"), Is.EqualTo("Reach %d, frozen for %d.%d seconds"),
+                    "its own HUD line: the rank's reach, then its freeze in seconds and tenths");
         for (var language = 0; language < 5; language++)
         {
             var keys = saved.Entries(language).Select(e => e.Key).ToList();
@@ -3315,9 +3723,10 @@ public class BgdaBorrowedSpellsTests
                 "antimagicfield_name", "antimagicfield_desc", "antimagicfield_hud", "righteousmight_name", "righteousmight_desc", "righteousmight_hud",
                 "xantamorbs_name", "xantamorbs_desc", "entangle_name", "entangle_desc", "insectplague_name", "insectplague_desc",
                 "poisongasarrow_name", "poisongasarrow_desc", "dimensiondoor_name", "dimensiondoor_desc", "dimensiondoor_hud",
-                "expertfocus_name", "expertfocus_desc", "expertfocus_hud", "phaseaxe_name", "phaseaxe_desc"
+                "expertfocus_name", "expertfocus_desc", "expertfocus_hud", "phaseaxe_name", "phaseaxe_desc", "shatter_name", "shatter_desc",
+                "shatter_hud"
             }), "after the file's own entries, spell by spell");
-            foreach (var hud in new[] { "antimagicfield_hud", "righteousmight_hud", "dimensiondoor_hud", "expertfocus_hud" })
+            foreach (var hud in new[] { "antimagicfield_hud", "righteousmight_hud", "dimensiondoor_hud", "expertfocus_hud", "shatter_hud" })
                 Assert.That(saved.Get(hud, language)!.TrimEnd().EndsWith("%"), Is.False, "a HUD line ends in plain text (the game's formatter reads on past a line ending in a %-code)");
         }
 
@@ -3373,7 +3782,8 @@ public class BgdaBorrowedSpellsTests
             [BorrowedSpell.XantamOrbs] = "549084289a254b4fd6413f9ff814f308", [BorrowedSpell.InfernoArrow] = "a7200918c0b4af9f16b4ff6ce63a00b5",
             [BorrowedSpell.Entangle] = "a27ef3840af3753c6772028cd928aa66", [BorrowedSpell.InsectPlague] = "6e2878b6609482d7201c7480555c811a",
             [BorrowedSpell.PoisonGasArrow] = "f3c2e780029d954b996989b49541b84b", [BorrowedSpell.DimensionDoor] = "672b2d3ceb1db3c7d1325390e9ad6882",
-            [BorrowedSpell.ExpertFocus] = "28996c19d68116f9eddbc624e5fa9223", [BorrowedSpell.PhaseAxe] = "99dbf76da3ccd4a8f360617026b3033c"
+            [BorrowedSpell.ExpertFocus] = "28996c19d68116f9eddbc624e5fa9223", [BorrowedSpell.PhaseAxe] = "99dbf76da3ccd4a8f360617026b3033c",
+            [BorrowedSpell.Shatter] = "6d0fff8430563844cb943b3c478c755b"
         };
         var own = BorrowedSpells.All.Where(BorrowedSpellIcons.HasOwnIcon).ToList();
         Assert.That(own, Is.EqualTo(md5.Keys.OrderBy(s => s)),
@@ -3385,7 +3795,8 @@ public class BgdaBorrowedSpellsTests
             Assert.That(Md5(BorrowedSpellIcons.Texture(spell)), Is.EqualTo(md5[spell]),
                         "make_xantam_icon.py's, make_kromlech_icons.py's, make_xantam_orbs_icon.py's, make_inferno_arrow_icon.py's, " +
                         "make_entangle_icon.py's, make_insect_plague_icon.py's, make_poison_gas_arrow_icon.py's, " +
-                        "make_dimension_door_icon.py's, make_expert_focus_icon.py's and make_phase_axe_icon.py's textures");
+                        "make_dimension_door_icon.py's, make_expert_focus_icon.py's, make_phase_axe_icon.py's and make_shatter_icon.py's " +
+                        "textures");
         }
 
         // like the game's ICONS.LMP: sorted, the directory full (no room before the first file)
@@ -3404,7 +3815,8 @@ public class BgdaBorrowedSpellsTests
             "exclaim.tex", "icon_antimagicfield.tex", "icon_balllightning.tex", "icon_bladebarrier.tex", "icon_dimensiondoor.tex",
             "icon_entangle.tex", "icon_expertfocus.tex", "icon_healthpotion.tex",
             "icon_infernoarrow.tex", "icon_insectplague.tex", "icon_phaseaxe.tex", "icon_poisongasarrow.tex",
-            "icon_powerattack.tex", "icon_protection.tex", "icon_quake.tex", "icon_righteousmight.tex", "icon_whirlwind.tex", "icon_xantamfire.tex",
+            "icon_powerattack.tex", "icon_protection.tex", "icon_quake.tex", "icon_righteousmight.tex", "icon_shatter.tex", "icon_whirlwind.tex",
+            "icon_xantamfire.tex",
             "icon_xantamorbs.tex", "levelup.tex", "nomana.tex"
         }), "each where its name sorts");
         Assert.That(GameArchive.AsLoaded(added).Where(f => !f.Name.StartsWith("icon_") || f.Name is "icon_healthpotion.tex" or "icon_protection.tex" or
