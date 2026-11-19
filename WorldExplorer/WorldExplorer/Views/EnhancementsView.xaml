@@ -6,7 +6,8 @@
              xmlns:local="clr-namespace:WorldExplorer"
              mc:Ignorable="d" d:DesignWidth="1060" d:DesignHeight="560"
              d:DataContext="{d:DesignInstance Type=local:EnhancementsModel}">
-    <!-- The Enhancements tab of Executable Tuning. DataContext: EnhancementsModel; each spell's card: SpellCard. -->
+    <!-- The Enhancements tab of Executable Tuning. DataContext: EnhancementsModel; each spell's card: SpellCard; the
+         Monsters part's card: EnemyAiCard (EnemyAi), below a separator after the heroes' feats. -->
     <UserControl.Resources>
         <Style x:Key="Help" TargetType="TextBlock">
             <Setter Property="TextWrapping" Value="Wrap" />
@@ -172,9 +173,29 @@
             </DockPanel>
             <TextBlock Style="{StaticResource Help}" Text="GTEXT.LMP and ICONS.LMP are saved after the executable, each where you say: put them in your game image with it." />
 
-            <TextBlock Text="ROOM FOR NEW FEATS" Style="{StaticResource Heading}" />
+            <!-- the heroes' feats above, the monsters below -->
+            <Separator Height="1" Margin="0,18,0,2" />
+
+            <TextBlock Text="MONSTERS" Style="{StaticResource Heading}" />
+            <TextBlock Style="{StaticResource Help}" Text="Changes to how the game's monsters fight. Each is turned on or off by itself, with or without the new feats, and taking it out puts the game's own code back exactly." />
+            <Border Style="{StaticResource Card}" Margin="0,4,0,8" Padding="14,8" DataContext="{Binding EnemyAi}">
+                <Expander IsExpanded="False">
+                    <Expander.Header>
+                        <CheckBox Content="{Binding Title}" FontWeight="SemiBold"
+                                  IsChecked="{Binding On}" IsEnabled="{Binding Usable}" ToolTip="{Binding Description}" />
+                    </Expander.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Help}" Margin="6,0,0,0" Text="{Binding Status}" />
+                        <TextBlock Style="{StaticResource Help}" Margin="6,0,0,0" Text="{Binding Description}" />
+                    </StackPanel>
+                </Expander>
+            </Border>
+
+            <Separator Height="1" Margin="0,10,0,2" />
+
+            <TextBlock Text="ROOM IN THE EXECUTABLE" Style="{StaticResource Heading}" />
             <TextBlock Style="{StaticResource Help}" Text="{Binding PoolText}" />
-            <TextBlock Style="{StaticResource Help}" Text="That code is loaded with the rest of the game, so nothing is copied at start-up and the executable keeps its size. The three-player patch never touches it, so three players can be turned on or off on their tab with any of these in." />
+            <TextBlock Style="{StaticResource Help}" Text="That code is loaded with the rest of the game, so nothing is copied at start-up and the executable keeps its size. The three-player patch never touches it, so three players can be turned on or off on their tab with any of these in, Improved Enemy AI too." />
         </StackPanel>
     </ScrollViewer>
 </UserControl>
