@@ -3,9 +3,9 @@
 //
 // The Enhancements tab of Executable Tuning (Views/EnhancementsView.xaml): additions to the game that
 // work with or without three players, each turned on or off by itself. Eight spells borrowed from the
-// game's monsters, the game's own unused vines, three feats the game has but never offers and two new ones
-// (BgdaExecutable.BorrowedSpells.cs), one card each: Xantam's Fire, Sorcerer's Blood, Xantam's Orbs and
-// Dimension Door for Adrianna; Power Attack, Blade Barrier, Antimagic Field, Righteous Might and Phase Axe for
+// game's monsters, the game's own unused vines, three feats the game has but never offers and three new ones
+// (BgdaExecutable.BorrowedSpells.cs), one card each: Xantam's Fire, Sorcerer's Blood, Xantam's Orbs, Dimension
+// Door and Shatter for Adrianna; Power Attack, Blade Barrier, Antimagic Field, Righteous Might and Phase Axe for
 // Kromlech; Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow and Expert Focus for Vahn. Each card has its
 // tick box, price, mana
 // (not Power Attack's: its record's, on the Feats & Spells tab) and values by rank (Xantam's Orbs: three, the
@@ -85,7 +85,7 @@ public sealed class SpellValueBox : ObservableObject
     }
 }
 
-/// <summary>One rank's boxes on a spell's card: one value, two, or three (Xantam's Orbs, Entangle, Insect Plague: how many, then least and most damage), and any further ones (Inferno Arrow's, Entangle's, Insect Plague's, Poison Gas Arrow's, Expert Focus's).</summary>
+/// <summary>One rank's boxes on a spell's card: one value, two, or three (Xantam's Orbs, Entangle, Insect Plague: how many, then least and most damage), and any further ones (Inferno Arrow's, Entangle's, Insect Plague's, Poison Gas Arrow's, Expert Focus's, Shatter's).</summary>
 public sealed class SpellRankRow : ObservableObject
 {
     private readonly Action _edited;
@@ -101,7 +101,7 @@ public sealed class SpellRankRow : ObservableObject
             .ToList();
     }
 
-    /// <summary>The further boxes, after the others (Inferno Arrow's: the blast's reach, the flames' spread and time, their damage; Entangle's: the slow and the time; Insect Plague's: the time; Poison Gas Arrow's: the cloud's reach and time, its damage; Expert Focus's: the time).</summary>
+    /// <summary>The further boxes, after the others (Inferno Arrow's: the blast's reach, the flames' spread and time, their damage; Entangle's: the slow and the time; Insect Plague's: the time; Poison Gas Arrow's: the cloud's reach and time, its damage; Expert Focus's: the time; Shatter's: the reach, the freeze and the cooldown).</summary>
     public IReadOnlyList<SpellValueBox> More { get; }
 
     public bool HasMore => More.Count > 0;
@@ -282,6 +282,14 @@ public sealed class SpellCard : ObservableObject
             "experience), and breaks the barrels, crates and pots it meets. After its first hit it flies level. A wall or the " +
             "floor stops it with a clang; otherwise it vanishes in a ring of lilac sparks after 400 (a little over a second). " +
             "Never a player. It sounds like Mordenkainen's Sword; its HUD shows the rank's damage.",
+        BorrowedSpell.Shatter =>
+            "A new feat: a ring of frost bursts out all round her, icy particles of the game's own going out to the rank's reach in " +
+            "half a second, with the game's sound of ice breaking. Every monster whose edge is within the reach takes the rank's " +
+            "damage from her (cold magic, which a shield can't block; her kills give her the experience) and is frozen solid for " +
+            "the rank's time: it stands still, its animation stopped, tinted blue (the game's own hold, as its vines hold, and its " +
+            "own chill), then thaws. A monster that resists cold or magic is frozen half as long; one immune to cold or magic " +
+            "isn't frozen. Barrels, crates and pots in reach break. A monster killed while frozen breaks into ice. Never a player. " +
+            "Her spells then wait the rank's cooldown, as after the game's own Knockback; its HUD shows the rank's reach and time.",
         _ =>
             "Ilivarra's might: for 10 seconds he grows to 1.3 times his size in a green glow, his melee hits do the rank's " +
             "percentage more damage and physical hits on him the rank's percentage less (spells do their full damage). Casting it " +
@@ -311,6 +319,7 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.DimensionDoor => "How far ahead she goes, at each of its 3 ranks",
         BorrowedSpell.ExpertFocus => "Percentage more damage of every arrow he looses, and how long the focus lasts, by rank",
         BorrowedSpell.PhaseAxe => "Damage of each hit (each monster once), by rank (least to most)",
+        BorrowedSpell.Shatter => "The damage (least to most), the reach, how long a monster stays frozen and her cooldown, by rank",
         _ => "Percentage more melee damage and less physical damage taken, by rank"
     };
 
@@ -345,6 +354,7 @@ public sealed class SpellCard : ObservableObject
             "(its least and its most damage, rounded; 100 doubles it, as Power Attack does his melee hits).",
         BorrowedSpell.PhaseAxe =>
             "The least damage of each hit (every monster and breakable thing the axe passes through takes one): 0 to 255.",
+        BorrowedSpell.Shatter => "The least damage to each monster and breakable thing in reach (cold): 0 to 255.",
         _ => "The least damage: 0 to 255."
     };
 
@@ -356,6 +366,7 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.InsectPlague => "The most damage of each sting: 0 to 255.",
         BorrowedSpell.PoisonGasArrow => "The most damage of the arrow itself: 0 to 255.",
         BorrowedSpell.PhaseAxe => "The most damage of each hit: 0 to 255.",
+        BorrowedSpell.Shatter => "The most damage to each: 0 to 255.",
         _ => "The most damage: 0 to 255."
     };
 
@@ -371,12 +382,13 @@ public sealed class SpellCard : ObservableObject
         _ => $"How many orbs she hurls: {Info.ThirdMin} to {Info.ThirdMax}."
     };
 
-    /// <summary>What goes before and after a further box ("blast [72]", "for [3] s"; "slower [40] %"; "cloud [50]  for [5] s  gas [3] – [4]"), and its tooltip (Inferno Arrow's, Entangle's, Insect Plague's, Poison Gas Arrow's, Expert Focus's).</summary>
+    /// <summary>What goes before and after a further box ("blast [72]", "for [3] s"; "slower [40] %"; "cloud [50]  for [5] s  gas [3] – [4]"; "reach [80]  frozen [2] s  cooldown [3] s"), and its tooltip (Inferno Arrow's, Entangle's, Insect Plague's, Poison Gas Arrow's, Expert Focus's, Shatter's).</summary>
     public string MorePrefix(int k) => Spell switch
     {
         BorrowedSpell.Entangle => k == 0 ? "slower" : "for",
         BorrowedSpell.InsectPlague or BorrowedSpell.ExpertFocus => "for",
         BorrowedSpell.PoisonGasArrow => k switch { 0 => "cloud", 1 => "for", 2 => "gas", _ => "–" },
+        BorrowedSpell.Shatter => k switch { 0 => "reach", 1 => "frozen", _ => "cooldown" },
         _ => k switch { 0 => "blast", 1 => "flames", 2 => "for", 3 => "burning", _ => "–" }
     };
 
@@ -385,6 +397,7 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.Entangle => k == 0 ? "%" : "s",
         BorrowedSpell.InsectPlague or BorrowedSpell.ExpertFocus => "s",
         BorrowedSpell.PoisonGasArrow => k == 1 ? "s" : "",
+        BorrowedSpell.Shatter => k == 0 ? "" : "s",
         _ => k == 2 ? "s" : ""
     };
 
@@ -398,7 +411,18 @@ public sealed class SpellCard : ObservableObject
         BorrowedSpell.ExpertFocus =>
             "How long the focus lasts, from the cast: 0.1 to 25.5 seconds (a tenth at a time; Power Attack's hits: within 10). " +
             "Every arrow he looses in that time does the more damage.",
+        BorrowedSpell.Shatter => ShatterTip(k),
         _ => InfernoTip(k)
+    };
+
+    private static string ShatterTip(int k) => k switch
+    {
+        0 => "How far the ring reaches, measured from her to a monster's edge on the ground: 10 to 255 (Vahn's Knockback's ring " +
+             "goes about 190; its particles show the ring out to 215 at most).",
+        1 => "How long a monster stays frozen: 0.1 to 25.5 seconds (a tenth at a time). Half as long for one that resists cold " +
+             "or magic.",
+        _ => "How long all her spells wait after it, from the cast: 0 to 25.5 seconds (a tenth at a time; Knockback's: 3). The " +
+             "HUD dims her icons meanwhile."
     };
 
     private static string GasTip(int k) => k switch
@@ -472,6 +496,11 @@ public sealed class SpellCard : ObservableObject
                                                 string.Join(", ", d.MoreValues[1].Select(t => NumberText.Format(t / 10.0))) +
                                                 " seconds, hitting " +
                                                 string.Join(", ", d.MoreValues[2].Select((f, r) => $"{f}-{d.MoreValues[3][r]}")),
+                BorrowedSpell.Shatter => string.Join(", ", d.First.Select((f, r) => $"{f}-{d.Second[r]}")) + " damage, a reach of " +
+                                         string.Join(", ", d.MoreValues[0]) + ", frozen " +
+                                         string.Join(", ", d.MoreValues[1].Select(t => NumberText.Format(t / 10.0))) +
+                                         " seconds, a cooldown of " +
+                                         string.Join(", ", d.MoreValues[2].Select(t => NumberText.Format(t / 10.0))) + " seconds",
                 _ => string.Join(", ", d.First.Select((f, r) => $"{f}-{d.Second[r]}"))
             };
             return $"Price {d.Price}, {NumberText.Format(d.Mana)} mana, and {values}: what featpatch.py writes.";
@@ -745,7 +774,7 @@ public sealed class EnhancementsModel : ObservableObject
         foreach (var card in Spells) card.On = true;
     }
 
-    /// <summary>The fourteen spells' cards in the library's order (Card() indexes it): Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe. The tab shows Groups.</summary>
+    /// <summary>The fifteen spells' cards in the library's order (Card() indexes it): Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe, Shatter. The tab shows Groups.</summary>
     public IReadOnlyList<SpellCard> Spells { get; }
 
     public SpellCard Card(BorrowedSpell spell) => Spells[(int)spell];
@@ -960,7 +989,7 @@ public sealed class EnhancementsModel : ObservableObject
             var used = WillBeIn.Count > 0 ? BgdaExecutable.BorrowedSpellsBytes : 0;
             return $"New feats go into game code that nothing ever runs: {BgdaExecutable.FeatPoolStretches} stretches, " +
                    $"{BgdaExecutable.FeatPoolBytes:N0} bytes, the same in the stock executable and every three-player build. " +
-                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all fourteen); " : "") +
+                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all fifteen); " : "") +
                    $"{BgdaExecutable.FeatPoolBytes - used:N0} bytes are free for more.";
         }
     }
