@@ -155,12 +155,29 @@ Alliance II files are read with the Dark Alliance formats for now.
     included) does 50% more damage and trails Ilivarra's purple and gold sparks; casting it again starts the time
     again. Each rank's percentage (1 to 200) and time (0.1 to 25.5 seconds) can be set. Its HUD line shows them.
 
+  Below them, after a separator, the Monsters part has one card, **Improved Enemy AI**, a tick box of its own (with
+  or without any of the feats):
+  - Smarter targeting: a monster goes for the nearest hero it may chase (the game picks one by the monster's
+    number, wherever the others are), turns on a hero who hurt it in the last 2 seconds if that hero isn't much
+    further off, and switches to a hero who comes much nearer than the one it is after. With one player this part
+    changes nothing;
+  - Surround the hero: monsters closing in on a hero spread out round him, each to one of eight places just beyond
+    arm's reach (the free one nearest its own side, with no wall in the way), instead of queuing up behind one
+    another; with all eight taken the next comes straight at him, as before;
+  - Raise the alarm: a monster chasing a hero shouts, and every monster within 400 of it that is idle or wandering
+    comes for the hero nearest the noise; a monster that is hit is heard the same way. A monster shouts or answers
+    at most once in 10 seconds.
+
+  It changes the game's 32 ordinary kinds of monster; bosses, gas spores, ghosts, guards, cats, rats and the
+  town's people are left as they are. It never touches a player.
+
   They go into game code nothing ever runs (about 32 KB of it, the same in the stock executable and every
   three-player build, so three players can still be turned on or off), the borrowed spells' names and
   descriptions (in all five languages) into `GTEXT.LMP` and their HUD icons into `ICONS.LMP`, each saved after
   the executable. Unticking one puts the game's own code back exactly. A file with an earlier test version
   (Kromlech's spells, Power Attack, Sorcerer's Blood, either Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison
-  Gas Arrow, Dimension Door, Expert Focus, Phase Axe) is brought up to date when it is saved, every spell keeping its settings.
+  Gas Arrow, Dimension Door, Expert Focus, Phase Axe, Shatter) is brought up to date when it is saved, every spell keeping its
+  settings.
 - **Pick colours** by clicking a colour box: a glow style's halo or core on the Glow tab, or a player's automap
   marker on the Three Players tab. Drag in the square and the hue bar, type red, green and blue or a `#RRGGBB`
   value, or click a ready-made colour; OK puts the colour in the red, green and blue boxes.

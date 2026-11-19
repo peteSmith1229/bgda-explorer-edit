@@ -740,6 +740,99 @@ public sealed class SpellCard : ObservableObject
     }
 }
 
+/// <summary>
+/// The Improved Enemy AI card (Monsters, below the heroes' feats): on or off, no settings (WorldExplorer puts all three of its
+/// parts in; a file featpatch.py gave fewer keeps them when it is saved with the box ticked).
+/// </summary>
+public sealed class EnemyAiCard : ObservableObject
+{
+    private readonly EnhancementsModel _owner;
+    private bool _on;
+
+    internal EnemyAiCard(EnhancementsModel owner) => _owner = owner;
+
+    public string Title => "Improved Enemy AI";
+
+    /// <summary>What it does in the game.</summary>
+    public string Description =>
+        "The monsters fight smarter, in three ways. Smarter targeting: a monster goes for the nearest hero it may chase (the game " +
+        "picks one by the monster's number, wherever the others are), turns on a hero who hurt it lately even from a little further " +
+        "off, and switches to a hero who comes much nearer than the one it is after; with one player this part changes nothing. " +
+        "Surround the hero: monsters closing in on a hero spread out round him, each to a place of its own (eight round him, the " +
+        "free one nearest its own side, with no wall in the way), instead of queuing up behind one another. Raise the alarm: a " +
+        "monster chasing a hero shouts, and every monster within 400 of it that is idle or wandering comes for the hero too; a " +
+        "monster that is hit is heard the same way. A monster shouts or answers at most once in 10 seconds. Bosses, gas spores, " +
+        "ghosts and the town's people don't change. It works with or without the new feats and with or without three players.";
+
+    public bool On
+    {
+        get => _on;
+        set
+        {
+            if (SetProperty(ref _on, value)) _owner.Edited();
+        }
+    }
+
+    /// <summary>The tick box can be used (the file is one the patch knows).</summary>
+    public bool Usable => _owner.Usable;
+
+    /// <summary>The executable has it now.</summary>
+    public bool InFile => _owner.LoadedEnemyAi != 0;
+
+    /// <summary>True when saving changes it in the executable.</summary>
+    public bool Changed => Usable && (_on != InFile || _on && _owner.State == BorrowedSpellsState.Outdated);
+
+    /// <summary>Saving takes it out.</summary>
+    public bool TakingOut => Usable && InFile && !_on;
+
+    /// <summary>The parts saving puts in: the file's own when it has them, else all three.</summary>
+    internal int PartsToSave => !_on ? 0 : InFile ? _owner.LoadedEnemyAi : BgdaExecutable.EnemyAiParts;
+
+    /// <summary>What is in the file and what saving does with it, in a sentence or two.</summary>
+    public string Status
+    {
+        get
+        {
+            if (!Usable) return "Can't be put in or taken out here (see above).";
+            if (InFile)
+            {
+                if (!_on) return "Taken out when you save: the monsters fight as the game's own do again.";
+                var parts = _owner.LoadedEnemyAi;
+                return parts == BgdaExecutable.EnemyAiParts
+                    ? "In: the monsters target, surround and raise the alarm as below."
+                    : $"In, with {PartNames(parts)} only (featpatch.py's choice): saving keeps it so.";
+            }
+
+            return _on
+                ? "Goes in when you save. It works with or without the new feats and with or without three players."
+                : "Not in this executable. Tick the box to put it in.";
+        }
+    }
+
+    private static string PartNames(int parts)
+    {
+        var names = new List<string>();
+        if ((parts & BgdaExecutable.EnemyAiTargeting) != 0) names.Add("smarter targeting");
+        if ((parts & BgdaExecutable.EnemyAiSurround) != 0) names.Add("surround the hero");
+        if ((parts & BgdaExecutable.EnemyAiAlarm) != 0) names.Add("raise the alarm");
+        return names.Count < 2 ? string.Join("", names) : string.Join(", ", names.Take(names.Count - 1)) + " and " + names[^1];
+    }
+
+    internal void Load(bool on)
+    {
+        _on = on;
+        OnPropertyChanged(nameof(On));
+    }
+
+    internal void Refresh()
+    {
+        OnPropertyChanged(nameof(On));
+        OnPropertyChanged(nameof(Usable));
+        OnPropertyChanged(nameof(Status));
+        OnPropertyChanged(nameof(Changed));
+    }
+}
+
 public sealed class EnhancementsModel : ObservableObject
 {
     private readonly BgdaExecutable _exe;
@@ -756,6 +849,7 @@ public sealed class EnhancementsModel : ObservableObject
         _exe = exe;
         _names = names;
         Spells = BorrowedSpells.All.Select(s => new SpellCard(this, s)).ToList();
+        EnemyAi = new EnemyAiCard(this);
         Groups = HeroOrder.Select(h => new SpellGroup(h, Spells.Where(c => c.Info.Hero == h)
                                                            .OrderBy(c => c.Info.Title, StringComparer.CurrentCultureIgnoreCase).ToList()))
                           .Where(g => g.Cards.Count > 0).ToList();
@@ -779,6 +873,12 @@ public sealed class EnhancementsModel : ObservableObject
 
     public SpellCard Card(BorrowedSpell spell) => Spells[(int)spell];
 
+    /// <summary>The Improved Enemy AI card (the Monsters part of the tab).</summary>
+    public EnemyAiCard EnemyAi { get; }
+
+    /// <summary>Improved Enemy AI's parts in the executable as it was loaded or last saved (0: not in).</summary>
+    internal int LoadedEnemyAi { get; private set; }
+
     /// <summary>The spells in the executable as it was loaded or last saved, with their settings.</summary>
     internal IReadOnlyDictionary<BorrowedSpell, BorrowedSpellSettings> Loaded { get; private set; } =
         new Dictionary<BorrowedSpell, BorrowedSpellSettings>();
@@ -791,6 +891,8 @@ public sealed class EnhancementsModel : ObservableObject
     {
         _state = _exe.GetBorrowedSpellsState(out _detail);
         Loaded = _exe.GetBorrowedSpells();
+        LoadedEnemyAi = _exe.GetEnemyAi();
+        EnemyAi.Load(LoadedEnemyAi != 0);
         PowerAttackMana = _exe.GetFeatSpells().FirstOrDefault(f => f.Name == "powerattack")?.EnergyCost;
         _namesApplied = false;
         foreach (var card in Spells)
@@ -815,8 +917,8 @@ public sealed class EnhancementsModel : ObservableObject
              "with or without three players."
     };
 
-    /// <summary>True when saving changes the executable's spells.</summary>
-    public bool Changed => Usable && (Spells.Any(c => c.Changed) || _state == BorrowedSpellsState.Outdated);
+    /// <summary>True when saving changes the executable's spells or Improved Enemy AI.</summary>
+    public bool Changed => Usable && (Spells.Any(c => c.Changed) || EnemyAi.Changed || _state == BorrowedSpellsState.Outdated);
 
     private List<SpellCard> WillBeIn => Spells.Where(c => c.WillBeIn).ToList();
 
@@ -840,13 +942,15 @@ public sealed class EnhancementsModel : ObservableObject
     }
 
     /// <summary>
-    /// Writes the spells into the executable as the tab says (<paramref name="spells"/> from <see cref="ReadSpells"/>): put in,
-    /// updated, their settings changed, or taken out. Throws InvalidOperationException when the file can't take them.
+    /// Writes the spells (<paramref name="spells"/> from <see cref="ReadSpells"/>) and Improved Enemy AI into the executable as the
+    /// tab says: put in, updated, their settings changed, or taken out. Throws InvalidOperationException when the file can't take
+    /// them.
     /// </summary>
     public void ApplySpells(IReadOnlyDictionary<BorrowedSpell, BorrowedSpellSettings> spells)
     {
         if (!Changed) return;
-        if (spells.Count > 0) _exe.SetBorrowedSpells(spells);
+        var ai = EnemyAi.PartsToSave;
+        if (spells.Count > 0 || ai != 0) _exe.SetBorrowedSpells(spells, ai);
         else _exe.RemoveBorrowedSpells();
     }
 
@@ -986,10 +1090,10 @@ public sealed class EnhancementsModel : ObservableObject
     {
         get
         {
-            var used = WillBeIn.Count > 0 ? BgdaExecutable.BorrowedSpellsBytes : 0;
-            return $"New feats go into game code that nothing ever runs: {BgdaExecutable.FeatPoolStretches} stretches, " +
-                   $"{BgdaExecutable.FeatPoolBytes:N0} bytes, the same in the stock executable and every three-player build. " +
-                   (used > 0 ? $"The spells take {used:N0} bytes of it (the same for one or all fifteen); " : "") +
+            var used = WillBeIn.Count > 0 || EnemyAi.On ? BgdaExecutable.BorrowedSpellsBytes : 0;
+            return $"New feats and Improved Enemy AI go into game code that nothing ever runs: {BgdaExecutable.FeatPoolStretches} " +
+                   $"stretches, {BgdaExecutable.FeatPoolBytes:N0} bytes, the same in the stock executable and every three-player build. " +
+                   (used > 0 ? $"They take {used:N0} bytes of it (the same for one spell, all fifteen or the AI alone); " : "") +
                    $"{BgdaExecutable.FeatPoolBytes - used:N0} bytes are free for more.";
         }
     }
@@ -1001,6 +1105,7 @@ public sealed class EnhancementsModel : ObservableObject
     internal void Edited()
     {
         foreach (var card in Spells) card.Refresh();
+        EnemyAi?.Refresh();
         OnPropertyChanged(nameof(StateText));
         OnPropertyChanged(nameof(Changed));
         OnPropertyChanged(nameof(NamesStatus));
