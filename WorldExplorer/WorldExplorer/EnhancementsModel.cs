@@ -741,8 +741,9 @@ public sealed class SpellCard : ObservableObject
 }
 
 /// <summary>
-/// The Improved Enemy AI card (Monsters, below the heroes' feats): on or off, no settings (WorldExplorer puts all three of its
-/// parts in; a file featpatch.py gave fewer keeps them when it is saved with the box ticked).
+/// The Improved Enemy AI card (Monsters, below the heroes' feats): on or off, no settings (WorldExplorer puts all seven of its
+/// parts in; a file featpatch.py gave fewer keeps them when it is saved with the box ticked; an earlier test version that had
+/// all of its version's parts is brought up to date with all seven).
 /// </summary>
 public sealed class EnemyAiCard : ObservableObject
 {
@@ -755,14 +756,23 @@ public sealed class EnemyAiCard : ObservableObject
 
     /// <summary>What it does in the game.</summary>
     public string Description =>
-        "The monsters fight smarter, in three ways. Smarter targeting: a monster goes for the nearest hero it may chase (the game " +
+        "The monsters fight smarter, in seven ways. Smarter targeting: a monster goes for the nearest hero it may chase (the game " +
         "picks one by the monster's number, wherever the others are), turns on a hero who hurt it lately even from a little further " +
         "off, and switches to a hero who comes much nearer than the one it is after; with one player this part changes nothing. " +
         "Surround the hero: monsters closing in on a hero spread out round him, each to a place of its own (eight round him, the " +
         "free one nearest its own side, with no wall in the way), instead of queuing up behind one another. Raise the alarm: a " +
         "monster chasing a hero shouts, and every monster within 400 of it that is idle or wandering comes for the hero too; a " +
-        "monster that is hit is heard the same way. A monster shouts or answers at most once in 10 seconds. Bosses, gas spores, " +
-        "ghosts and the town's people don't change. It works with or without the new feats and with or without three players.";
+        "monster that is hit is heard the same way. A monster shouts or answers at most once in 10 seconds. Casters cast more: " +
+        "kobold shamans, lizardman shamans and drow priestesses wait half as long between spells, and fire elementals throw " +
+        "fireballs twice as often. Brutes knock you back: a plain melee blow from an ogre, minotaur, frost giant, yeti, umber hulk, " +
+        "bulette or golem that lands on a hero knocks him back (a block facing the blow still stops it). Drow blink: a drow warrior " +
+        "chasing a hero from afar vanishes in a sparkle and reappears at his side, behind him if there is room, and a drow archer " +
+        "or priestess with a hero close by blinks away from him; at most one drow every 4 seconds, never through a wall or off a " +
+        "ledge. Wounded ones regroup: a kobold, kobold shaman, gnoll, bugbear, lizardman, ogre, thief or wolf left with 40% or less " +
+        "of its health falls back behind its nearest friend, turns to face the hero and waits there about 4 seconds (shamans cast " +
+        "and ogres throw from there), then comes back to fight; one struck on the way, or with no friend near, fights on. Bosses, " +
+        "gas spores, ghosts and the town's people don't change. It works with or without the new feats and with or without three " +
+        "players.";
 
     public bool On
     {
@@ -785,7 +795,7 @@ public sealed class EnemyAiCard : ObservableObject
     /// <summary>Saving takes it out.</summary>
     public bool TakingOut => Usable && InFile && !_on;
 
-    /// <summary>The parts saving puts in: the file's own when it has them, else all three.</summary>
+    /// <summary>The parts saving puts in: the file's own when it has them (an earlier test version's all seven when it had all of its version's), else all seven.</summary>
     internal int PartsToSave => !_on ? 0 : InFile ? _owner.LoadedEnemyAi : BgdaExecutable.EnemyAiParts;
 
     /// <summary>What is in the file and what saving does with it, in a sentence or two.</summary>
@@ -798,24 +808,20 @@ public sealed class EnemyAiCard : ObservableObject
             {
                 if (!_on) return "Taken out when you save: the monsters fight as the game's own do again.";
                 var parts = _owner.LoadedEnemyAi;
+                if (_owner.State == BorrowedSpellsState.Outdated)
+                    return parts == BgdaExecutable.EnemyAiParts
+                        ? "In, as an earlier test version (see above): saving brings it up to date with all seven parts."
+                        : $"In, as an earlier test version (see above), with {BgdaExecutable.EnemyAiPartNames(parts)} only " +
+                          "(featpatch.py's choice): saving brings it up to date and keeps it so.";
                 return parts == BgdaExecutable.EnemyAiParts
-                    ? "In: the monsters target, surround and raise the alarm as below."
-                    : $"In, with {PartNames(parts)} only (featpatch.py's choice): saving keeps it so.";
+                    ? "In: the monsters fight smarter in all seven ways below."
+                    : $"In, with {BgdaExecutable.EnemyAiPartNames(parts)} only (featpatch.py's choice): saving keeps it so.";
             }
 
             return _on
                 ? "Goes in when you save. It works with or without the new feats and with or without three players."
                 : "Not in this executable. Tick the box to put it in.";
         }
-    }
-
-    private static string PartNames(int parts)
-    {
-        var names = new List<string>();
-        if ((parts & BgdaExecutable.EnemyAiTargeting) != 0) names.Add("smarter targeting");
-        if ((parts & BgdaExecutable.EnemyAiSurround) != 0) names.Add("surround the hero");
-        if ((parts & BgdaExecutable.EnemyAiAlarm) != 0) names.Add("raise the alarm");
-        return names.Count < 2 ? string.Join("", names) : string.Join(", ", names.Take(names.Count - 1)) + " and " + names[^1];
     }
 
     internal void Load(bool on)

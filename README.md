@@ -167,18 +167,33 @@ Alliance II files are read with the Dark Alliance formats for now.
     another; with all eight taken the next comes straight at him, as before;
   - Raise the alarm: a monster chasing a hero shouts, and every monster within 400 of it that is idle or wandering
     comes for the hero nearest the noise; a monster that is hit is heard the same way. A monster shouts or answers
-    at most once in 10 seconds.
+    at most once in 10 seconds;
+  - Casters cast more: kobold shamans, lizardman shamans and drow priestesses wait half as long between spells, and
+    fire elementals throw fireballs twice as often;
+  - Brutes knock you back: a plain melee blow from an ogre, minotaur, frost giant, yeti, umber hulk, bulette or
+    golem that lands on a hero knocks him back with the game's own knock-back (a block facing the blow still stops
+    it);
+  - Drow blink: a drow warrior chasing a hero from afar vanishes in Ilivarra's sparkle and reappears at his side,
+    behind him if there is room; a drow archer or priestess with a hero close by blinks away from him. At most one
+    drow blinks every 4 seconds, and never through a wall or off a ledge;
+  - Wounded ones regroup: a kobold, kobold shaman, gnoll, bugbear, lizardman, ogre, thief or wolf left with 40% or
+    less of its health (remembered from its first hit) falls back behind its nearest friend within 400, turns to
+    face the hero and waits there about 4 seconds (shamans cast and ogres throw from there), then comes back to
+    fight. One struck on the way, or with no friend near, fights on.
 
   It changes the game's 32 ordinary kinds of monster; bosses, gas spores, ghosts, guards, cats, rats and the
-  town's people are left as they are. It never touches a player.
+  town's people are left as they are; no monster's health, damage or spells change. Ticked, it goes in with all
+  seven parts; a file featpatch.py gave fewer keeps them, and an executable with an earlier version of it
+  (Improved Enemy AI's first three parts, or the casters', brutes' or drow's test) is brought up to date when it
+  is saved, with all seven when it had all of its own.
 
   They go into game code nothing ever runs (about 32 KB of it, the same in the stock executable and every
   three-player build, so three players can still be turned on or off), the borrowed spells' names and
   descriptions (in all five languages) into `GTEXT.LMP` and their HUD icons into `ICONS.LMP`, each saved after
   the executable. Unticking one puts the game's own code back exactly. A file with an earlier test version
   (Kromlech's spells, Power Attack, Sorcerer's Blood, either Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison
-  Gas Arrow, Dimension Door, Expert Focus, Phase Axe, Shatter) is brought up to date when it is saved, every spell keeping its
-  settings.
+  Gas Arrow, Dimension Door, Expert Focus, Phase Axe, Shatter, or Improved Enemy AI's) is brought up to date when it is
+  saved, every spell keeping its settings.
 - **Pick colours** by clicking a colour box: a glow style's halo or core on the Glow tab, or a player's automap
   marker on the Three Players tab. Drag in the square and the hue bar, type red, green and blue or a `#RRGGBB`
   value, or click a ready-made colour; OK puts the colour in the red, green and blue boxes.
