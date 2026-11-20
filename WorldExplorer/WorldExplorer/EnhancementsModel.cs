@@ -862,11 +862,23 @@ public sealed class EnhancementsModel : ObservableObject
     /// <summary>The cards as the tab shows them: Adrianna's, then Kromlech's, then Vahn's, each hero's in alphabetical order.</summary>
     public IReadOnlyList<SpellGroup> Groups { get; }
 
-    /// <summary>Ticks every card ("Enable all"); each keeps the settings in its boxes.</summary>
-    public void EnableAll()
+    /// <summary>
+    /// The Enable all / Disable all toggle at the top of the tab: true when every card is ticked, the fifteen spells' and
+    /// Improved Enemy AI's. Setting it ticks or unticks them all; each card keeps the settings in its boxes.
+    /// </summary>
+    public bool AllOn
     {
-        foreach (var card in Spells) card.On = true;
+        get => Spells.All(c => c.On) && EnemyAi is { On: true };
+        set
+        {
+            if (!Usable) return;
+            foreach (var card in Spells) card.On = value;
+            EnemyAi.On = value;
+        }
     }
+
+    /// <summary>The toggle's text: "Disable all" once every card is ticked, else "Enable all".</summary>
+    public string AllText => AllOn ? "Disable all" : "Enable all";
 
     /// <summary>The fifteen spells' cards in the library's order (Card() indexes it): Xantam's Fire, Power Attack, Blade Barrier, Antimagic Field, Righteous Might, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe, Shatter. The tab shows Groups.</summary>
     public IReadOnlyList<SpellCard> Spells { get; }
@@ -1106,6 +1118,8 @@ public sealed class EnhancementsModel : ObservableObject
     {
         foreach (var card in Spells) card.Refresh();
         EnemyAi?.Refresh();
+        OnPropertyChanged(nameof(AllOn));
+        OnPropertyChanged(nameof(AllText));
         OnPropertyChanged(nameof(StateText));
         OnPropertyChanged(nameof(Changed));
         OnPropertyChanged(nameof(NamesStatus));
