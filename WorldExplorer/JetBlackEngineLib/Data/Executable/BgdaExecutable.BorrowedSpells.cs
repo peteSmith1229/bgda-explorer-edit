@@ -48,7 +48,7 @@
 //                                 seconds at ranks 1-5, as far as 60 to 100), barrels, crates and pots break,
 //                                 and her spells wait a little longer than the freeze.
 // And IMPROVED ENEMY AI, on or off by itself (the Enhancements tab's Monsters card; see below).
-// It is featpatch.py version 18, written from the data in BgdaFeatPatch.cs (generated from that script), so
+// It is featpatch.py version 22, written from the data in BgdaFeatPatch.cs (generated from that script), so
 // the bytes are the ones tested in the emulator.
 //
 // POWER ATTACK is the game's: its ability record (0x0030E2E0, bit 34, cast type 18, 5 mana), its grant, its
@@ -196,19 +196,20 @@
 // WHERE IT GOES. The pool: 61 stretches of the game's own code that nothing ever runs (unused library
 // functions and leftover routines, 32,724 bytes; see featpool.py). They are the same addresses and bytes
 // in the stock executable and in every three-player build, the game's own segment loads them, and no
-// other patch WorldExplorer knows writes there. The patch takes 26,852 bytes of it: its data block at
+// other patch WorldExplorer knows writes there. The patch takes 30,756 bytes of it: its data block at
 // 0x00221B88 (every earlier version's was at 0x00132D90), its second block at 0x00224B68 (the icons of types 32-42
 // and Entangle's settings, since version 11), its third at 0x0020B890 (Insect Plague's list entry, ability record
 // and settings, since version 12), its fourth at 0x0020BA70 (Poison Gas Arrow's, since version 13), its fifth at
 // 0x0020BB90 (Dimension Door's, since version 14), its sixth at 0x0020E6E8 (Expert Focus's, since version 15), its
 // seventh at 0x0020E810 (Phase Axe's, since version 16), its eighth at 0x0020F6A8 (Shatter's, since version 17), its
-// ninth at 0x00206460 (Improved Enemy AI's, since version 18), its code in forty-four pieces, its vtable copies (the
-// swarm's a creature's whole 0xA0 bytes) and its cast table (42 types). The code is the same whichever spells are on;
-// only the hooks of the spells that are on are written (41 words when all fifteen and the AI are), and the data
+// ninth at 0x00206460 (Improved Enemy AI's, since version 18), its tenth at 0x0020FCE0 (the wounded monsters', since
+// version 22), its code in fifty-three pieces, its vtable copies (the swarm's a creature's whole 0xA0 bytes) and its cast
+// table (42 types). The code is the same whichever spells are on; only the hooks of the spells that are on are written
+// (50 words when all fifteen and the AI are), and the data
 // blocks say which ones are. Nothing else changes: no program header, no start-up copy, the same file length.
 //
-// IMPROVED ENEMY AI changes how the monsters fight, in three parts (the ninth block says which are on; WorldExplorer
-// puts all three in, featpatch.py can put fewer):
+// IMPROVED ENEMY AI changes how the monsters fight, in seven parts (the ninth block says which are on; WorldExplorer
+// puts all seven in, featpatch.py can put fewer):
 //   smarter targeting   a monster looking for a hero takes the nearest one it may go for (the game takes the first
 //                       in player order), of every player, three in a three-player build; while it is after one, it
 //                       turns on a hero who hurt it lately if he is nearer, or within 1.5 times as far while it
@@ -220,10 +221,22 @@
 //   raise the alarm     a monster that starts chasing a hero shouts (once in 10 seconds): every monster within 400
 //                       that is idle or wandering and hasn't shouted or answered lately takes the hero nearest the
 //                       noise and starts its chase; a monster hit is heard the same way (the game tells every monster
-//                       near a hit; only kobolds, bugbears and thieves listened).
-// Its hooks are the first two words of the game's FIND (FUN_001182C0), KEEP (FUN_001185D8) and walk (FUN_0011C168),
-// and of the base alert handler (0x00129778, which does nothing); bosses, gas spores, ghosts and the town's people
-// don't shout, answer or surround. It can be in with or without the spells, and alone.
+//                       near a hit; only kobolds, bugbears and thieves listened);
+//   casters cast more   the kobold shamans', lizardman shamans' and drow priestesses' wait after a spell is halved,
+//                       and the fire elementals throw fireballs twice as often;
+//   brutes knock you    a plain melee blow from an ogre, minotaur, frost giant, yeti, umber hulk, bulette or golem
+//   back                that lands on a hero knocks him back (the game's own knock-back; a block still stops it);
+//   drow blink          a drow warrior chasing a hero from afar vanishes in Ilivarra's sparkle and appears at his
+//                       side, behind him if there is room; an archer or priestess with him close blinks away (at most
+//                       one drow every 4 seconds; walls, floors and ledges tested as Dimension Door's);
+//   wounded ones        a kobold, kobold shaman, gnoll, bugbear, lizardman, ogre, thief or wolf with 40% or less of
+//   regroup             its health (the patch remembers it from its first hit) falls back behind its nearest friend,
+//                       faces the hero and waits there about 4 seconds, or until struck, then fights again.
+// Its hooks are the first two words of the game's FIND (FUN_001182C0), KEEP (FUN_001185D8), walk (FUN_0011C168) and
+// every monster's damage (FUN_00129540), and of the base alert handler (0x00129778, which does nothing); the casters'
+// waits and the fire elemental's odds, the monsters' melee blow's hit call (0x00129C14) and the drow's thinking in
+// their vtables; 17 words, all written whenever it is on. Bosses, gas spores, ghosts and the town's people don't
+// change. It can be in with or without the spells, and alone.
 //
 // SO IT NEEDS NO THREE-PLAYER BUILD, and the Three Players tab can turn three players on or off
 // underneath it: the three-player patch never touches these bytes, and the code finds the class lists
@@ -232,8 +245,10 @@
 // as well: Righteous Might and Power Attack hook the instruction before the melee hit's call, which
 // Corrosive changes.
 //
-// STATES. Off: the hooks and the pool are the game's. On: version 18 is in, with the spells its data
-// block names and Improved Enemy AI if its ninth block says so. Outdated: version 17 (shatter-test1: all fifteen,
+// STATES. Off: the hooks and the pool are the game's. On: version 22 is in, with the spells its data
+// block names and Improved Enemy AI if its ninth block says so. Outdated: version 21, 20, 19 or 18 (the drow's,
+// the brutes', the casters' and the first monster test version, 18 also WorldExplorer's: the spells it names and
+// Improved Enemy AI with some of that version's parts, or neither), version 17 (shatter-test1: all fifteen,
 // Shatter the newest), version 16 (phase-axe-test1: all fourteen, Phase Axe the newest), version 15
 // (expert-focus-test1: all thirteen, Expert Focus the newest), version 14
 // (dimension-door-test1: all twelve, Dimension Door the newest), version 13
@@ -246,8 +261,9 @@
 // six without Xantam's Orbs), version 6 (power-attack-test1: the five without Sorcerer's Blood either),
 // version 5 (kromlech-spells-test1: the four borrowed spells of then), or Xantam's Fire alone as the fourth or
 // third test version (test4: in the pool; test3: a 12 KB spell area copied into low memory at start-up);
-// saving takes it out and puts version 18 in, every spell it had with its settings (Improved Enemy AI as the tab
-// says: off unless ticked). Unrecognized: anything
+// saving takes it out and puts version 22 in, every spell it had with its settings (Improved Enemy AI as the tab
+// says: as it was, all seven parts when it had all of its version's, featpatch.py's choice of fewer kept, off unless
+// ticked when it had none). Unrecognized: anything
 // else (earlier test versions, or another patch in those places).
 //
 // SETTINGS (the data block; the code reads them while the game runs): each spell's level-up price
@@ -316,9 +332,9 @@ public enum BorrowedSpellsState
 {
     /// <summary>The game's code and the free pool: the spells can be put in.</summary>
     Off,
-    /// <summary>Version 18 is in: which spells, and their settings, and Improved Enemy AI, can be read and changed.</summary>
+    /// <summary>Version 22 is in: which spells, and their settings, and Improved Enemy AI, can be read and changed.</summary>
     On,
-    /// <summary>Version 17 (all fifteen, Shatter the newest), 16 (all fourteen, Phase Axe the newest), 15 (all thirteen, Expert Focus the newest), 14 (all twelve, Dimension Door the newest), 13 (all eleven, Poison Gas Arrow the newest), 12 (all ten, Insect Plague the newest), 11 (all nine, Entangle the newest), 10 (all eight, Inferno Arrow the newest), 9 (all seven, the orbs in a fan), 8 (all seven, the orbs aimed with a random scatter), 7 (the six without Xantam's Orbs), 6 (the five without Sorcerer's Blood either) or 5 (the four borrowed spells of then), or Xantam's Fire alone as the fourth or third test version: saving brings it to version 18.</summary>
+    /// <summary>Version 21, 20, 19 or 18 (with Improved Enemy AI or without), 17 (all fifteen, Shatter the newest), 16 (all fourteen, Phase Axe the newest), 15 (all thirteen, Expert Focus the newest), 14 (all twelve, Dimension Door the newest), 13 (all eleven, Poison Gas Arrow the newest), 12 (all ten, Insect Plague the newest), 11 (all nine, Entangle the newest), 10 (all eight, Inferno Arrow the newest), 9 (all seven, the orbs in a fan), 8 (all seven, the orbs aimed with a random scatter), 7 (the six without Xantam's Orbs), 6 (the five without Sorcerer's Blood either) or 5 (the four borrowed spells of then), or Xantam's Fire alone as the fourth or third test version: saving brings it to version 18.</summary>
     Outdated,
     /// <summary>Neither: an earlier test version, or another patch where it goes.</summary>
     Unrecognized
@@ -807,11 +823,26 @@ public partial class BgdaExecutable
         return (bytes, code, data, v4, data2, data3, data4, data5, data6, data7, data8, data9);
     }
 
+    /// <summary>The tenth data block as the patch writes it (version 22's: the wounded monsters' numbers, their records zero).</summary>
+    private static readonly Lazy<byte[]> FeatData10 = new(() =>
+    {
+        var data10 = Convert.FromBase64String(FeatPatch.Data10Base64);
+        if (data10.Length != FeatPatch.Data10Size || !data10.AsSpan(0, 4).SequenceEqual(Encoding.ASCII.GetBytes(FeatPatch.Data10Mark)) ||
+            BitConverter.ToInt32(data10, 4) != FeatPatch.Version || data10.Skip(FeatPatch.Data10RunTimeAt).Any(b => b != 0))
+            throw new InvalidDataException("The built-in feats patch data is damaged.");
+        return data10;
+    });
+
     /// <summary>The end of everything the patch reads or writes in the game's part of the file (a shorter file isn't the game's).</summary>
     private static readonly Lazy<int> FeatEndVa = new(() =>
-        new[] { FeatPatch.Pool[^1].End, FeatPatch.AbilityTableEndVa + 4, FeatPatch.GameCastTableVa + 4 * FeatPatch.GameCastTypes }
+        new[] { FeatPatch.Pool[^1].End, FeatPatch.AbilityTableEndVa + 4, FeatPatch.GameCastTableVa + 4 * FeatPatch.GameCastTypes,
+                FeatPatch.Data10Va + FeatPatch.Data10Size }
             .Concat(FeatPatch.Checks.Select(c => c.Va + 4))
             .Concat(FeatPatch.Hooks.Select(h => h.Va + 4))
+            .Concat(FeatPatch.EarlierAiVersions.SelectMany(v => v.Hooks.Select(h => h.Va + 4)
+                                                                   .Concat(v.Code.Select(c => c.Va + c.Length))
+                                                                   .Concat(v.VTables.Select(t => t.GameVa + FeatPatch.VTableSize))
+                                                                   .Append(FeatPatch.Data9Va + v.Data9Size)))
             .Concat(FeatPatch.V17Hooks.Select(h => h.Va + 4))
             .Concat(FeatPatch.V17Code.Select(c => c.Va + c.Length))
             .Concat(FeatPatch.V17VTables.Select(v => v.GameVa + FeatPatch.VTableSize))
@@ -866,15 +897,26 @@ public partial class BgdaExecutable
     /// <summary>How much of the pool the borrowed spells and Improved Enemy AI take (any of them: the code is the same), and so how much is left.</summary>
     public static int BorrowedSpellsBytes => FeatPatch.PoolUsedBytes;
 
-    /// <summary>Improved Enemy AI's three parts (smarter targeting, surround the hero, raise the alarm): what WorldExplorer puts in.</summary>
+    /// <summary>
+    /// Improved Enemy AI's seven parts (smarter targeting, surround the hero, raise the alarm, the casters cast more, the brutes
+    /// knock you back, the drow blink, the wounded regroup): what WorldExplorer puts in.
+    /// </summary>
     public static int EnemyAiParts => FeatPatch.EnemyAiParts;
 
-    /// <summary>Improved Enemy AI's parts one by one: smarter targeting, surround the hero, raise the alarm.</summary>
+    /// <summary>Improved Enemy AI's parts one by one: smarter targeting, surround the hero, raise the alarm, ...</summary>
     public static int EnemyAiTargeting => FeatPatch.EnemyAiTargeting;
 
     public static int EnemyAiSurround => FeatPatch.EnemyAiSurround;
 
     public static int EnemyAiAlarm => FeatPatch.EnemyAiAlarm;
+
+    public static int EnemyAiCasters => FeatPatch.EnemyAiCasters;
+
+    public static int EnemyAiBrutes => FeatPatch.EnemyAiBrutes;
+
+    public static int EnemyAiDrow => FeatPatch.EnemyAiDrow;
+
+    public static int EnemyAiRegroup => FeatPatch.EnemyAiRegroup;
 
     /// <summary>The game's bytes at <paramref name="start"/>-<paramref name="end"/>, inside one stretch of the pool.</summary>
     private static ReadOnlySpan<byte> PoolOriginal(int start, int end)
@@ -934,7 +976,7 @@ public partial class BgdaExecutable
         ReadU32(FileOffset(FeatPatch.Data8Va) + 4) == version;
 
     /// <summary>
-    /// Improved Enemy AI's parts as version 18's ninth block has them (0: off), or null when the block isn't one WorldExplorer or
+    /// Improved Enemy AI's parts as version 22's ninth block has them (0: off), or null when the block isn't one WorldExplorer or
     /// featpatch.py writes: its mark and version, on (1) with parts that are some of <see cref="FeatPatch.EnemyAiParts"/> or off (0)
     /// with none, the rest of it the built-in block's.
     /// </summary>
@@ -981,7 +1023,7 @@ public partial class BgdaExecutable
         return SpellsOf((int)ReadU32(FeatDataAt(FeatPatch.SpellsAt, at)));
     }
 
-    /// <summary>The spells version 18 says it has (its data block's mask), or null when the file doesn't have version 18's mark.</summary>
+    /// <summary>The spells version 22 says it has (its data block's mask), or null when the file doesn't have version 22's mark.</summary>
     private List<BorrowedSpell>? CurrentSpells() => MarkedSpells(FeatPatch.Version);
 
     /// <summary>
@@ -1006,6 +1048,67 @@ public partial class BgdaExecutable
         }
 
         return Convert.ToHexString(sha.GetHashAndReset()).ToLowerInvariant() == sha256 ? spells : null;
+    }
+
+    /// <summary>
+    /// An earlier version with Improved Enemy AI (21, 20, 19 or 18; <see cref="FeatPatch.EarlierAiVersions"/>) as WorldExplorer or
+    /// featpatch.py wrote it, with its spells (maybe none) and the AI's parts in it (0: off), or null when the file has none of them.
+    /// </summary>
+    private (FeatPatch.EarlierAiVersion Version, List<BorrowedSpell> Spells, int Ai)? EarlierAi()
+    {
+        foreach (var v in FeatPatch.EarlierAiVersions)
+        {
+            if (EarlierAi(v) is { } found) return (v, found.Spells, found.Ai);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// <paramref name="v"/> as WorldExplorer or featpatch.py wrote it: its blocks marked with its version, a mask of its spells
+    /// (none only with the AI on), its ninth block (the AI on with some of that version's parts, or off; the rest as the version
+    /// writes it), their hooks (and only theirs), its code (the SHA-256 of its pieces) and its vtable copies. Null when it isn't.
+    /// </summary>
+    private (List<BorrowedSpell> Spells, int Ai)? EarlierAi(FeatPatch.EarlierAiVersion v)
+    {
+        if (!(Data2Marked(v.Version) && Data3Marked(v.Version) && Data4Marked(v.Version) && Data5Marked(v.Version) &&
+              Data6Marked(v.Version) && Data7Marked(v.Version) && Data8Marked(v.Version)) || MarkedSpells(v.Version) is not { } spells)
+            return null;
+        var mask = (int)ReadU32(FeatDataAt(FeatPatch.SpellsAt, DataVaOf(v.Version)));
+        var at = FileOffset(FeatPatch.Data9Va);
+        if (mask != FeatMask(spells) || _data.Length < at + v.Data9Size) return null;
+        var on = ReadU32(at + FeatPatch.EnemyAiOnAt);
+        var ai = (int)ReadU32(at + FeatPatch.EnemyAiPartsAt);
+        if (on > 1 || (on == 0) != (ai == 0) || (ai & ~v.AiParts) != 0 || (spells.Count == 0 && ai == 0)) return null;
+        var block = Convert.FromBase64String(v.Data9Base64);
+        BitConverter.GetBytes(on).CopyTo(block, FeatPatch.EnemyAiOnAt);
+        BitConverter.GetBytes(ai).CopyTo(block, FeatPatch.EnemyAiPartsAt);
+        if (block.Length != v.Data9Size || !BytesAre(FeatPatch.Data9Va, block)) return null;
+        mask |= ai != 0 ? FeatPatch.EnemyAiMask : 0;
+        if (!v.Hooks.All(h => ReadU32(FileOffset(h.Va)) == ((h.Spells & mask) != 0 ? h.Patched : h.Game))) return null;
+        if (!v.VTables.All(t => BytesAre(t.Va, FeatVTable(t)))) return null;
+        using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        foreach (var (va, length) in v.Code)
+        {
+            if (_data.Length < FileOffset(va) + length) return null;
+            sha.AppendData(_data, FileOffset(va), length);
+        }
+
+        return Convert.ToHexString(sha.GetHashAndReset()).ToLowerInvariant() == v.CodeSha256 ? (spells, ai) : null;
+    }
+
+    /// <summary>Improved Enemy AI's parts by name, as a sentence's list ("smarter targeting, surround the hero and raise the alarm").</summary>
+    public static string EnemyAiPartNames(int parts)
+    {
+        var names = new List<string>();
+        if ((parts & FeatPatch.EnemyAiTargeting) != 0) names.Add("smarter targeting");
+        if ((parts & FeatPatch.EnemyAiSurround) != 0) names.Add("surround the hero");
+        if ((parts & FeatPatch.EnemyAiAlarm) != 0) names.Add("raise the alarm");
+        if ((parts & FeatPatch.EnemyAiCasters) != 0) names.Add("casters cast more");
+        if ((parts & FeatPatch.EnemyAiBrutes) != 0) names.Add("brutes knock you back");
+        if ((parts & FeatPatch.EnemyAiDrow) != 0) names.Add("drow blink");
+        if ((parts & FeatPatch.EnemyAiRegroup) != 0) names.Add("wounded ones regroup");
+        return names.Count < 2 ? string.Join("", names) : string.Join(", ", names.Take(names.Count - 1)) + " and " + names[^1];
     }
 
     /// <summary>Version 17 (all fifteen, Shatter the newest; its second to eighth blocks marked 17): see <see cref="EarlierSpells"/>.</summary>
@@ -1147,7 +1250,7 @@ public partial class BgdaExecutable
             if (ai != null && (spells.Count > 0 || ai > 0) && hooks && code.All(c => BytesAre(c.Va, c.Bytes)) &&
                 FeatPatch.VTables.All(v => BytesAre(v.Va, FeatVTable(v))) &&
                 BytesAre(FeatPatch.CastTableVa, FeatCastTable(spells)) && Data2Marked() && Data3Marked() && Data4Marked() &&
-                Data5Marked() && Data6Marked() && Data7Marked() && Data8Marked() &&
+                Data5Marked() && Data6Marked() && Data7Marked() && Data8Marked() && BytesAre(FeatPatch.Data10Va, FeatData10.Value) &&
                 ReadU32(Data3At(FeatPatch.Data3CountAt)) == (spells.Contains(BorrowedSpell.InsectPlague) ? 1u : 0u) &&
                 ReadU32(Data4At(FeatPatch.Data3CountAt)) == (spells.Contains(BorrowedSpell.PoisonGasArrow) ? 1u : 0u) &&
                 ReadU32(Data5At(FeatPatch.Data3CountAt)) == (spells.Contains(BorrowedSpell.DimensionDoor) ? 1u : 0u) &&
@@ -1155,7 +1258,7 @@ public partial class BgdaExecutable
                 ReadU32(Data7At(FeatPatch.Data3CountAt)) == (spells.Contains(BorrowedSpell.PhaseAxe) ? 1u : 0u) &&
                 ReadU32(Data8At(FeatPatch.Data3CountAt)) == (spells.Contains(BorrowedSpell.Shatter) ? 1u : 0u))
             {
-                detail = "In (version 18, in game code nothing runs): " +
+                detail = "In (version 22, in game code nothing runs): " +
                          (spells.Count == 0 ? "Improved Enemy AI alone" : Names(spells) + (ai > 0 ? "; Improved Enemy AI" : "")) +
                          ". It works with or without three players.";
                 return BorrowedSpellsState.On;
@@ -1165,30 +1268,42 @@ public partial class BgdaExecutable
             return BorrowedSpellsState.Unrecognized;
         }
 
+        if (EarlierAi() is { } earlier)
+        {
+            var (v, had, ai) = earlier;
+            var what = had.Count == 0 ? "Improved Enemy AI alone" : Names(had) + (ai != 0 ? "; Improved Enemy AI" : "");
+            var then = ai == 0 ? "which adds Improved Enemy AI's newer parts (its card, under Monsters: ticked, it goes in with all seven)"
+                : ai == v.AiParts ? "with all seven parts of Improved Enemy AI"
+                : $"keeping featpatch.py's choice of Improved Enemy AI's parts ({EnemyAiPartNames(ai)})";
+            detail = $"In as version {v.Version} ({v.Test}): {what}. Saving brings it to version 22, {then}" +
+                     (had.Count > 0 ? "; every spell keeps its settings." : ".");
+            return BorrowedSpellsState.Outdated;
+        }
+
         if (V17Spells() is { } seventeen)
         {
-            detail = $"In as version 17 (the first test of Shatter): {Names(seventeen)}. Saving brings it to version 18, which " +
+            detail = $"In as version 17 (the first test of Shatter): {Names(seventeen)}. Saving brings it to version 22, which " +
                      "adds Improved Enemy AI (its card, under Monsters: ticked, it goes in too); every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V16Spells() is { } sixteen)
         {
-            detail = $"In as version 16 (the first test of Phase Axe): {Names(sixteen)}. Saving brings it to version 18, " +
+            detail = $"In as version 16 (the first test of Phase Axe): {Names(sixteen)}. Saving brings it to version 22, " +
                      "which adds Shatter for Adrianna and Improved Enemy AI; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V15Spells() is { } fifteen)
         {
-            detail = $"In as version 15 (the first test of Expert Focus): {Names(fifteen)}. Saving brings it to version 18, " +
+            detail = $"In as version 15 (the first test of Expert Focus): {Names(fifteen)}. Saving brings it to version 22, " +
                      "which adds Phase Axe for Kromlech and Shatter for Adrianna; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
         }
 
         if (V14Spells() is { } fourteen)
         {
-            detail = $"In as version 14 (the first test of Dimension Door): {Names(fourteen)}. Saving brings it to version 18, " +
+            detail = $"In as version 14 (the first test of Dimension Door): {Names(fourteen)}. Saving brings it to version 22, " +
                      "which adds Expert Focus for Vahn, Phase Axe for Kromlech and Shatter for Adrianna; every spell keeps its " +
                      "settings.";
             return BorrowedSpellsState.Outdated;
@@ -1196,7 +1311,7 @@ public partial class BgdaExecutable
 
         if (V13Spells() is { } thirteen)
         {
-            detail = $"In as version 13 (the first test of Poison Gas Arrow): {Names(thirteen)}. Saving brings it to version 18, " +
+            detail = $"In as version 13 (the first test of Poison Gas Arrow): {Names(thirteen)}. Saving brings it to version 22, " +
                      "which adds Dimension Door and Shatter for Adrianna, Expert Focus for Vahn and Phase Axe for Kromlech; every spell keeps its " +
                      "settings.";
             return BorrowedSpellsState.Outdated;
@@ -1204,7 +1319,7 @@ public partial class BgdaExecutable
 
         if (V12Spells() is { } twelve)
         {
-            detail = $"In as version 12 (the second test of Insect Plague): {Names(twelve)}. Saving brings it to version 18, which " +
+            detail = $"In as version 12 (the second test of Insect Plague): {Names(twelve)}. Saving brings it to version 22, which " +
                      "adds Poison Gas Arrow and Expert Focus for Vahn, Dimension Door and Shatter for Adrianna and Phase Axe for Kromlech; every " +
                      "spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
@@ -1212,7 +1327,7 @@ public partial class BgdaExecutable
 
         if (V11Spells() is { } eleven)
         {
-            detail = $"In as version 11 (the first test of Entangle): {Names(eleven)}. Saving brings it to version 18, which " +
+            detail = $"In as version 11 (the first test of Entangle): {Names(eleven)}. Saving brings it to version 22, which " +
                      "adds Insect Plague, Poison Gas Arrow and Expert Focus for Vahn, Dimension Door and Shatter for Adrianna and Phase Axe for " +
                      "Kromlech; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
@@ -1220,7 +1335,7 @@ public partial class BgdaExecutable
 
         if (V10Spells() is { } ten)
         {
-            detail = $"In as version 10 (the first test of Inferno Arrow): {Names(ten)}. Saving brings it to version 18, which " +
+            detail = $"In as version 10 (the first test of Inferno Arrow): {Names(ten)}. Saving brings it to version 22, which " +
                      "adds Entangle, Insect Plague, Poison Gas Arrow and Expert Focus for Vahn, Dimension Door and Shatter for Adrianna and Phase " +
                      "Axe for Kromlech; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
@@ -1228,7 +1343,7 @@ public partial class BgdaExecutable
 
         if (V9Spells() is { } nine)
         {
-            detail = $"In as version 9 (the second test of Xantam's Orbs): {Names(nine)}. Saving brings it to version 18, which " +
+            detail = $"In as version 9 (the second test of Xantam's Orbs): {Names(nine)}. Saving brings it to version 22, which " +
                      "adds Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow and Expert Focus for Vahn, Dimension Door and " +
                      "Shatter for Adrianna and Phase Axe for Kromlech; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
@@ -1236,7 +1351,7 @@ public partial class BgdaExecutable
 
         if (V8Spells() is { } eight)
         {
-            detail = $"In as version 8 (the first test of Xantam's Orbs): {Names(eight)}. Saving brings it to version 18, which " +
+            detail = $"In as version 8 (the first test of Xantam's Orbs): {Names(eight)}. Saving brings it to version 22, which " +
                      "fans the orbs out, lets them break barrels and crates, and adds Inferno Arrow, Entangle, Insect Plague and " +
                      "Poison Gas Arrow and Expert Focus for Vahn, Dimension Door and Shatter for Adrianna and Phase Axe for Kromlech; every spell " +
                      "keeps its settings.";
@@ -1245,7 +1360,7 @@ public partial class BgdaExecutable
 
         if (V7Spells() is { } seven)
         {
-            detail = $"In as version 7 (the first test of Sorcerer's Blood): {Names(seven)}. Saving brings it to version 18, which " +
+            detail = $"In as version 7 (the first test of Sorcerer's Blood): {Names(seven)}. Saving brings it to version 22, which " +
                      "adds Xantam's Orbs, Dimension Door and Shatter for Adrianna, Inferno Arrow, Entangle, Insect Plague, Poison Gas " +
                      "Arrow and Expert Focus for Vahn and Phase Axe for Kromlech; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
@@ -1253,7 +1368,7 @@ public partial class BgdaExecutable
 
         if (V6Spells() is { } six)
         {
-            detail = $"In as version 6 (the first test of Power Attack): {Names(six)}. Saving brings it to version 18, which adds " +
+            detail = $"In as version 6 (the first test of Power Attack): {Names(six)}. Saving brings it to version 22, which adds " +
                      "Sorcerer's Blood, Xantam's Orbs, Dimension Door and Shatter for Adrianna, Inferno Arrow, Entangle, Insect Plague, " +
                      "Poison Gas Arrow and Expert Focus for Vahn and Phase Axe for Kromlech; every spell keeps its settings.";
             return BorrowedSpellsState.Outdated;
@@ -1261,7 +1376,7 @@ public partial class BgdaExecutable
 
         if (V5Spells() is { } old)
         {
-            detail = $"In as version 5 (the first test of Kromlech's spells): {Names(old)}. Saving brings it to version 18, which adds " +
+            detail = $"In as version 5 (the first test of Kromlech's spells): {Names(old)}. Saving brings it to version 22, which adds " +
                      "Power Attack and Phase Axe for Kromlech, Sorcerer's Blood, Xantam's Orbs, Dimension Door and Shatter for Adrianna, and " +
                      "Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow and Expert Focus for Vahn; every spell keeps its " +
                      "settings.";
@@ -1270,7 +1385,7 @@ public partial class BgdaExecutable
 
         if (V4Present(v4Code))
         {
-            detail = "Xantam's Fire is in as the fourth test version (Adrianna's spell alone). Saving brings it to version 18, which " +
+            detail = "Xantam's Fire is in as the fourth test version (Adrianna's spell alone). Saving brings it to version 22, which " +
                      "also has Sorcerer's Blood, Xantam's Orbs, Dimension Door, Shatter, Kromlech's spells and Vahn's Inferno Arrow, Entangle, " +
                      "Insect Plague, Poison Gas Arrow and Expert Focus; its price, mana and damage are kept.";
             return BorrowedSpellsState.Outdated;
@@ -1279,7 +1394,7 @@ public partial class BgdaExecutable
         if (V3Present())
         {
             detail = "Xantam's Fire is in as the third test version (its spell area, which only a three-player build loads). " +
-                     "Saving brings it to version 18, which works with or without three players; its price, mana and damage are kept.";
+                     "Saving brings it to version 22, which works with or without three players; its price, mana and damage are kept.";
             return BorrowedSpellsState.Outdated;
         }
 
@@ -1307,6 +1422,13 @@ public partial class BgdaExecutable
     /// <summary>Why the patch can't go in this file (its hooks being the game's), or null.</summary>
     private string? BorrowedSpellsProblem()
     {
+        // (an earlier version just taken out leaves the game's words at its own hooks: a newer hook it didn't have, changed by
+        // something else, isn't written over)
+        foreach (var (va, game, _, _) in FeatPatch.Hooks)
+        {
+            if (ReadU32(FileOffset(va)) != game) return $"0x{va:X8}, where the borrowed spells hook in, isn't the game's code.";
+        }
+
         foreach (var (va, word) in FeatPatch.Checks)
         {
             if (ReadU32(FileOffset(va)) != word) return $"0x{va:X8} isn't the game's code, which the borrowed spells rely on.";
@@ -1447,6 +1569,8 @@ public partial class BgdaExecutable
     {
         var found = new Dictionary<BorrowedSpell, BorrowedSpellSettings>();
         var state = GetBorrowedSpellsState(out _);
+        if (state == BorrowedSpellsState.Outdated && EarlierAi() is { } earlier)
+            return ReadAll(earlier.Spells, CurrentLayout);
         if (state == BorrowedSpellsState.Outdated && V17Spells() is { } seventeen)
             return ReadAll(seventeen, CurrentLayout);
         if (state == BorrowedSpellsState.Outdated && V16Spells() is { } sixteen)
@@ -1642,18 +1766,25 @@ public partial class BgdaExecutable
     private int Data8At(int offset) => FileOffset(FeatPatch.Data8Va) + offset;
 
     /// <summary>
-    /// Improved Enemy AI's parts in the file (<see cref="FeatPatch.EnemyAiParts"/> when WorldExplorer put it in; featpatch.py can put
-    /// fewer), or 0 when it isn't in (or the state isn't On: an earlier version has none).
+    /// Improved Enemy AI's parts as saving keeps them: On, the file's (<see cref="FeatPatch.EnemyAiParts"/> when WorldExplorer put
+    /// it in; featpatch.py can put fewer); Outdated with version 21, 20, 19 or 18, all seven when it had all of its version's,
+    /// else featpatch.py's choice of fewer; 0 when it isn't in (and for any other state or version: they have none).
     /// </summary>
-    public int GetEnemyAi() => GetBorrowedSpellsState(out _) == BorrowedSpellsState.On ? Data9Parts() ?? 0 : 0;
+    public int GetEnemyAi()
+    {
+        var state = GetBorrowedSpellsState(out _);
+        if (state == BorrowedSpellsState.On) return Data9Parts() ?? 0;
+        if (state != BorrowedSpellsState.Outdated || EarlierAi() is not { } earlier) return 0;
+        return earlier.Ai == earlier.Version.AiParts ? FeatPatch.EnemyAiParts : earlier.Ai;
+    }
 
     /// <summary>Ranks 1-5 of a by-rank byte table (its entry 0 is rank 0's).</summary>
     private int[] ByRank(int at) => Enumerable.Range(1, BorrowedSpellSettings.Ranks).Select(r => (int)_data[at + r]).ToArray();
 
     /// <summary>
-    /// Puts in, updates (Outdated: to version 18), changes or takes out the borrowed spells and Improved Enemy AI so that exactly
+    /// Puts in, updates (Outdated: to version 22), changes or takes out the borrowed spells and Improved Enemy AI so that exactly
     /// <paramref name="spells"/> are in, with their settings, and the AI's <paramref name="enemyAi"/> parts (0: not in;
-    /// <see cref="FeatPatch.EnemyAiParts"/>: all three); neither: <see cref="RemoveBorrowedSpells"/>. Throws
+    /// <see cref="FeatPatch.EnemyAiParts"/>: all seven); neither: <see cref="RemoveBorrowedSpells"/>. Throws
     /// <see cref="ArgumentException"/> on bad settings and <see cref="InvalidOperationException"/> when the state is
     /// Unrecognized; nothing is changed then.
     /// </summary>
@@ -1702,6 +1833,7 @@ public partial class BgdaExecutable
         FeatData7Block(spells).CopyTo(_data, FileOffset(FeatPatch.Data7Va));
         FeatData8Block(spells).CopyTo(_data, FileOffset(FeatPatch.Data8Va));
         FeatData9Block(enemyAi).CopyTo(_data, FileOffset(FeatPatch.Data9Va));
+        FeatData10.Value.CopyTo(_data, FileOffset(FeatPatch.Data10Va));
         FeatCastTable(spells.Keys).CopyTo(_data, FileOffset(FeatPatch.CastTableVa));
         var mask = FeatMask(spells.Keys) | (enemyAi != 0 ? FeatPatch.EnemyAiMask : 0);
         foreach (var (va, game, patched, need) in FeatPatch.Hooks) WriteInt(FileOffset(va), (int)((need & mask) != 0 ? patched : game));
@@ -2056,10 +2188,11 @@ public partial class BgdaExecutable
         foreach (var (a, b) in FeatPatch.Pool) PoolOriginal(a, b).CopyTo(_data.AsSpan(FileOffset(a)));
     }
 
-    /// <summary>Takes out the earlier version that is in (Outdated): version 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6 or 5, or the fourth or third test version.</summary>
+    /// <summary>Takes out the earlier version that is in (Outdated): version 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6 or 5, or the fourth or third test version.</summary>
     private void RemoveOutdated()
     {
-        if (V17Spells() != null) RemoveV17();
+        if (EarlierAi() is { } earlier) RemoveEarlierAi(earlier.Version);
+        else if (V17Spells() != null) RemoveV17();
         else if (V16Spells() != null) RemoveV16();
         else if (V15Spells() != null) RemoveV15();
         else if (V14Spells() != null) RemoveV14();
@@ -2074,6 +2207,13 @@ public partial class BgdaExecutable
         else if (V5Spells() != null) RemoveV5();
         else if (V3Present()) RemoveV3();
         else RemoveV4();
+    }
+
+    /// <summary>Takes version 21, 20, 19 or 18 out: the game's words back at its hooks, the game's bytes back in the pool.</summary>
+    private void RemoveEarlierAi(FeatPatch.EarlierAiVersion v)
+    {
+        foreach (var (va, game, _, _) in v.Hooks) WriteInt(FileOffset(va), (int)game);
+        RestorePool();
     }
 
     /// <summary>Takes version 17 out: the game's words back at its hooks, the game's bytes back in the pool.</summary>

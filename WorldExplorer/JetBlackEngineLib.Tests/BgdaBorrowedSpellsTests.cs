@@ -18,14 +18,17 @@ namespace JetBlackEngineLib.Tests;
 /// thrown axe that passes through monsters) for Kromlech; Inferno Arrow (the game's own cut feat), Entangle (the game's own unused
 /// vines), Insect Plague (the kobold shaman's swarm), Poison Gas Arrow (the monsters' poison gas, on an arrow) and Expert Focus (new:
 /// Power Attack for his bow) for Vahn; and Improved Enemy AI (the monsters target the nearest hero, surround him and raise the
-/// alarm), with or without them. On the stock PAL executable in Test_files (skipped when it is not present), with the Three
-/// Players tab switching three players underneath them, and versions 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6 and 5 (the first
+/// alarm; the casters cast more, the brutes knock you back, the drow blink and the wounded regroup), with or without them. On
+/// the stock PAL executable in Test_files (skipped when it is not present), with the Three Players tab switching three players
+/// underneath them, and versions 21 (the drow blink's test of Improved Enemy AI, as it was and with featpatch.py's choice of
+/// parts), 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6 and 5 (the first
 /// test of Shatter, of Phase Axe, of Expert Focus, of Dimension Door, of Poison Gas Arrow, the second of Insect Plague, the first of
 /// Entangle and of Inferno Arrow, the second and first of Xantam's Orbs, the first of Sorcerer's Blood, of Power Attack and of
 /// Kromlech's spells) brought up to date; their names in GTEXT.LMP and their icons in ICONS.LMP (archives built here). The patch
-/// is featpatch.py version 18 (Improved Enemy AI; its ninth data block at the start of the pool's stretch 38): the checksums
-/// are of the files featpatch.py writes, and what it does in the game was checked by emulation (test_feats18.py on
-/// eighty-five files: 488 checks on each with all fifteen and the AI; 751 broken copies on two bases).
+/// is featpatch.py version 22 (Improved Enemy AI with seven parts; its ninth data block at the pool's stretch 38, its tenth at
+/// the start of stretch 53), and versions 21, 20, 19 and 18 (earlier Improved Enemy AI) are brought up to date too: the
+/// checksums are of the files featpatch.py writes, and what it does in the game was checked by emulation (test_feats22.py on
+/// 104 files: 516 checks on each with all fifteen and the AI; the AI's parts' broken copies on two bases).
 /// </summary>
 [TestFixture]
 public class BgdaBorrowedSpellsTests
@@ -34,7 +37,7 @@ public class BgdaBorrowedSpellsTests
     private const string StockMd5 = "34874fe1aaed80fe52ad3911a7f304aa";
 
     /// <summary>
-    /// featpatch.py version 18 on the stock executable, each with --ai off (Improved Enemy AI out, as SetBorrowedSpells writes
+    /// featpatch.py version 22 on the stock executable, each with --ai off (Improved Enemy AI out, as SetBorrowedSpells writes
     /// them without it): all fifteen at the tested settings, all but Shatter (the fourteen of version 16), all but Phase Axe and
     /// Shatter (the thirteen of version 15), all but Expert Focus, Phase Axe and Shatter (the twelve of version 14), all but
     /// Dimension Door, Expert Focus, Phase Axe and Shatter (the eleven of version 13), all but Poison Gas Arrow, Dimension Door,
@@ -50,30 +53,30 @@ public class BgdaBorrowedSpellsTests
     /// Expert Focus alone with its own settings (FocusCustom), Phase Axe alone, Phase Axe alone with its own settings (AxeCustom),
     /// Shatter alone, Shatter alone with its own settings (ShatterCustom), and Adrianna's five alone.
     /// </summary>
-    private const string AllFifteenMd5 = "723021d87dd37cdda2cf1a4871424277", FourteenMd5 = "ff3e5d22e7c26d59febc85c52b9d4f18",
-                         ThirteenMd5 = "d002231bbb86e77cc01d6e708518ab84", TwelveMd5 = "d841385cb9b6e67100ae0c9c55b6552d",
-                         ElevenMd5 = "c8b08b777e70eef73a20e60c29c02af0", TenMd5 = "059ebf460686faeb53812c37f7e701cd",
-                         NineMd5 = "a3e2fb6da785c51bbf96935197621851", EightMd5 = "a5ca7a0713559a9ad9f395e2036ecdd9",
-                         SevenMd5 = "a06599c6e2e84100c3e17ccdd5b3ac4f", TestSettingsMd5 = "c55d5a7c1bf8f50309e572c3d2095fac",
-                         KromlechMd5 = "2444d2238d06c0929c483624378f051a", PowerAttackMd5 = "4041305916fbe47c3b39e260cf69c412",
-                         SorcerersMd5 = "175e0c88a46bee2810602b1f327c393e", SorcerersThreeRanksMd5 = "d6478bf6fce9fca9aa4625b3022ddd7c",
-                         OrbsMd5 = "95f4814a069bf97c6bf01e789ec9d118", OrbsCustomMd5 = "528b39574ff5e79cf571ffb730b6f916",
-                         InfernoMd5 = "490dda6a94adc253569c23d798b505ad", InfernoCustomMd5 = "43cd0a1ddfb1f9718fa5c45af7d7c01a",
-                         EntangleMd5 = "06fb1b029e8cb60061b28fef0366adfd", EntangleCustomMd5 = "5537284a8d3e885e8a0802f070b60ece",
-                         InsectMd5 = "ff42e95663144584fdab076e42831f6b", InsectCustomMd5 = "3af29e2b635b169e5cc456a21550d168",
-                         GasMd5 = "9f0db8c63507de631dec56a62126f33b", GasCustomMd5 = "87c0cb20282e977db4c39d3c1754eab3",
-                         DoorMd5 = "1a532f33fafd075ada78f00dca378f9e", DoorCustomMd5 = "4105c7625b37bb4c2a3a04510e3957ac",
-                         FocusMd5 = "44c2b5ebb41eaede5977a8858e16db42", FocusCustomMd5 = "36e4ce8b8ee8c15ba170d612319d5d86",
-                         AxeMd5 = "811c973caff7401858caa7e8d06a9fae", AxeCustomMd5 = "dec9014d06c072eb9b6e4a72bb87243d",
-                         ShatterMd5 = "b260c1bddf5a196abb1fffaa87246657", ShatterCustomMd5 = "1295ec755c88da6b58ccb1f784a80295",
-                         AdriannaMd5 = "e13478a2582b6c6d4f52054fc65e58b0";
+    private const string AllFifteenMd5 = "db4dc69b82251b36e8a082d4307b8ca6", FourteenMd5 = "7e13eadeb4ac5d265b0890265be20a7a",
+                         ThirteenMd5 = "6f896244a8ba5ed470ff3867a9616703", TwelveMd5 = "06e433a69d8d0af536e6cb96d29e3fba",
+                         ElevenMd5 = "0854d5dc6b3e04da603a684a99414a89", TenMd5 = "4ad71539889a4b22b3389afa8089dcf2",
+                         NineMd5 = "5827605d3e0ab5e20667db1b30a9ae26", EightMd5 = "6cd2610d617836818ddaa29c981f2574",
+                         SevenMd5 = "61c68803096d818cbedbe9fb6f9a5087", TestSettingsMd5 = "a284c14fc785fdc726b026781aae9380",
+                         KromlechMd5 = "1dc2c91c42e90763b0e91227d376cea7", PowerAttackMd5 = "c49ec2603bb24c49bad5c4cb527b3bcc",
+                         SorcerersMd5 = "86f808e14a08f124bce98aa8e520e0c9", SorcerersThreeRanksMd5 = "05e2d688d08a435fdd1731ff6afa8f9f",
+                         OrbsMd5 = "61811a1cdae333809031b9dfa9ec63da", OrbsCustomMd5 = "389480d387e565449b2764224d12830c",
+                         InfernoMd5 = "6216b3bfc9f549d86acbb8873da60ed4", InfernoCustomMd5 = "442dbf02a88ec27eff170896c4dcf070",
+                         EntangleMd5 = "d62a99db815d9d389a0f6b383d7fa69f", EntangleCustomMd5 = "978ea3fb4b0e78e25fe649a71b93f7f4",
+                         InsectMd5 = "a9f6e9695d7cc16b755f72717ff37da5", InsectCustomMd5 = "f6c82eb6e43f7c81b397732eb36d27dd",
+                         GasMd5 = "c965435f3512ebab25c9fb58c773224c", GasCustomMd5 = "423b9b8c7ff63a5b04849f9b8af05f62",
+                         DoorMd5 = "2f39e6f69bbdf89295e96b0609da4375", DoorCustomMd5 = "63babac508f82e9ce4e3453b7a7104c0",
+                         FocusMd5 = "f8b2221c5da69ab175be8c0a8f50b0b5", FocusCustomMd5 = "3bc8d754d7d3cc55774a88778bccb35b",
+                         AxeMd5 = "6bf0446bb88f1b5128b10ddabd7f146d", AxeCustomMd5 = "356f764ac1353ddd964f5a7e6b91df73",
+                         ShatterMd5 = "2d4a67cda3b829a132b2f8974fa05e9a", ShatterCustomMd5 = "2c0e5b08deeb538a16ba476be8998299",
+                         AdriannaMd5 = "944923bf7d0eeffe8ea242acae9f7b20";
 
     /// <summary>
-    /// featpatch.py version 18 with Improved Enemy AI: alone (--spells none), with all fifteen (no options), and its smarter
-    /// targeting alone (--spells none --ai-parts targeting).
+    /// featpatch.py version 22 with Improved Enemy AI (all seven parts): alone (--spells none), with all fifteen (no options), and
+    /// its smarter targeting alone (--spells none --ai-parts targeting).
     /// </summary>
-    private const string EnemyAiMd5 = "da2d93a6142d6787ece6489c23f69ce0", AllWithEnemyAiMd5 = "15cdd10477faf9a00f4566618b61dd72",
-                         EnemyAiTargetingMd5 = "de82f9291c9035ef92dc97e52c06fd88";
+    private const string EnemyAiMd5 = "a2db69142c9483b932a0ecdc2e20695c", AllWithEnemyAiMd5 = "582bfd34a7d5988a25f79d0355c9d656",
+                         EnemyAiTargetingMd5 = "391cb0bb895e3a82de196d8aa64974a5";
 
     /// <summary>
     /// featpatch.py --spells xantamorbs --xantamorbs-price 4 --xantamorbs-energy 6.5 --xantamorbs-orbs 2,3,5,7,10
@@ -145,10 +148,10 @@ public class BgdaBorrowedSpellsTests
             More: new IReadOnlyList<int>[] { new[] { 10, 30, 100, 200, 255 }, new[] { 1, 10, 25, 100, 255 }, new[] { 0, 10, 25, 100, 255 } });
 
     /// <summary>
-    /// featpatch.py version 18 on ADRIANNA26 (the stock file with three players turned on): all fifteen (--ai off), and all fifteen
+    /// featpatch.py version 22 on ADRIANNA26 (the stock file with three players turned on): all fifteen (--ai off), and all fifteen
     /// with Improved Enemy AI (no options).
     /// </summary>
-    private const string ThreePlayersMd5 = "b31e93076c62a55dd0bf0b7b802a4ecb", ThreePlayersAiMd5 = "748764e0885e7ffce9ecef6c43753d8d";
+    private const string ThreePlayersMd5 = "2b899a550132b2c62e89bafbdc7c5bef", ThreePlayersAiMd5 = "7caf06ed8de2839c73c5aa54363ace83";
 
     /// <summary>
     /// Version 17 on the stock executable (featpatch.py version 17, all fifteen at its tested settings: MD5 below), as the changes it
@@ -284,6 +287,177 @@ public class BgdaBorrowedSpellsTests
         + "iP9078qKDw5+9VrH3B99mvVAltzR1X6WrNDrhD2rH5Ipa8dYo65bGH4xzmL4tWAKT1C0Pr6a7dvw1ZG6eIae0efHU5u9a+2n/qP1Z9OXCvSzDP25zGfq"
         + "OevhEOvT6zOJpD/R6zMJNVU/xXSTVDJwvmAeixYNAL9eAEZjvH+hNzxlP5r7N8dXOK/YajcK/Yz/5ymmn2DKLvpT/+xPBHSMORiav1Bcnlt2+f8BUmt3"
         + "2A==";
+
+    /// <summary>
+    /// Version 21 on the stock executable (featpatch.py version 21 with no options: all fifteen at its tested settings and Improved
+    /// Enemy AI with its six parts of then), as runs as <see cref="Version17RunsBase64"/>; and with featpatch.py version 21's choice
+    /// of parts (--ai-parts targeting,drow), and that brought up to date keeping them (featpatch.py version 22 --ai-parts
+    /// targeting,drow on it).
+    /// </summary>
+    private const string Version21Md5 = "8a99bd4a01549e1b5716edba76095443", Version21PartsMd5 = "cf5d4c870e13c1eb3d698562f0516ae2",
+                         Version21PartsUpdatedMd5 = "d2b3d3193d1364b473dfd631e611b5a5";
+
+    private const string Version21RunsBase64 =
+        "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"
+        + "ycTi+8eMy77E4v8HmJF9lw==";
 
 
     /// <summary>
@@ -1341,29 +1515,43 @@ public class BgdaBorrowedSpellsTests
     private static readonly int[] ShatterOnly = { 0x0011B7D8 };
 
     /// <summary>
-    /// Improved Enemy AI's eight: the first two words of the monsters' target finding (FUN_001182C0), their keeping a target
-    /// (FUN_001185D8), the walk (FUN_0011C168) and the base creature's alert handler (FUN_00129778), each now a jump into the pool
-    /// and a nop. None of the spells needs any of them, nor it any of theirs.
+    /// Improved Enemy AI's seventeen: the first two words of the monsters' target finding (FUN_001182C0), their keeping a target
+    /// (FUN_001185D8), the walk (FUN_0011C168), every monster's damage (FUN_00129540) and the base creature's alert handler
+    /// (FUN_00129778), each now a jump into the pool and a nop; the monsters' melee blow's call of the hit function (0x00129C14,
+    /// a jal into the pool); the fire elemental's odds (0x0019A464) and the kobold shaman's, lizardman shaman's and drow
+    /// priestess's waits after a spell (0x001A1134, 0x001BCBFC, 0x001DBFE0), each a jump into the pool; and the drow men's and
+    /// women's thinking in their vtables (0x0031AE64, 0x0031B794), now the pool's. All written whenever it is on, whichever of its
+    /// parts are; none of the spells needs any of them, nor it any of theirs.
     /// </summary>
-    private static readonly int[] EnemyAiHooks = { 0x001182C0, 0x001182C4, 0x001185D8, 0x001185DC, 0x0011C168, 0x0011C16C, 0x00129778, 0x0012977C };
+    private static readonly int[] EnemyAiHooks =
+    {
+        0x001182C0, 0x001182C4, 0x001185D8, 0x001185DC, 0x0011C168, 0x0011C16C,
+        0x00129540, 0x00129544, 0x00129778, 0x0012977C, 0x00129C14, 0x0019A464,
+        0x001A1134, 0x001BCBFC, 0x001DBFE0, 0x0031AE64, 0x0031B794
+    };
 
-    /// <summary>The game's words there (each function's stack frame and first save), in the order of <see cref="EnemyAiHooks"/>.</summary>
+    /// <summary>The game's words there, in the order of <see cref="EnemyAiHooks"/>.</summary>
     private static readonly uint[] EnemyAiGameWords =
-        { 0x27BDFE80, 0xFFB00150, 0x27BDFFA0, 0xFFB40040, 0x27BDFF20, 0xFFB20070, 0x27BDFFF0, 0x68C20007 };
+    {
+        0x27BDFE80, 0xFFB00150, 0x27BDFFA0, 0xFFB40040, 0x27BDFF20, 0xFFB20070,
+        0x27BDFFB0, 0xFFB30030, 0x27BDFFF0, 0x68C20007, 0x0C047E0E, 0x24020014,
+        0x24630032, 0x24630096, 0x24630064, 0x001D9FB0, 0x001DB590
+    };
 
     private static readonly (int Start, int End)[] Used =
     {
         (0x00102910, 0x00102B5C), (0x00102D80, 0x00103000), (0x0010C338, 0x0010C6CC), (0x0010CD50, 0x0010CF30), (0x00118978, 0x00118D68),
-        (0x00129318, 0x00129520), (0x00129C48, 0x00129D64), (0x0012A710, 0x0012A8A0), (0x0012BAE8, 0x0012BF90), (0x0012CD30, 0x0012D080),
+        (0x00129318, 0x00129534), (0x00129C48, 0x00129D64), (0x0012A710, 0x0012A8A0), (0x0012BAE8, 0x0012BF90), (0x0012CD30, 0x0012D080),
         (0x0012F790, 0x0012FA08), (0x00130540, 0x00130704), (0x00131170, 0x001312B8), (0x00132018, 0x0013216C), (0x00132D90, 0x001333DC),
         (0x00134CE0, 0x00134DF8), (0x00134F18, 0x001350C8), (0x0013CDF8, 0x0013D000), (0x0013D218, 0x0013D42C), (0x00166E28, 0x00166FC0),
-        (0x0016ACB8, 0x0016AE88), (0x00191A20, 0x00191D10), (0x00196AB8, 0x00196C0C), (0x00198968, 0x00198AAC), (0x00199A60, 0x00199B98),
-        (0x001A28B0, 0x001A29EC), (0x001A9A40, 0x001A9B40), (0x001AE930, 0x001AEA30), (0x001B8DA0, 0x001B8F14), (0x001B9570, 0x001B9684),
-        (0x001B9E68, 0x001B9F4C), (0x001BAFF8, 0x001BB100), (0x001C36E8, 0x001C385C), (0x001CBA38, 0x001CBB10), (0x001D32D8, 0x001D3414),
-        (0x001E8558, 0x001E8784), (0x001FF340, 0x001FF4C4), (0x00204DE0, 0x00204EDC), (0x00206460, 0x002067F0), (0x002068C8, 0x00206AB4),
-        (0x002071C0, 0x0020726C), (0x00207270, 0x002073F0), (0x00207490, 0x00207590), (0x00207A10, 0x00207BFC), (0x00208160, 0x00208320),
-        (0x002089C0, 0x00208AF8), (0x00208CB0, 0x00208DD0), (0x0020B890, 0x0020BCB0), (0x0020E6E8, 0x0020E928), (0x0020F6A8, 0x0020F958),
-        (0x00221B88, 0x002222C0), (0x00224B68, 0x00224C68)
+        (0x0016ACB8, 0x0016AE7C), (0x00191A20, 0x00191D18), (0x00196AB8, 0x00196BFC), (0x00198968, 0x00198AA4), (0x00199A60, 0x00199B98),
+        (0x001A28B0, 0x001A2A00), (0x001A9A40, 0x001A9B40), (0x001AE930, 0x001AEA24), (0x001B8DA0, 0x001B8F10), (0x001B9570, 0x001B9684),
+        (0x001B9E68, 0x001B9F4C), (0x001BAFF8, 0x001BB0D8), (0x001C36E8, 0x001C3870), (0x001CBA38, 0x001CBB44), (0x001D32D8, 0x001D341C),
+        (0x001E8558, 0x001E878C), (0x001FF340, 0x001FF4D8), (0x00204DE0, 0x00204EA8), (0x00206460, 0x00206800), (0x002068C8, 0x00206AB8),
+        (0x002071C0, 0x002073D0), (0x00207488, 0x00207534), (0x00207540, 0x002075C0), (0x00207A10, 0x00207BF4), (0x00208160, 0x00208318),
+        (0x002089C0, 0x00208B10), (0x00208CB0, 0x00208E30), (0x0020AC30, 0x0020AD30), (0x0020B890, 0x0020BCB0), (0x0020C080, 0x0020C250),
+        (0x0020C4C8, 0x0020C614), (0x0020DA88, 0x0020DB90), (0x0020E6E8, 0x0020EB38), (0x0020F6A8, 0x0020F958), (0x0020FCE0, 0x0020FF20),
+        (0x00210058, 0x00210298), (0x00210A00, 0x00210C04), (0x00210CA0, 0x00210D90), (0x00221B88, 0x002222C0), (0x00224B68, 0x00224C68)
     };
 
     /// <summary>The address is in one of the stretches of the pool the patch takes.</summary>
@@ -1546,6 +1734,8 @@ public class BgdaBorrowedSpellsTests
     private byte[] Version16() => Earlier(Version16RunsBase64, Version16Md5);
 
     private byte[] Version17() => Earlier(Version17RunsBase64, Version17Md5);
+
+    private byte[] Version21() => Earlier(Version21RunsBase64, Version21Md5);
 
     private static Dictionary<BorrowedSpell, BorrowedSpellSettings> NoSpells() => new();
 
@@ -1749,7 +1939,7 @@ public class BgdaBorrowedSpellsTests
                     "types 24-35, 37 (Insect Plague's, off), 38 (Poison Gas Arrow's: an arrow, never cast), 39 (Dimension Door's, off), " +
                     "40 (Expert Focus's, off), 41 (Phase Axe's, off) and 42 (Shatter's, off): the default");
 
-        // a second block that isn't version 18's: not WorldExplorer's
+        // a second block that isn't version 22's: not WorldExplorer's
         var unmarked = (byte[])bytes.Clone();
         unmarked[data2 + 4] = 11;
         Assert.That(OpenBytes(unmarked, "entangle-unmarked").GetBorrowedSpellsState(out detail), Is.EqualTo(BorrowedSpellsState.Unrecognized), detail);
@@ -1878,7 +2068,7 @@ public class BgdaBorrowedSpellsTests
         var cast = BitConverter.ToUInt32(bytes, FeatPatch.CastTableVa - VaToFile + 4 * 36);
         Assert.That(InUsed(cast), Is.True, "type 37: its own cast");
 
-        // a third block that isn't version 18's, or not saying it has its entry: not WorldExplorer's
+        // a third block that isn't version 22's, or not saying it has its entry: not WorldExplorer's
         foreach (var (at, value) in new[] { (4, (byte)11), (FeatPatch.Data3CountAt, (byte)0) })
         {
             var unmarked = (byte[])bytes.Clone();
@@ -1908,11 +2098,16 @@ public class BgdaBorrowedSpellsTests
     }
 
     [Test]
-    public void ImprovedEnemyAi_TargetsSurroundsAndRaisesTheAlarm_WithItsNumbersInANinthBlock()
+    public void ImprovedEnemyAi_HasSevenParts_WithItsNumbersInANinthAndATenthBlock()
     {
         RequireStock();
-        Assert.That((FeatPatch.EnemyAiTargeting, FeatPatch.EnemyAiSurround, FeatPatch.EnemyAiAlarm, FeatPatch.EnemyAiParts, BgdaExecutable.EnemyAiParts),
-                    Is.EqualTo((1, 2, 4, 7, 7)), "smarter targeting, surround the hero and raise the alarm; WorldExplorer puts all three in");
+        Assert.That((FeatPatch.EnemyAiTargeting, FeatPatch.EnemyAiSurround, FeatPatch.EnemyAiAlarm, FeatPatch.EnemyAiCasters, FeatPatch.EnemyAiBrutes,
+                     FeatPatch.EnemyAiDrow, FeatPatch.EnemyAiRegroup, FeatPatch.EnemyAiParts, BgdaExecutable.EnemyAiParts),
+                    Is.EqualTo((1, 2, 4, 8, 0x10, 0x20, 0x40, 0x7F, 0x7F)),
+                    "smarter targeting, surround the hero, raise the alarm, casters cast more, brutes knock you back, drow blink, wounded ones " +
+                    "regroup; WorldExplorer puts all seven in");
+        Assert.That(BgdaExecutable.EnemyAiPartNames(0x7F), Is.EqualTo("smarter targeting, surround the hero, raise the alarm, casters cast more, " +
+                                                                      "brutes knock you back, drow blink and wounded ones regroup"));
 
         // alone: no spell, so the level-up screen, the HUD and the cast table are the game's
         var exe = Stock();
@@ -1927,14 +2122,16 @@ public class BgdaBorrowedSpellsTests
         Assert.That(reopened.GetEnemyAi(), Is.EqualTo(FeatPatch.EnemyAiParts));
         Assert.That(Stock().GetEnemyAi(), Is.EqualTo(0), "the stock file: not in");
 
-        // its hooks: its eight words, each pair a jump into the pool and a nop; none of the spells' hooks
+        // its hooks: its seventeen words; none of the spells' hooks
         Assert.That(EnemyAiHooks.Select(va => BitConverter.ToUInt32(_stockBytes, va - VaToFile)), Is.EqualTo(EnemyAiGameWords), "(the game's)");
-        for (var i = 0; i < EnemyAiHooks.Length; i += 2)
-        {
-            var j = BitConverter.ToUInt32(bytes, EnemyAiHooks[i] - VaToFile);
-            Assert.That((j >> 26, InUsed((j & 0x03FFFFFF) << 2), BitConverter.ToUInt32(bytes, EnemyAiHooks[i + 1] - VaToFile)), Is.EqualTo((2u, true, 0u)),
-                        $"0x{EnemyAiHooks[i]:X8}: j into the pool, then a nop");
-        }
+        uint Word(int va) => BitConverter.ToUInt32(bytes, va - VaToFile);
+        foreach (var va in new[] { 0x001182C0, 0x001185D8, 0x0011C168, 0x00129540, 0x00129778 })
+            Assert.That((Word(va) >> 26, InUsed((Word(va) & 0x03FFFFFF) << 2), Word(va + 4)), Is.EqualTo((2u, true, 0u)), $"0x{va:X8}: j into the pool, then a nop");
+        foreach (var va in new[] { 0x0019A464, 0x001A1134, 0x001BCBFC, 0x001DBFE0 })
+            Assert.That((Word(va) >> 26, InUsed((Word(va) & 0x03FFFFFF) << 2)), Is.EqualTo((2u, true)), $"0x{va:X8} (an odds or a wait): j into the pool");
+        Assert.That((Word(0x00129C14) >> 26, InUsed((Word(0x00129C14) & 0x03FFFFFF) << 2)), Is.EqualTo((3u, true)), "the melee blow's hit: jal into the pool");
+        foreach (var va in new[] { 0x0031AE64, 0x0031B794 })
+            Assert.That(InUsed(Word(va)), Is.True, $"0x{va:X8} (the drow's thinking in their vtable): the pool's");
         Assert.That(Hooks.All(va => BitConverter.ToUInt32(bytes, va - VaToFile) == BitConverter.ToUInt32(_stockBytes, va - VaToFile)), Is.True,
                     "the spells' hooks the game's");
         var changed = Enumerable.Range(0, bytes.Length).Where(i => bytes[i] != _stockBytes[i]).Select(i => (uint)(i + VaToFile)).ToList();
@@ -1943,14 +2140,14 @@ public class BgdaBorrowedSpellsTests
         Assert.That(Enumerable.Range(23, 19).Select(t => BitConverter.ToUInt32(bytes, table + 4 * t)).Distinct(), Is.EqualTo(new[] { FeatPatch.CastDefault }),
                     "types 24-42 the default: no spell");
 
-        // the ninth block: its mark, version 18, on with its three parts, its numbers, the eight directions and the 32 kinds
+        // the ninth block: its mark, version 22, on with its seven parts, its numbers, the eight directions and the 32 kinds
         Assert.That(FeatPatch.Data9Va, Is.EqualTo(0x00206460), "the start of the pool's stretch 38");
         Assert.That(InUsed((uint)FeatPatch.Data9Va) && InUsed((uint)(FeatPatch.Data9Va + FeatPatch.Data9Size - 1)), Is.True);
         var data9 = FeatPatch.Data9Va - VaToFile;
         Assert.That(Encoding.ASCII.GetString(bytes, data9, 4), Is.EqualTo("FEA9"));
-        Assert.That((BitConverter.ToInt32(bytes, data9 + 4), FeatPatch.Version), Is.EqualTo((18, 18)));
+        Assert.That((BitConverter.ToInt32(bytes, data9 + 4), FeatPatch.Version, FeatPatch.Data9Size), Is.EqualTo((22, 22, 0x3A0)));
         Assert.That((BitConverter.ToInt32(bytes, data9 + FeatPatch.EnemyAiOnAt), BitConverter.ToInt32(bytes, data9 + FeatPatch.EnemyAiPartsAt)),
-                    Is.EqualTo((1, 7)), "on, all three parts");
+                    Is.EqualTo((1, 0x7F)), "on, all seven parts");
         Assert.That((BitConverter.ToInt32(bytes, data9 + 0x10), BitConverter.ToSingle(bytes, data9 + 0x14), BitConverter.ToSingle(bytes, data9 + 0x18),
                      BitConverter.ToSingle(bytes, data9 + 0x1C)), Is.EqualTo((100, 2.25f, 0.49f, 30f)),
                     "targeting: hurt within 100 frames, its attacker if within 1.5 times as far; a hero 0.7 times as far; 30 past touching is a fight");
@@ -1970,8 +2167,27 @@ public class BgdaBorrowedSpellsTests
         Assert.That(kinds.Contains(0x0031BF60u) && kinds.Contains(0x003132E0u), Is.True, "the gnoll's and the kobold's vtables among them");
         Assert.That(kinds.Contains(0x0031C4C8u), Is.False, "not the beholder's (a boss)");
         Assert.That(BitConverter.ToUInt32(bytes, data9 + 0x90 + 4 * 32), Is.EqualTo(0u), "the list's end");
+        Assert.That((BitConverter.ToUInt32(bytes, data9 + 0x114), BitConverter.ToUInt32(bytes, data9 + 0x118)), Is.EqualTo((0x4A1C0417u, 0x201000u)),
+                    "the brutes (a bit for each of the 32 kinds) and the bits their blow gets (knocked back, strength 100)");
+        Assert.That((BitConverter.ToInt32(bytes, data9 + 0x11C), BitConverter.ToSingle(bytes, data9 + 0x120), BitConverter.ToSingle(bytes, data9 + 0x124)),
+                    Is.EqualTo((200, 450f, 180f)), "the drow: 200 frames between blinks, a warrior from as far as 450, the others 180 away");
+        Assert.That((BitConverter.ToInt32(bytes, data9 + 0x128), BitConverter.ToInt32(bytes, data9 + 0x12C)), Is.EqualTo((64, 10)),
+                    "the casters' waits x 64 / 128; the fire elemental's fireball 1 in 10");
         Assert.That(bytes.Skip(data9 + FeatPatch.EnemyAiRunTimeAt).Take(FeatPatch.Data9Size - FeatPatch.EnemyAiRunTimeAt).All(b => b == 0), Is.True,
-                    "its run-time fields (the walk's target, the places taken round each hero, who shouted when) zero");
+                    "its run-time fields (the walk's target, the places taken round each hero, who shouted when, the last blink) zero");
+
+        // the tenth block: its mark, version 22, the wounded monsters' numbers, their records zero; the same with the AI off
+        Assert.That(FeatPatch.Data10Va, Is.EqualTo(0x0020FCE0), "the start of the pool's stretch 53");
+        Assert.That(InUsed((uint)FeatPatch.Data10Va) && InUsed((uint)(FeatPatch.Data10Va + FeatPatch.Data10Size - 1)), Is.True);
+        var data10 = FeatPatch.Data10Va - VaToFile;
+        Assert.That((Encoding.ASCII.GetString(bytes, data10, 4), BitConverter.ToInt32(bytes, data10 + 4), FeatPatch.Data10Size), Is.EqualTo(("FEAA", 22, 0x240)));
+        Assert.That((BitConverter.ToInt32(bytes, data10 + 8), BitConverter.ToUInt32(bytes, data10 + 0xC), BitConverter.ToInt32(bytes, data10 + 0x10),
+                     BitConverter.ToSingle(bytes, data10 + 0x14), BitConverter.ToSingle(bytes, data10 + 0x18), BitConverter.ToSingle(bytes, data10 + 0x1C),
+                     BitConverter.ToInt32(bytes, data10 + 0x20)), Is.EqualTo((40, 0x240BC008u, 200, 400f, 24f, 16f, 1500)),
+                    "40% of its health; the kinds (bugbear, gnoll, kobold, kobold shaman, lizardman, ogre, thief, wolf); 200 frames back; a friend " +
+                    "within 400, 24 behind it, there within 16; a record free after 1500 frames");
+        Assert.That(bytes.Skip(data10 + FeatPatch.Data10RunTimeAt).Take(FeatPatch.Data10Size - FeatPatch.Data10RunTimeAt).All(b => b == 0), Is.True,
+                    "its 16 records (run time) zero");
 
         // taken out: the stock file
         reopened.RemoveBorrowedSpells();
@@ -2003,6 +2219,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That((Encoding.ASCII.GetString(orbs, data9, 4), BitConverter.ToInt32(orbs, data9 + FeatPatch.EnemyAiOnAt),
                      BitConverter.ToInt32(orbs, data9 + FeatPatch.EnemyAiPartsAt)), Is.EqualTo(("FEA9", 0, 0)));
         Assert.That(orbs.Skip(data9 + 0x10).Take(FeatPatch.Data9Size - 0x10), Is.EqualTo(bytes.Skip(data9 + 0x10).Take(FeatPatch.Data9Size - 0x10)));
+        Assert.That(orbs.Skip(data10).Take(FeatPatch.Data10Size), Is.EqualTo(bytes.Skip(data10).Take(FeatPatch.Data10Size)), "the tenth block the same");
         Assert.That(EnemyAiHooks.Select(va => BitConverter.ToUInt32(orbs, va - VaToFile)), Is.EqualTo(EnemyAiGameWords));
 
         // featpatch.py's choice of parts: read, and kept
@@ -2014,10 +2231,10 @@ public class BgdaBorrowedSpellsTests
         Assert.That(reopened.GetBorrowedSpellsState(out detail), Is.EqualTo(BorrowedSpellsState.On), detail);
         Assert.That(reopened.GetEnemyAi(), Is.EqualTo(FeatPatch.EnemyAiTargeting));
         Assert.That(EnemyAiHooks.Where(va => BitConverter.ToUInt32(targeting, va - VaToFile) != BitConverter.ToUInt32(_stockBytes, va - VaToFile)),
-                    Is.EqualTo(EnemyAiHooks), "the same eight hooks (each part is switched in the pool)");
+                    Is.EqualTo(EnemyAiHooks), "the same seventeen hooks (each part is switched in the pool)");
 
         // parts it hasn't: refused, nothing written
-        foreach (var parts in new[] { 8, -1, 0x17 })
+        foreach (var parts in new[] { 0x80, -1, 0x97 })
         {
             var e = Stock();
             Assert.Throws<ArgumentException>(() => e.SetBorrowedSpells(NoSpells(), parts));
@@ -2026,8 +2243,8 @@ public class BgdaBorrowedSpellsTests
 
         // a ninth block that isn't WorldExplorer's: another version, on without parts, a part it hasn't, on as 2, a number
         // changed, a run-time field set; or off with parts
-        foreach (var (at, value) in new[] { (4, 17), (FeatPatch.EnemyAiPartsAt, 0), (FeatPatch.EnemyAiPartsAt, 15), (FeatPatch.EnemyAiOnAt, 2),
-                                            (0x10, 99), (FeatPatch.EnemyAiRunTimeAt, 1) })
+        foreach (var (at, value) in new[] { (4, 21), (FeatPatch.EnemyAiPartsAt, 0), (FeatPatch.EnemyAiPartsAt, 0xFF), (FeatPatch.EnemyAiOnAt, 2),
+                                            (0x10, 99), (0x128, 128), (FeatPatch.EnemyAiRunTimeAt, 1), (0x390, 1) })
         {
             var unmarked = (byte[])bytes.Clone();
             BitConverter.GetBytes(value).CopyTo(unmarked, data9 + at);
@@ -2037,10 +2254,19 @@ public class BgdaBorrowedSpellsTests
         var offWithParts = (byte[])orbs.Clone();
         BitConverter.GetBytes(7).CopyTo(offWithParts, data9 + FeatPatch.EnemyAiPartsAt);
         Assert.That(OpenBytes(offWithParts, "ai-off-parts").GetBorrowedSpellsState(), Is.EqualTo(BorrowedSpellsState.Unrecognized));
+        // a tenth block that isn't WorldExplorer's: another version, a number changed, a record set
+        foreach (var (at, value) in new[] { (4, 21), (8, 50), (0xC, 0x240BC009), (FeatPatch.Data10RunTimeAt, 1) })
+        {
+            var unmarked = (byte[])bytes.Clone();
+            BitConverter.GetBytes(value).CopyTo(unmarked, data10 + at);
+            Assert.That(OpenBytes(unmarked, "ai10-unmarked").GetBorrowedSpellsState(out detail), Is.EqualTo(BorrowedSpellsState.Unrecognized),
+                        $"+0x{at:X} = {value}: {detail}");
+        }
 
         // the game code it relies on changed (the target finding's frame, the leash check it goes on to, the alert's call of each
-        // object's handler, the walk's line test): not the game's
-        foreach (var va in new[] { 0x001182C8, 0x0011884C, 0x00129730, 0x0011C364 })
+        // object's handler, the walk's line test, the damage's third word, the area search, the gnoll's turn in its vtable): not the
+        // game's
+        foreach (var va in new[] { 0x001182C8, 0x0011884C, 0x00129730, 0x0011C364, 0x00129548, 0x00108B88, 0x0031BFEC })
         {
             var game = (byte[])_stockBytes.Clone();
             game[va - VaToFile] ^= 4;
@@ -2125,7 +2351,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(InUsed((uint)FeatPatch.Data8Va) && InUsed((uint)(FeatPatch.Data8Va + FeatPatch.Data8Size - 1)), Is.True);
         var data8 = FeatPatch.Data8Va - VaToFile;
         Assert.That(Encoding.ASCII.GetString(bytes, data8, 4), Is.EqualTo("FEA8"));
-        Assert.That((BitConverter.ToInt32(bytes, data8 + 4), FeatPatch.Version), Is.EqualTo((18, 18)));
+        Assert.That((BitConverter.ToInt32(bytes, data8 + 4), FeatPatch.Version), Is.EqualTo((22, 22)));
         Assert.That((BitConverter.ToInt32(bytes, data8 + FeatPatch.Data3CountAt), BitConverter.ToInt32(bytes, data8 + FeatPatch.Data3AbilityCountAt)),
                     Is.EqualTo((1, 1)), "its list entry and its ability record, where the third block has Insect Plague's");
         Assert.That((bytes[data8 + FeatPatch.Data3EntryAt + FeatPatch.EntryPriceAt], bytes[data8 + FeatPatch.Data3EntryAt + FeatPatch.EntryRanksAt]),
@@ -2179,7 +2405,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(BitConverter.ToUInt32(orbs, data + FeatPatch.SpellsAt) & 0x4000u, Is.EqualTo(0u));
         Assert.That(BitConverter.ToUInt32(orbs, 0x0011B7D8 - VaToFile), Is.EqualTo(0xDFB10030u));
 
-        // an eighth block that isn't version 18's, or not saying it has its entry: not WorldExplorer's
+        // an eighth block that isn't version 22's, or not saying it has its entry: not WorldExplorer's
         foreach (var (at, value) in new[] { (4, (byte)16), (FeatPatch.Data3CountAt, (byte)0) })
         {
             var unmarked = (byte[])bytes.Clone();
@@ -2275,7 +2501,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(InUsed((uint)FeatPatch.Data7Va) && InUsed((uint)(FeatPatch.Data7Va + FeatPatch.Data7Size - 1)), Is.True);
         var data7 = FeatPatch.Data7Va - VaToFile;
         Assert.That(Encoding.ASCII.GetString(bytes, data7, 4), Is.EqualTo("FEA7"));
-        Assert.That((BitConverter.ToInt32(bytes, data7 + 4), FeatPatch.Version), Is.EqualTo((18, 18)));
+        Assert.That((BitConverter.ToInt32(bytes, data7 + 4), FeatPatch.Version), Is.EqualTo((22, 22)));
         Assert.That((BitConverter.ToInt32(bytes, data7 + FeatPatch.Data3CountAt), BitConverter.ToInt32(bytes, data7 + FeatPatch.Data3AbilityCountAt)),
                     Is.EqualTo((1, 1)), "its list entry and its ability record, where the third block has Insect Plague's");
         Assert.That((bytes[data7 + FeatPatch.Data3EntryAt + FeatPatch.EntryPriceAt], bytes[data7 + FeatPatch.Data3EntryAt + FeatPatch.EntryRanksAt]),
@@ -2317,7 +2543,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(BitConverter.ToUInt32(orbs, table + 4 * 40), Is.EqualTo(FeatPatch.CastDefault));
         Assert.That(BitConverter.ToUInt32(orbs, data + FeatPatch.SpellsAt) & 0x2000u, Is.EqualTo(0u));
 
-        // a seventh block that isn't version 18's, or not saying it has its entry: not WorldExplorer's
+        // a seventh block that isn't version 22's, or not saying it has its entry: not WorldExplorer's
         foreach (var (at, value) in new[] { (4, (byte)15), (FeatPatch.Data3CountAt, (byte)0) })
         {
             var unmarked = (byte[])bytes.Clone();
@@ -2414,7 +2640,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(InUsed((uint)FeatPatch.Data6Va) && InUsed((uint)(FeatPatch.Data6Va + FeatPatch.Data6Size - 1)), Is.True);
         var data6 = FeatPatch.Data6Va - VaToFile;
         Assert.That(Encoding.ASCII.GetString(bytes, data6, 4), Is.EqualTo("FEA6"));
-        Assert.That((BitConverter.ToInt32(bytes, data6 + 4), FeatPatch.Version), Is.EqualTo((18, 18)));
+        Assert.That((BitConverter.ToInt32(bytes, data6 + 4), FeatPatch.Version), Is.EqualTo((22, 22)));
         Assert.That((BitConverter.ToInt32(bytes, data6 + FeatPatch.Data3CountAt), BitConverter.ToInt32(bytes, data6 + FeatPatch.Data3AbilityCountAt)),
                     Is.EqualTo((1, 1)), "its list entry and its ability record, where the third block has Insect Plague's");
         Assert.That((bytes[data6 + FeatPatch.Data3EntryAt + FeatPatch.EntryPriceAt], bytes[data6 + FeatPatch.Data3EntryAt + FeatPatch.EntryRanksAt]),
@@ -2449,7 +2675,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(FocusOnly.Append(0x0010F648).All(va => BitConverter.ToUInt32(orbs, va - VaToFile) == BitConverter.ToUInt32(_stockBytes, va - VaToFile)),
                     Is.True);
 
-        // a sixth block that isn't version 18's, or not saying it has its entry: not WorldExplorer's
+        // a sixth block that isn't version 22's, or not saying it has its entry: not WorldExplorer's
         foreach (var (at, value) in new[] { (4, (byte)14), (FeatPatch.Data3CountAt, (byte)0) })
         {
             var unmarked = (byte[])bytes.Clone();
@@ -2565,7 +2791,7 @@ public class BgdaBorrowedSpellsTests
                     Is.EqualTo(new[] { 0, 100, 150, 200, 200, 200, 0, 0 }));
         Assert.That(BitConverter.ToUInt32(orbs, table + 4 * 38), Is.EqualTo(FeatPatch.CastDefault));
 
-        // a fifth block that isn't version 18's, or not saying it has its entry: not WorldExplorer's
+        // a fifth block that isn't version 22's, or not saying it has its entry: not WorldExplorer's
         foreach (var (at, value) in new[] { (4, (byte)13), (FeatPatch.Data3CountAt, (byte)0) })
         {
             var unmarked = (byte[])bytes.Clone();
@@ -2701,7 +2927,7 @@ public class BgdaBorrowedSpellsTests
 
         Assert.That(bytes.AsSpan(gameGas, 0x80).SequenceEqual(_stockBytes.AsSpan(gameGas, 0x80)), Is.True, "the game's vtable is never written");
 
-        // a fourth block that isn't version 18's, or not saying it has its entry: not WorldExplorer's
+        // a fourth block that isn't version 22's, or not saying it has its entry: not WorldExplorer's
         foreach (var (at, value) in new[] { (4, (byte)12), (FeatPatch.Data3CountAt, (byte)0) })
         {
             var unmarked = (byte[])bytes.Clone();
@@ -2992,7 +3218,7 @@ public class BgdaBorrowedSpellsTests
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version5Spells));
 
         // saved with Power Attack, Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow,
-        // Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 18's file
+        // Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 22's file
         var all = new Dictionary<BorrowedSpell, BorrowedSpellSettings>(exe.GetBorrowedSpells())
         {
             [BorrowedSpell.PowerAttack] = BorrowedSpells.Info(BorrowedSpell.PowerAttack).Default,
@@ -3052,7 +3278,7 @@ public class BgdaBorrowedSpellsTests
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version6Spells));
 
         // saved with Sorcerer's Blood, Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door,
-        // Expert Focus, Phase Axe and Shatter added: featpatch.py version 18's file
+        // Expert Focus, Phase Axe and Shatter added: featpatch.py version 22's file
         var all = new Dictionary<BorrowedSpell, BorrowedSpellSettings>(exe.GetBorrowedSpells())
         {
             [BorrowedSpell.SorcerersBlood] = BorrowedSpells.Info(BorrowedSpell.SorcerersBlood).Default,
@@ -3103,6 +3329,75 @@ public class BgdaBorrowedSpellsTests
     }
 
     [Test]
+    public void Version21_IsBroughtUpToDate_KeepingItsSettingsAndItsChoiceOfParts()
+    {
+        RequireStock();
+        var v21 = Version21();
+        var exe = OpenBytes(v21, "v21");
+        Assert.That(exe.GetBorrowedSpellsState(out var detail), Is.EqualTo(BorrowedSpellsState.Outdated), detail);
+        Assert.That(detail, Does.StartWith("In as version 21 (the test of Improved Enemy AI with the drow blink): "));
+        Assert.That(detail, Does.EndWith("; Improved Enemy AI. Saving brings it to version 22, with all seven parts of Improved Enemy AI; every spell keeps " +
+                                         "its settings."));
+        AssertSame(exe.GetBorrowedSpells(), Defaults(BorrowedSpells.All));
+        Assert.That(exe.GetEnemyAi(), Is.EqualTo(FeatPatch.EnemyAiParts), "all six parts of version 21's: all seven when saved");
+        Assert.That(FeatPatch.EarlierAiVersions.Select(v => (v.Version, v.AiParts)), Is.EqualTo(new[] { (21, 0x3F), (20, 0x1F), (19, 0xF), (18, 7) }));
+
+        // saved as the tab saves it, with the AI left out, or the AI alone: featpatch.py version 22's files
+        exe.SetBorrowedSpells(exe.GetBorrowedSpells(), exe.GetEnemyAi());
+        Assert.That(Md5(Bytes(exe, "v21-updated")), Is.EqualTo(AllWithEnemyAiMd5));
+        exe = OpenBytes(v21, "v21b");
+        exe.SetBorrowedSpells(exe.GetBorrowedSpells());
+        Assert.That(Md5(Bytes(exe, "v21-noai")), Is.EqualTo(AllFifteenMd5));
+        exe = OpenBytes(v21, "v21c");
+        exe.SetBorrowedSpells(NoSpells(), exe.GetEnemyAi());
+        Assert.That(Md5(Bytes(exe, "v21-ai-alone")), Is.EqualTo(EnemyAiMd5));
+
+        // featpatch.py's choice of fewer parts (smarter targeting and the drow blink): read, and kept
+        var chosen = (byte[])v21.Clone();
+        var data9 = FeatPatch.Data9Va - VaToFile;
+        BitConverter.GetBytes(FeatPatch.EnemyAiTargeting | FeatPatch.EnemyAiDrow).CopyTo(chosen, data9 + FeatPatch.EnemyAiPartsAt);
+        Assert.That(Md5(chosen), Is.EqualTo(Version21PartsMd5), "featpatch.py version 21 --ai-parts targeting,drow");
+        exe = OpenBytes(chosen, "v21-parts");
+        Assert.That(exe.GetBorrowedSpellsState(out detail), Is.EqualTo(BorrowedSpellsState.Outdated), detail);
+        Assert.That(detail, Does.Contain("keeping featpatch.py's choice of Improved Enemy AI's parts (smarter targeting and drow blink)"));
+        Assert.That(exe.GetEnemyAi(), Is.EqualTo(FeatPatch.EnemyAiTargeting | FeatPatch.EnemyAiDrow));
+        exe.SetBorrowedSpells(exe.GetBorrowedSpells(), exe.GetEnemyAi());
+        var parts = Bytes(exe, "v21-parts-saved");
+        Assert.That(Md5(parts), Is.EqualTo(Version21PartsUpdatedMd5));
+        Assert.That(OpenBytes(parts, "v21-parts-saved2").GetEnemyAi(), Is.EqualTo(FeatPatch.EnemyAiTargeting | FeatPatch.EnemyAiDrow));
+
+        // taken out: the stock file
+        var removed = OpenBytes(v21, "v21-out");
+        removed.RemoveBorrowedSpells();
+        Assert.That(Bytes(removed, "v21-out-saved"), Is.EqualTo(_stockBytes));
+
+        // version 21 with its code changed, a part it hadn't (the regroup), a number of its ninth block changed or its eighth
+        // block marked 22: not recognised
+        var broken = (byte[])v21.Clone();
+        broken[FeatPatch.EarlierAiVersions[0].Code[0].Va + 8 - VaToFile] ^= 4;
+        Assert.That(OpenBytes(broken, "v21-broken").GetBorrowedSpellsState(), Is.EqualTo(BorrowedSpellsState.Unrecognized));
+        foreach (var (at, value) in new[] { (FeatPatch.EnemyAiPartsAt, 0x7F), (0x11C, 100) })
+        {
+            var changed = (byte[])v21.Clone();
+            BitConverter.GetBytes(value).CopyTo(changed, data9 + at);
+            Assert.That(OpenBytes(changed, "v21-changed").GetBorrowedSpellsState(), Is.EqualTo(BorrowedSpellsState.Unrecognized), $"+0x{at:X} = {value}");
+        }
+        var marked = (byte[])v21.Clone();
+        marked[FeatPatch.Data8Va - VaToFile + 4] = 22;
+        Assert.That(OpenBytes(marked, "v21-marked").GetBorrowedSpellsState(), Is.EqualTo(BorrowedSpellsState.Unrecognized));
+
+        // the word the regroup hooks (version 21 doesn't) changed: still version 21, but not updated over it; the file as it was
+        var hooked = (byte[])v21.Clone();
+        hooked[0x00129540 - VaToFile] ^= 1;
+        exe = OpenBytes(hooked, "v21-hooked");
+        Assert.That(exe.GetBorrowedSpellsState(), Is.EqualTo(BorrowedSpellsState.Outdated));
+        var e2 = exe;
+        var thrown = Assert.Throws<InvalidOperationException>(() => e2.SetBorrowedSpells(e2.GetBorrowedSpells(), e2.GetEnemyAi()));
+        Assert.That(thrown!.Message, Does.Contain("0x00129540"));
+        Assert.That(Bytes(exe, "v21-hooked-after"), Is.EqualTo(hooked));
+    }
+
+    [Test]
     public void Version17_IsBroughtUpToDate_KeepingItsSettings()
     {
         RequireStock();
@@ -3114,7 +3409,7 @@ public class BgdaBorrowedSpellsTests
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version17Spells));
         Assert.That(exe.GetEnemyAi(), Is.EqualTo(0), "version 17 had no Improved Enemy AI");
 
-        // saved as it is, with Improved Enemy AI added, or the AI alone: featpatch.py version 18's files
+        // saved as it is, with Improved Enemy AI added, or the AI alone: featpatch.py version 22's files
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v17-updated")), Is.EqualTo(AllFifteenMd5));
         exe = OpenBytes(v17, "v17b");
@@ -3124,7 +3419,7 @@ public class BgdaBorrowedSpellsTests
         exe.SetBorrowedSpells(NoSpells(), FeatPatch.EnemyAiParts);
         Assert.That(Md5(Bytes(exe, "v17-ai-alone")), Is.EqualTo(EnemyAiMd5));
 
-        // its own settings (in its eight data blocks, where version 18 keeps them too, in the same layout) are read and kept
+        // its own settings (in its eight data blocks, where version 22 keeps them too, in the same layout) are read and kept
         var custom = (byte[])v17.Clone();
         var data = FeatPatch.DataVa - VaToFile;
         var data8 = FeatPatch.Data8Va - VaToFile;
@@ -3167,7 +3462,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("Shatter for Adrianna and Improved Enemy AI"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version16Spells));
 
-        // saved as it is, or with Shatter added: featpatch.py version 18's files
+        // saved as it is, or with Shatter added: featpatch.py version 22's files
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v16-updated")), Is.EqualTo(FourteenMd5));
         exe = OpenBytes(v16, "v16b");
@@ -3177,7 +3472,7 @@ public class BgdaBorrowedSpellsTests
         });
         Assert.That(Md5(Bytes(exe, "v16-updated-all")), Is.EqualTo(AllFifteenMd5));
 
-        // its own settings (in its seven data blocks, where version 18 keeps them too, in the same layout) are read and kept
+        // its own settings (in its seven data blocks, where version 22 keeps them too, in the same layout) are read and kept
         var custom = (byte[])v16.Clone();
         var data = FeatPatch.DataVa - VaToFile;
         var data6 = FeatPatch.Data6Va - VaToFile;
@@ -3225,7 +3520,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("Phase Axe for Kromlech and Shatter for Adrianna"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version15Spells));
 
-        // saved as it is, or with Phase Axe and Shatter added: featpatch.py version 18's files
+        // saved as it is, or with Phase Axe and Shatter added: featpatch.py version 22's files
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v15-updated")), Is.EqualTo(ThirteenMd5));
         exe = OpenBytes(v15, "v15b");
@@ -3236,7 +3531,7 @@ public class BgdaBorrowedSpellsTests
         });
         Assert.That(Md5(Bytes(exe, "v15-updated-all")), Is.EqualTo(AllFifteenMd5));
 
-        // its own settings (in its six data blocks, where version 18 keeps them too, in the same layout) are read and kept
+        // its own settings (in its six data blocks, where version 22 keeps them too, in the same layout) are read and kept
         var custom = (byte[])v15.Clone();
         var data = FeatPatch.DataVa - VaToFile;
         var data6 = FeatPatch.Data6Va - VaToFile;
@@ -3281,7 +3576,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("Expert Focus for Vahn, Phase Axe for Kromlech and Shatter for Adrianna"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version14Spells));
 
-        // saved as it is, or with Expert Focus, Phase Axe and Shatter added: featpatch.py version 18's files
+        // saved as it is, or with Expert Focus, Phase Axe and Shatter added: featpatch.py version 22's files
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v14-updated")), Is.EqualTo(TwelveMd5));
         exe = OpenBytes(v14, "v14b");
@@ -3293,7 +3588,7 @@ public class BgdaBorrowedSpellsTests
         });
         Assert.That(Md5(Bytes(exe, "v14-updated-all")), Is.EqualTo(AllFifteenMd5));
 
-        // its own settings (in its five data blocks, where version 18 keeps them too, in the same layout) are read and kept
+        // its own settings (in its five data blocks, where version 22 keeps them too, in the same layout) are read and kept
         var custom = (byte[])v14.Clone();
         var data = FeatPatch.DataVa - VaToFile;
         var data5 = FeatPatch.Data5Va - VaToFile;
@@ -3336,7 +3631,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("Dimension Door and Shatter for Adrianna"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version13Spells));
 
-        // saved as it is, or with Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 18's files
+        // saved as it is, or with Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 22's files
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v13-updated")), Is.EqualTo(ElevenMd5));
         exe = OpenBytes(v13, "v13b");
@@ -3349,7 +3644,7 @@ public class BgdaBorrowedSpellsTests
         });
         Assert.That(Md5(Bytes(exe, "v13-updated-all")), Is.EqualTo(AllFifteenMd5));
 
-        // its own settings (in its four data blocks, where version 18 keeps them too, in the same layout) are read and kept
+        // its own settings (in its four data blocks, where version 22 keeps them too, in the same layout) are read and kept
         var custom = (byte[])v13.Clone();
         var data = FeatPatch.DataVa - VaToFile;
         var data4 = FeatPatch.Data4Va - VaToFile;
@@ -3393,7 +3688,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("version 12"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version12Spells));
 
-        // saved as it is, or with Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 18's files
+        // saved as it is, or with Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 22's files
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v12-updated")), Is.EqualTo(TenMd5));
         exe = OpenBytes(v12, "v12b");
@@ -3407,7 +3702,7 @@ public class BgdaBorrowedSpellsTests
         });
         Assert.That(Md5(Bytes(exe, "v12-updated-all")), Is.EqualTo(AllFifteenMd5));
 
-        // its own settings (in its three data blocks, where version 18 keeps them too, in the same layout) are read and kept
+        // its own settings (in its three data blocks, where version 22 keeps them too, in the same layout) are read and kept
         var custom = (byte[])v12.Clone();
         var data = FeatPatch.DataVa - VaToFile;
         var data2 = FeatPatch.Data2Va - VaToFile;
@@ -3453,7 +3748,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("version 11"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version11Spells));
 
-        // saved as it is, or with Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 18's files
+        // saved as it is, or with Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 22's files
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v11-updated")), Is.EqualTo(NineMd5));
         exe = OpenBytes(v11, "v11b");
@@ -3468,7 +3763,7 @@ public class BgdaBorrowedSpellsTests
         });
         Assert.That(Md5(Bytes(exe, "v11-updated-all")), Is.EqualTo(AllFifteenMd5));
 
-        // its own settings (in its two data blocks, where version 18 keeps them too, in the same layout) are read and kept
+        // its own settings (in its two data blocks, where version 22 keeps them too, in the same layout) are read and kept
         var custom = (byte[])v11.Clone();
         var data = FeatPatch.DataVa - VaToFile;
         var data2 = FeatPatch.Data2Va - VaToFile;
@@ -3509,7 +3804,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("version 10"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version10Spells));
 
-        // saved as it is, or with Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 18's files
+        // saved as it is, or with Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 22's files
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v10-updated")), Is.EqualTo(EightMd5));
         exe = OpenBytes(v10, "v10b");
@@ -3525,7 +3820,7 @@ public class BgdaBorrowedSpellsTests
         });
         Assert.That(Md5(Bytes(exe, "v10-updated-all")), Is.EqualTo(AllFifteenMd5));
 
-        // its own settings (in its data block at 0x00221B88, where version 18's is too, in version 10's layout) are read and kept
+        // its own settings (in its data block at 0x00221B88, where version 22's is too, in version 10's layout) are read and kept
         var custom = (byte[])v10.Clone();
         var data = FeatPatch.DataVa - VaToFile;
         custom[data + 0x80 + 0x60 + 8 + 0x42] = 2;                          // Power Attack's price (the second entry)
@@ -3570,8 +3865,8 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("version 9"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version9Spells));
 
-        // saved as it is (its data block moves to version 18's place), or with Inferno Arrow, Entangle, Insect Plague, Poison Gas
-        // Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 18's files
+        // saved as it is (its data block moves to version 22's place), or with Inferno Arrow, Entangle, Insect Plague, Poison Gas
+        // Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py version 22's files
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v9-updated")), Is.EqualTo(SevenMd5));
         exe = OpenBytes(v9, "v9b");
@@ -3627,7 +3922,7 @@ public class BgdaBorrowedSpellsTests
         Assert.That(detail, Does.Contain("version 8"));
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version9Spells));
 
-        // saved as it is: featpatch.py version 18's file with its seven (the orbs in a fan now)
+        // saved as it is: featpatch.py version 22's file with its seven (the orbs in a fan now)
         exe.SetBorrowedSpells(exe.GetBorrowedSpells());
         Assert.That(Md5(Bytes(exe, "v8-updated")), Is.EqualTo(SevenMd5));
 
@@ -3684,7 +3979,7 @@ public class BgdaBorrowedSpellsTests
         AssertSame(exe.GetBorrowedSpells(), Defaults(Version7Spells));
 
         // saved with Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison Gas Arrow, Dimension Door, Expert Focus, Phase Axe and Shatter added: featpatch.py
-        // version 18's file
+        // version 22's file
         var all = new Dictionary<BorrowedSpell, BorrowedSpellSettings>(exe.GetBorrowedSpells())
         {
             [BorrowedSpell.XantamOrbs] = BorrowedSpells.Info(BorrowedSpell.XantamOrbs).Default,
