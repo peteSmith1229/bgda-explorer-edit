@@ -94,7 +94,8 @@ Alliance II files are read with the Dark Alliance formats for now.
   Dimension Door 3; price, mana and the values of each rank can be set; Sorcerer's Blood has a price and 1 to 5
   ranks). The tab
   groups them by hero (Adrianna's, Kromlech's, Vahn's, each in alphabetical order); each card shows its tick box and
-  opens to its settings, and Enable all ticks every one at once:
+  opens to its settings. The Enable all toggle at the top of the tab ticks every card at once, Improved Enemy AI's
+  below included (each keeps its settings); once every card is ticked it reads Disable all and unticks them all:
   - Xantam's Fire for Adrianna: the beholder Xantam's fire trails, which burn the monsters in their path;
   - Power Attack for Kromlech: the game's own cut feat, finished: casting it readies his weapon, and his next
     melee hits (one to five, by rank) within 10 seconds do double damage. Its icon, HUD line and texts are the

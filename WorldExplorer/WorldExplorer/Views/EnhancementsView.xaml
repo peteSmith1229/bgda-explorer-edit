@@ -154,14 +154,15 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="0,2,14,8">
             <TextBlock Style="{StaticResource Help}" Text="Additions to the game that work with or without three players. Each one is turned on or off by itself here, and taking one out puts the game's own code back exactly. Nothing is written until you save." />
+            <!-- every card on the tab, the heroes' feats and the monsters' -->
+            <WrapPanel Margin="0,2,0,2">
+                <ToggleButton Content="{Binding AllText}" IsChecked="{Binding AllOn, Mode=TwoWay}" IsEnabled="{Binding Usable}" Margin="0,0,12,4"
+                              ToolTip="Ticks every card on the tab: the new feats and Improved Enemy AI. Each keeps the settings shown on its card (unticked cards show the tested settings). Once every card is ticked it reads Disable all, and unticks them all." />
+            </WrapPanel>
 
             <TextBlock Text="NEW FEATS: SPELLS BORROWED FROM THE GAME'S MONSTERS, AND THE GAME'S OWN CUT FEATS" Style="{StaticResource Heading}" Margin="0,8,0,6" />
             <TextBlock Style="{StaticResource Help}" Text="{Binding StateText}" />
             <TextBlock Style="{StaticResource Help}" Text="Each is a feat on its hero's level-up screen. Eight are spells borrowed from the game's monsters, and Entangle is the game's own vines, which nothing in it casts; Power Attack, Sorcerer's Blood and Inferno Arrow are the game's own feats, which it never offers; Expert Focus, Phase Axe and Shatter are new: Power Attack for Vahn's bow, a magic axe Kromlech throws through every monster in its path, and a ring of frost that freezes the monsters round Adrianna. The spells, Power Attack and the arrows have 5 ranks (Dimension Door 3), cost mana like the game's own spells, and the HUD shows their icons and their numbers for the rank. Sorcerer's Blood is passive: it adds to Adrianna's mana as she gains levels." />
-            <WrapPanel Margin="0,2,0,2">
-                <Button Content="Enable all" Click="EnableAll_Click" IsEnabled="{Binding Usable}" Margin="0,0,12,4"
-                        ToolTip="Ticks every spell's box. Each keeps the settings shown on its card (unticked cards show the tested settings)." />
-            </WrapPanel>
             <ItemsControl ItemsSource="{Binding Groups}" Focusable="False" />
 
             <TextBlock Text="NAMES AND ICONS" Style="{StaticResource Heading}" />
