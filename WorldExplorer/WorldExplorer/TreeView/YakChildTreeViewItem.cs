@@ -14,26 +14,48 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using JetBlackEngineLib.Data.Armour;
 using JetBlackEngineLib.Data.Textures;
+using WorldExplorer.Infrastructure;
 
 namespace WorldExplorer.TreeView;
 
+/// <summary>A child of a YAK entry: one character's model and texture.</summary>
 public class YakChildTreeViewItem : TreeViewItemViewModel
 {
-    public YakEntryChild? Value { get; }
-
-    public YakEntry ParentEntry { get; }
-
-    public YakFile YakFile { get; }
-
-    public YakChildTreeViewItem(TreeViewItemViewModel parent, YakFile yakFile, YakEntryChild? value,
-        YakEntry entry, string name)
+    public YakChildTreeViewItem(TreeViewItemViewModel parent, YakFile yakFile, int entryIndex, int childIndex,
+        string name)
         : base(name, parent, false)
     {
         YakFile = yakFile;
-        Value = value;
-        ParentEntry = entry;
+        EntryIndex = entryIndex;
+        ChildIndex = childIndex;
     }
 
+    public YakFile YakFile { get; }
+
+    public int EntryIndex { get; }
+
+    /// <summary>The character class: 0 human, 1 elf, 2 dwarf, 3 class 3.</summary>
+    public int ChildIndex { get; }
+
+    /// <summary>The model and texture now, with any edit.</summary>
+    public YakFile.Child Value => YakFile.GetChild(EntryIndex, ChildIndex);
+
     public override NodeKind Kind => NodeKind.Model;
+
+    public override string KindDescription => "Armour model and texture";
+
+    public override string? Detail
+    {
+        get
+        {
+            var read = ArmorYakInfo.ReadSize(Value.Length);
+            var capacity = ArmorYakInfo.Capacity(ArmorYakInfo.SlotOf(EntryIndex));
+            return $"{FileSizeConverter.Format(Value.Length)} of {FileSizeConverter.Format(capacity)}" +
+                   (read > capacity ? " — too big" : "");
+        }
+    }
+
+    public override bool IsModified => YakFile.IsChildUnsaved(EntryIndex, ChildIndex);
 }

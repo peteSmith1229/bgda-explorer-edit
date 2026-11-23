@@ -128,7 +128,11 @@ public partial class BgdaExecutable
     public const int ModelTableVa = 0x002A79C8;
     public const int ModelRecordSize = 0x10;
     public const int ModelCount = 108;
+    /// <summary>The entries of the game's own ARMOR.YAK.</summary>
     public const int ArmorYakEntryCount = 59;
+
+    /// <summary>The entries the game can read from ARMOR.YAK (its 0x1000-byte header; the three-player hook checks it).</summary>
+    public const int ArmorYakMaxEntries = 85;
 
     private const int StanceWeightsVa = 0x002A76E8;
     private const int GlowVa = 0x002A79B8;
@@ -469,8 +473,10 @@ public partial class BgdaExecutable
         var looks = ItemBits.Looks(item.Flags);
         if (item.WornFromArmorYak)
         {
-            if (item.Model < 0 || item.Model >= ArmorYakEntryCount)
-                return $"Worn armour uses ARMOR.YAK entries 0 to {ArmorYakEntryCount - 1}.";
+            // the enchanted look is the next entry, so the last usable model is one before the last entry
+            if (item.Model < 0 || item.Model + 1 >= ArmorYakMaxEntries)
+                return $"Worn armour uses ARMOR.YAK entries 0 to {ArmorYakMaxEntries - 2} (the next one is the enchanted look). " +
+                       $"Entries from {ArmorYakEntryCount} on must be added to ARMOR.YAK first.";
         }
         else if (item.Model < 0 || item.Model + looks - 1 >= ModelCount)
         {
