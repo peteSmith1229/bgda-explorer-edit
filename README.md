@@ -94,8 +94,8 @@ Alliance II files are read with the Dark Alliance formats for now.
   Dimension Door 3; price, mana and the values of each rank can be set; Sorcerer's Blood has a price and 1 to 5
   ranks). The tab
   groups them by hero (Adrianna's, Kromlech's, Vahn's, each in alphabetical order); each card shows its tick box and
-  opens to its settings. The Enable all toggle at the top of the tab ticks every card at once, Improved Enemy AI's
-  below included (each keeps its settings); once every card is ticked it reads Disable all and unticks them all:
+  opens to its settings. The Enable all toggle at the top of the tab ticks every card at once, the two Enemy AI
+  cards below included (each keeps its settings); once every card is ticked it reads Disable all and unticks them all:
   - Xantam's Fire for Adrianna: the beholder Xantam's fire trails, which burn the monsters in their path;
   - Power Attack for Kromlech: the game's own cut feat, finished: casting it readies his weapon, and his next
     melee hits (one to five, by rank) within 10 seconds do double damage. Its icon, HUD line and texts are the
@@ -156,8 +156,8 @@ Alliance II files are read with the Dark Alliance formats for now.
     included) does 50% more damage and trails Ilivarra's purple and gold sparks; casting it again starts the time
     again. Each rank's percentage (1 to 200) and time (0.1 to 25.5 seconds) can be set. Its HUD line shows them.
 
-  Below them, after a separator, the Monsters part has one card, **Improved Enemy AI**, a tick box of its own (with
-  or without any of the feats):
+  Below them, after a separator, the **Enemy AI** part has three cards, each a tick box of its own (with or
+  without any of the feats, and with or without the other card). **Smarter Enemies**:
   - Smarter targeting: a monster goes for the nearest hero it may chase (the game picks one by the monster's
     number, wherever the others are), turns on a hero who hurt it in the last 2 seconds if that hero isn't much
     further off, and switches to a hero who comes much nearer than the one it is after. With one player this part
@@ -168,6 +168,12 @@ Alliance II files are read with the Dark Alliance formats for now.
   - Raise the alarm: a monster chasing a hero shouts, and every monster within 400 of it that is idle or wandering
     comes for the hero nearest the noise; a monster that is hit is heard the same way. A monster shouts or answers
     at most once in 10 seconds;
+  - Wounded ones regroup: a kobold, kobold shaman, gnoll, bugbear, lizardman, ogre, thief or wolf left with 40% or
+    less of its health (remembered from its first hit) falls back behind its nearest friend within 400, turns to
+    face the hero and waits there about 4 seconds (shamans cast and ogres throw from there), then comes back to
+    fight. One struck on the way, or with no friend near, fights on.
+
+  **Enemies Use Feats**:
   - Casters cast more: kobold shamans, lizardman shamans and drow priestesses wait half as long between spells, and
     fire elementals throw fireballs twice as often;
   - Brutes knock you back: a plain melee blow from an ogre, minotaur, frost giant, yeti, umber hulk, bulette or
@@ -176,16 +182,21 @@ Alliance II files are read with the Dark Alliance formats for now.
   - Drow blink: a drow warrior chasing a hero from afar vanishes in Ilivarra's sparkle and reappears at his side,
     behind him if there is room; a drow archer or priestess with a hero close by blinks away from him. At most one
     drow blinks every 4 seconds, and never through a wall or off a ledge;
-  - Wounded ones regroup: a kobold, kobold shaman, gnoll, bugbear, lizardman, ogre, thief or wolf left with 40% or
-    less of its health (remembered from its first hit) falls back behind its nearest friend within 400, turns to
-    face the hero and waits there about 4 seconds (shamans cast and ogres throw from there), then comes back to
-    fight. One struck on the way, or with no friend near, fights on.
+  - Archers use Vahn's arrows: one shot in four from a skeleton, drow archer, lizardman or kobold is one of Vahn's
+    bow feats, picked from its own list: skeletons Flaming Arrow; drow archers Flaming Arrow, Ice Arrow or Hail of
+    Arrows; lizardmen a Flaming, Ice, Shocking or Exploding spear, still thrown in the spear's arc; kobolds a Flaming
+    or Ice spear. Each hits as hard as the shooter's own shot and looks and sounds as Vahn's does (the game's own
+    trails, lights and impacts): Flaming sets a hero alight, Ice slows him, Shocking sparks on him, Hail is three
+    arrows in a fan, and Exploding bursts and hurts everyone near it, monsters too. The lizardmen's firebombs stay
+    the game's own.
 
-  It changes the game's 32 ordinary kinds of monster; bosses, gas spores, ghosts, guards, cats, rats and the
-  town's people are left as they are; no monster's health, damage or spells change. Ticked, it goes in with all
-  seven parts; a file featpatch.py gave fewer keeps them, and an executable with an earlier version of it
-  (Improved Enemy AI's first three parts, or the casters', brutes' or drow's test) is brought up to date when it
-  is saved, with all seven when it had all of its own.
+  **Aggressive Bosses** is a placeholder for a patch to come (the bosses fighting harder); it can't be ticked yet.
+
+  The two cards change the game's 32 ordinary kinds of monster; bosses, gas spores, ghosts, guards, cats, rats and
+  the town's people are left as they are; no monster's health or damage changes. Ticked, each goes in with its four
+  parts; a file featpatch.py gave fewer keeps them, and an executable with an earlier version of Improved Enemy AI
+  (its first three parts, the casters', brutes', drow's or archers' test, or the single seven-part card) is brought
+  up to date when it is saved, with all eight parts (both cards) when it had all of its own.
 
   They go into game code nothing ever runs (about 32 KB of it, the same in the stock executable and every
   three-player build, so three players can still be turned on or off), the borrowed spells' names and
