@@ -35,10 +35,10 @@ internal sealed record SpellPatchData(string Key, int Mask, int HeroClass, int B
     public bool HasCast => Cast != 0;
 }
 
-/// <summary>featpatch.py version 24 as data (see BgdaExecutable.BorrowedSpells.cs).</summary>
+/// <summary>featpatch.py version 25 as data (see BgdaExecutable.BorrowedSpells.cs).</summary>
 internal static class FeatPatch
 {
-    public const int Version = 24;
+    public const int Version = 25;
 
     /// <summary>
     /// The pool: 61 stretches of the game's own code that nothing runs (32,724 bytes), the same addresses and bytes
@@ -264,9 +264,9 @@ internal static class FeatPatch
     public const string PoolOriginalSha256 = "61d9c74b8a8f6a052479a3505c8458611f8b9ff67bfbd76018a2e7b8a48b36ce";
 
     /// <summary>How much of the pool the patch takes: its ten data blocks, its code, its vtable copies and its cast table.</summary>
-    public const int PoolUsedBytes = 31604;
+    public const int PoolUsedBytes = 32080;
 
-    /// <summary>The code (23,860 bytes in 56 pieces over the pool's stretches): the same whichever spells are on.</summary>
+    /// <summary>The code (24,332 bytes in 59 pieces over the pool's stretches): the same whichever spells are on.</summary>
     public static readonly (int Va, string Base64)[] Code =
     {
         (0x00102910, "QP+9JyEAFjyQuNYmkAKEjgEABTyiGggMPCgFACG4QAAhQMIC4AASkfAACZH4AAqRfAqrjyYAaaUoAGqlMAAEPPA0hCSyNggMISiAAgABwMYQAIHG"
@@ -301,7 +301,8 @@ internal static class FeatPatch
             + "MPgpJUgASaUBAAglCQALKfb/YBUMAEolIgASPIgbUibIpIiP1AVJjjUAIBEAAAAAGwAJARBQAAAxAEAVAAAAABwAAMbYBUHGAAABRhAAAcaBCABG"
             + "AACi54AIAEYQAKLnFAABxoEIAEYEAKLngAgARhQAoucYAAHGgQgARggAoueACABGGACi5yEgoAMQAKUnIACmJ+IiBAwgAAcktAASkrUAE5IgALQn"
             + "AACEjhQAgBAEAJQm/P+REAAAAAAMAIiMNAAIMRAACST3/wkVAAAAACEoIAIhMEACIThgAgEACDyghgg1IUgAACFQAAACAAs8Dn4EDAgAazXr/wAQ"
-            + "AAAAAEAACI7IpImPKsAJASEgAAKgALDfqACx37AAst+4ALPfwAC038gAv9+O/wAX0AC9JwgA4AMAAAAA"),
+            + "AAAAAEAACI7IpImPKsAJASEgAAKgALDfqACx37AAst+4ALPfwAC038gAv9+O/wAX0AC9JwgA4AMAAAAAWgFChiAAATxsZCGMAAEhMMIBQigIAOAD"
+            + "JRBBAA=="),
         (0x00118978, "IgCDECAAASQiAIEQIQABJGEAgRAiAAEkeQCBECMAASQnAIEQCQABJBEAgRAkAAEkOACBECUAASRBAIEQJgABJEoAgRAnAAEkhgCBECgAASSaAIEQ"
             + "KQABJLkAgRAqAAEkwgCBEAAAAABV+QUIAAAAACIAATykGyGMgAAhMBsAIBQAAAAAVfkFCAAAAABN+QUIAAAAACEgwAIACAU0ohoIDDwoBQAiAAg8"
             + "iBsIJSFAAgHABRKRyAURkdf5BQgxAAQ8ISDAAgBABTSiGggMPCgFACIACDyIGwglIUACASAGEpEoBhGR1/kFCDEABDwhIMACohoIDAABBSQiAAg8"
@@ -474,7 +475,8 @@ internal static class FeatPatch
             + "AwCoFQAAAAADAAAQAAAFRvL/ABAEAGslNAAGRgMAAEUAAAAAhgEARiEQIAPU/wAQBAA5JwgA4AMAAAAA"),
         (0x001BAFF8, "wP+9JzAAv/8QALD/GACx/yAAsv8hgIAAIYigACGQwAAQACiOAACorxQAKI4EAKivGAAojggAqK8hIAACISigAyEwAABWLAQMITgAAAwACI4BAAg1"
             + "DAAIrsikiI8hQBIBQAAIriAACDxAdQglOAAIrjwAAK48ACiOAgAJPCRQCQFEAAquJUAJATwAKK4cACDGIEEBPAAIgUQAAAFGHAAA5jwABCYhKCAC"
-            + "IGwFDCEwIAKyJQQMISAAAiEgAAIwAAU8WmIGDDh7pSQwAL/fEACw3xgAsd8gALLfCADgA0AAvSc="),
+            + "IGwFDCEwIAKyJQQMISAAAiEgAAIwAAU8WmIGDDh7pSQwAL/fEACw3xgAsd8gALLfCADgA0AAvScjEEgA9AFCJCAAATxsZCGMAAEhMAIKAQAGECIA"
+            + "AkMHCCEQAgE="),
         (0x001C36E8, "0P+9JwAAv/8IALD/EACx/xgAsv8gALP/3ooFDAAAAAAWAAg8fCsJjZQrCo0CXAkAAzwMJE0AbBUCXAoAaiQMJEoAbBUATAkAAFQKAANUCgAhmCoB"
             + "IgAQPIgbECYMABGOgAASJiAAIBIAAAAAAABIjgQACS0ZACARIVBgAggWCyQYWAsBIVBLAUQADDxFTow1IXAAAD8ADSQAAE+NBgDsEQAAAAABAM4l"
             + "+//NFVgASiUKAAAQAAAAAAgAWCYWABkkAAAPj///OScAAE+tBAAYJ/v/IBcEAEolAABMrf//MSbg/wAQYABSJiEACDyo9gglHgAIEgAAAAAhAAk8"
@@ -502,7 +504,7 @@ internal static class FeatPatch
             + "AABFjVoAhpBbAIeQISAgAQEACDyghgg1IUgAACFQAAACAAs8Dn4EDEQAazUAAL/fCACk3wIAABAgAL0nTACArDT8BggAAAAA"),
         (0x00204DE0, "IxBDACAAGTxgZDknDAA4jwgAGDMFAAATMgBjJCgBOI8YAHgAEhgAAMIZAwBPhAYIIRBDACMQQwAgABk8YGQ5JwwAOI8IABgzBQAAE5YAYyQoATiP"
             + "GAB4ABIYAADCGQMAAfMGCCEQQwAjEEMAIAAZPGBkOScMADiPCAAYMwUAABNkAGMkKAE4jxgAeAASGAAAwhkDAPpvBwghEEMAIAACPGBkQiQMAEKM"
-            + "CABCMAQAQBAUAAIkIAACPGBkQiQsAUKMG2kGCAAAAAA="),
+            + "CABCMAQAQBAUAAIkIAACPGBkQiQsAUKMG2kGCAAAAACUAoOAfAGKjIBIAwASRAgkBkAoAQ8ACDEkEEgBAwBAFAEAQiwIAOADAAAAALCICAgAAAAA"),
         (0x002068C8, "DACpjCQAKjEtAEAVGAAqMSsAQBE8AYgkXAGKJAAAC40nAGURBAAIJfz/ChUAAAAAOAGLjAcAbDGAYAwAIWCMADwBha0BAGslOAGLrCQBgKzg/70n"
             + "AAC//wgApP8QAKX/ISiAADEABDxoXoQksjYIDAAAAAAIAKTfEACl3wAAv98gAL0nPACLjAIAYBEhYAAADABsjcQAhozIAIeMISCgACEogAEBAAg8"
             + "oIYINSFIAAAhUAAAAwALPA5+BAhAAWs1CADgAwAAAACw/70nQACw/0gAv/8hgIAAEAAIjjAAqK8UAAiONACorxgACI44AKivISCgAzAApSeCvgQM"
@@ -515,7 +517,7 @@ internal static class FeatPatch
             + "RAAKjgUAQBU8ACuN/f8MPP//jDUkWGwBPAArrWZsBQw8AAQmPAAEJowgBAwCAAUkISAAAjYtBAwhKAAAAQAoMiEgAAIAALDfCACx3xAAv98DAAAR"
             + "IAC9Jxq5BAgAAAAACADgAwAAAAAiABY8iBvWJpAChI4AEAU0ohoIDDwoBQBAQAIAIUDIAuAFEpWQAoiOBAAJLR0AIBGAQAgAIbjIAtgG6Y4NACAR"
             + "AAAAAAwAMI0KAAASAAAAAMikiI8hQBIBQAAIriEgAAIwAAU8WmIGDDh7pSQNAAAQAAAAAAS7BAxQAAQkCQBAECGAQAAhIEAAISiAAv7rBgwhMEAC"
-            + "2AbkJiEoAAIgbAUMITAAAj2KBQgCAAIk"),
+            + "2AbkJiEoAAIgbAUMITAAAj2KBQgCAAIkIxBDAJYAYyQgAAE8bGQhjAABITACCgEABhgjAA5CBwghEEMA"),
         (0x00207488, "0P+9JwAAv/8IALH/EACy/xgAs/8hiOAAjALyjGj9BgxIAvOQjAIyriEACDwwjQglOABIrFAACZJYAEmgUQAKkiIADzxoS+8lyAD4jSFY6gGgAGyR"
             + "WQBMoCtobAIKYG0CSAIsorAAbJFaAEyguABskVsATKCoAGyRgGgMACFgrAHIpI6PIWDMAUwATKwhwNgBXABYrAAAv98IALHfEACy3xgAs98IAOAD"
             + "MAC9Jw=="),
@@ -538,7 +540,7 @@ internal static class FeatPatch
             + "BgAAEiAAv98hICACEACx3wAAsN8auQQIMAC9JxAAsd8AALDfCADgAzAAvSc="),
         (0x0020C180, "IAAZPGBkOScMADiPEAAYMxMAABMMAJiMIAAYMxAAABMNAG81DQDvOQ0A4BU4AK+MkAAuJxQBLY8AAMyNCACAEQQAziUDAI8RAQCsMfr/ABBCaA0A"
             + "AgCAERgBOI8lWHgBDn4ECAAAAACQAoSOCAAFPKIaCAw8KAUAkAKIjgQACS0RACARgEAIACEADTzo5q0lIXCoASFIogHoACqRgFgKACFQagHIpIuP"
-            + "IVhqAQgBy63gACqRGAHKrTEABDxQEYQksjYIDCEogAI9igUIAgACJA=="),
+            + "IVhqAQgBy63gACqRGAHKrTEABDxQEYQksjYIDCEogAI9igUIAgACJCMQRABkAIQkIAABPGxkIYwAASEwAgoBAAYgJADqdwcIIRBEAA=="),
         (0x0020C4C8, "IQAJPLC5KSXIpIqPEAALJAAALI0OAIYVCAAtjSpwqgELAMAVBAAtjeA4DiQYaK4BKgAOPOi8ziUhaK4BAACtjQYAoBEAAAAACAAAASEwoAH//2sl"
             + "7v9gFQwAKSUIAAABAAAAAJAChI4EAAU0ohoIDDwoBQCQAoiOBAAJLQ8AIBGAQAgAIgANPIgbrSUhcKgBIUiiAQgGKZEYB8mtyKSKjxAGq40hUEsB"
             + "KAfKrTAABDxYeYQksjYIDCEogAI9igUIAgACJOD/vScQAL//AACw/1ggCAwtgIAACABAFAAAAAAgAAg8YGQIJUAADMUhIAAAEAAFJoilBAwtMAAC"
@@ -546,7 +548,7 @@ internal static class FeatPatch
         (0x0020DA88, "4P+9JxAAv/8AAKCvBACgr0BAATwAAIFECACg5wBggEQQAIUkXgAEPJBihCTSPwUMITCgAxAAv98IAOADIAC9J+D/vScAAL//CACl/yEogAAyAAQ8"
             + "EuoEDBhKhCQhIEAACACl34A/ATwAYIFE0MkHDAAAAAAAAL/fCADgAyAAvSfg/70nAAC//wgApP8QAKX/IgAFPPAhpSSW6wQMAAAAAAMAQBQIAKTf"
             + "lusEDBAApd8AAL/fCADgAyAAvSchAAI84PxCJCAAQYzIpIOPQAJIJEAAQiQAAEmMBQAkFQgASYwjSGkAK0ghAQUAIBUAAAAAIABCJPf/SBQAAAAA"
-            + "IRAAAAgA4AMAAAAA"),
+            + "IRAAAAgA4AMAAAAAIAABPGxkIYwAASEwBwAgECEAATyQ/yKMAQBCOAMAQBCQ/yKsIngHCAAAAABgeAcI4AIijg=="),
         (0x0020E928, "AP+9J6AAv/+oALD/sACx/7gAsv/AALP/yAC0/9AAtf/YALb/4AC05+QAtectgIAALYigAC2QwAAhABU84Py1JiAAFjxgZNYmIZgAABQAoMaAQgE8"
             + "AAiBRBAAAsbBEABGAACj58AQAEYQAKPnFAACxsEQAEYEAKPnwBAARhQAo+cYAALGwRABRggAo+fAEAFGGACj5wAApCcQAKUnIACmJ+IiBAwRAAck"
             + "IAC0JxwAFcYYAKDGQK0ARgAAhI5SAIAQBACUJvz/kBAMAImMNAApMRAAKTn4/yAVWgGJhPb/IBlyAYmA9P8gFTwCiYzy/yAVOACJjJAAyiYAAEuN"
@@ -556,6 +558,7 @@ internal static class FeatPatch
             + "lACl5xgAiYyt/wAQmACpr8JCCAgAAAAA"),
         (0x0020F958, "QP+9J5AAs/9wALH/YACw/yGIgACwAL//MACwJ6AAtP+AALL/EAAojjAAqK8UACiONACorxgAKI44AKivISCgAyEoAAKCvgQMNAAmhiEgoAMhKAAA"
             + "vrwEDDQBJoaZQQQIAAAAAA=="),
+        (0x0020FF94, "9rQEDAAAAAAgAAE8bGQhjAABITCCCQEAIxBBACB4BwgAAAAA"),
         (0x00210058, "oP+9JyAAv/8wALD/OACx/0AAsv9IALP/LYCAAC2IAAMtkEAALZggA3EBDoImcE4BBwDOMQ0AwBUAAAAALSAAAi0oIAJKOggMLTBAAgYASJIGAAAV"
             + "BwBIkiwAABHIpImPAQAIJAYASKIMAEmuBwBIkiYAABEAAAAAEABAxhAAAcYBAAFGBACg5xQAQsYUAAHGgRABRgAAoucCAABGghACRgAAAkYcAGHG"
             + "QggBRjQIAEYWAABFAAAAABQALMYUAADGAWMARhAALcYQAADGQWsARpLDBAwAAAAANAAIhiNAAgEARAgAA0QIAAIAAQUAAAAAI0AIAABACCkEAAAR"
@@ -574,12 +577,16 @@ internal static class FeatPatch
             + "JADvMSAA7zkiAOAVBgBPkP7/7iUfAMARAAAAACEAGTzg/DknDADgFVoBjoQZAMAZBABNhAgALI8YaKwBZAAMJBhwzAEqcK4BEgDAFQAAAAAOAAAQ"
             + "AAAAAAwATowjcE4BRAKNjCNoTQEraK4BBACgFRAALY8rcM0BBADAFQAAAAACAA4kAwAAEAYATqQWQAgIAAAAAEyzBAgAAAAAIAAZPGBkOScMADiP"
             + "gAAYMyQAABMhABk84Pw5JyHALANEAg2TQAIujx4AoBGcpI+PHADAERkAAjwNZkI0GHjiAW48Ajxf80I0IXjiAZykj68CfA8AGwDuARAQAAASeAAA"
-            + "EABAFAAAAAAbAO0BEBAAACHAAgNFAgKTgBACACEQIgNkAkWQZgJDlAIAYBADAAIkOACjrwMAohQAAAAAum8ICAAAAACMPAQIAAAAAA=="),
+            + "EABAFAAAAAAbAO0BEBAAACHAAgNFAgKTgBACACEQIgNkAkWQZgJDlAIAYBADAAIkOACjrwMAohQAAAAAum8ICAAAAACMPAQIAAAAACMQQwDIAGMk"
+            + "IAABPGxkIYwAASEwAgoBAAYYIwAjnwcIIRBDAA=="),
         (0x0021BEE8, "hAI/r4gCJq+MAievkAIor5QCKa+YAiqvnAIrrwEAAiSMPAQMoAIirwS7BAw0AQQkIQAZPOD8OScmAEAQISBAAIgCJo+MAiePkAIoj5QCKY+YAiqP"
             + "nAIrj6ACI48AACDFBAAhxXgCIsd8AiPHACCDRCAhgEbCGARGQgECRoIJA0ZBKQZGggEDRsIJAkaAMQdGpAIl56gCJucIACKNrAIir6QCKSeAAiKP"
             + "GBBDACFQQgEjGAMAoAIjr4w8BAwDAAUkIQAZPOD8OSegAiOP1v9gBAAAAACEAj+PCADgAwAAAAA="),
         (0x0021CA10, "AwAgFgAAAABkQwgIEAAMJIw8BAgAAAAAwAABjiIAGTyQyTknCxghA3r+Bgg4AAOuNAGChCQBgMR57EMoAwBgFIyVgcc4/0IkNAGCpAEAAUZyPQQI"
-            + "JAGA5A==")
+            + "JAGA5A=="),
+        (0x002222C0, "IAABPGxkIYwAASEwEAAgEMACi4wBAGwk/wBtMQkArBVAAo6MAAFtMQkAoBW8Ao+MKmjPAQYAoBUAAAAAGpMICAABizX6AM4lvAKOrMACjKwIAOAD"
+            + "AAAAAA=="),
+        (0x00224C68, "wAKLrCZQSAF8AYqsJACJjMBAAwAhSCgB4P+9JxAAv/8AAKT/DAAkjaj/BAwhKEABAACk3xAAv99IAYL8AQACJAgA4AMgAL0n")
     };
 
     /// <summary>
@@ -644,7 +651,7 @@ internal static class FeatPatch
 
     /// <summary>The second data block with Entangle's defaults (its run-time textures zero).</summary>
     public const string Data2CommonBase64 =
-        "RkVBMhgAAABpY29uX2JsYWRlYmFycmllci50ZXgAAABpY29uX2FudGltYWdpY2ZpZWxkLnRleABpY29uX3JpZ2h0ZW91c21pZ2h0LnRleABpY29u"
+        "RkVBMhkAAABpY29uX2JsYWRlYmFycmllci50ZXgAAABpY29uX2FudGltYWdpY2ZpZWxkLnRleABpY29uX3JpZ2h0ZW91c21pZ2h0LnRleABpY29u"
         + "X3hhbnRhbW9yYnMudGV4AAAAAABpY29uX2VudGFuZ2xlLnRleAAAAAAAAAAgqjAA8KkwAHiqMADwqDAAQKkwAAAAAAAAAQIDBAUAAAAPERQWGQAA"
         + "ACgtMjc8AAAAAgMEBQYAAAAEBQYHCAAAAABwQwAAAEAyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAA==";
@@ -673,7 +680,7 @@ internal static class FeatPatch
 
     /// <summary>The third data block with Insect Plague off (no entry or record) and its defaults (its poison records zero).</summary>
     public const string Data3CommonBase64 =
-        "RkVBMxgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "RkVBMxkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaWNvbl9pbnNlY3RwbGFndWUudGV4AAAAKKkwAAAAAAAAAQIDBAUAAABQUFBQUAAAAAEBAQEBAAAAAwMD"
         + "AwMAAAAAcEMAABZDGQAAADIAAAAAAKBABAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -703,7 +710,7 @@ internal static class FeatPatch
 
     /// <summary>The fourth data block with Poison Gas Arrow off (no entry or record) and its defaults.</summary>
     public const string Data4CommonBase64 =
-        "RkVBNBgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "RkVBNBkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaWNvbl9wb2lzb25nYXNhcnJvdy50ZXgAQKkwAAAAAAAACAkKCwwAAAAMDg8REgAAACgtMjc8AAAAKC0y"
         + "NzwAAAACAgMDBAAAAAMEBAUGAAAyAAAAAAAAAAAAAAAAAAAA";
@@ -733,7 +740,7 @@ internal static class FeatPatch
 
     /// <summary>The fifth data block with Dimension Door off (no entry or record) and its defaults.</summary>
     public const string Data5CommonBase64 =
-        "RkVBNRgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "RkVBNRkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaWNvbl9kaW1lbnNpb25kb29yLnRleAAA0KowAAAAAAAAAGQAlgDIAMgAyAAAAAAAZGltZW5zaW9uZG9v"
         + "cl9odWQAAAAAAIBBAAAAQQAAQEEAAABCAAAAQDIAAAAAAAAA";
@@ -762,7 +769,7 @@ internal static class FeatPatch
 
     /// <summary>The sixth data block with Expert Focus off (no entry or record) and its defaults (its run-time fields zero).</summary>
     public const string Data6CommonBase64 =
-        "RkVBNhgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "RkVBNhkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaWNvbl9leHBlcnRmb2N1cy50ZXgAAAAAeKowAAAAAAAAMjIyMjIAAAAyS2R9lgAAZXhwZXJ0Zm9jdXNf"
         + "aHVkAAAAAAD7BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
@@ -791,7 +798,7 @@ internal static class FeatPatch
 
     /// <summary>The seventh data block with Phase Axe off (no entry or record) and its defaults.</summary>
     public const string Data7CommonBase64 =
-        "RkVBNxgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "RkVBNxkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaWNvbl9waGFzZWF4ZS50ZXgAAAAAAAAAkKowAAAAAAAACAoMDhAAAAAMDxIVGAAAAACWQ0MAAAAAAIBB"
         + "wBIAAAAAAAAAABhBKHoqAAAAgEEYAAAAAAAAAA==";
@@ -824,7 +831,7 @@ internal static class FeatPatch
 
     /// <summary>The eighth data block with Shatter off (no entry or record) and its defaults (its run-time fields zero).</summary>
     public const string Data8CommonBase64 =
-        "RkVBOBgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "RkVBOBkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaWNvbl9zaGF0dGVyLnRleAAAAAAAAAAA2KkwAAAAAAAAAQIDBAUAAAADBAUGCAAAADxGUFpkAAAACg8U"
         + "GR4AAAAUGR4jKAAAc2hhdHRlcl9odWQAAAAAAAAAAAD7BAAAAAAAQAAAgEEAAMBBiYgIPwAA1EIAAgAAAADAQQAAQEKMvvCgoNL/AAEAAAABAAAA"
@@ -839,8 +846,8 @@ internal static class FeatPatch
     /// "FEA9" and the version): Improved Enemy AI's. At <see cref="EnemyAiOnAt"/> 1 when it is on, at
     /// <see cref="EnemyAiPartsAt"/> its parts (<see cref="EnemyAiTargeting"/>, <see cref="EnemyAiSurround"/>,
     /// <see cref="EnemyAiAlarm"/>, <see cref="EnemyAiCasters"/>, <see cref="EnemyAiBrutes"/>, <see cref="EnemyAiDrow"/>,
-    /// <see cref="EnemyAiRegroup"/>, <see cref="EnemyAiArchers"/>: all eight, <see cref="EnemyAiParts"/>; WorldExplorer's two
-    /// cards put in four each, featpatch.py can put any);
+    /// <see cref="EnemyAiRegroup"/>, <see cref="EnemyAiArchers"/>, <see cref="EnemyAiBosses"/>: all nine,
+    /// <see cref="EnemyAiParts"/>; WorldExplorer's three cards put in four, four and one, featpatch.py can put any);
     /// then its numbers, the eight directions round a hero, the vtables of the 32 kinds of monster it changes,
     /// the brutes, the drow's blink and the casters' waits, the same whether it is on or off; then (run time, zero in the file)
     /// from <see cref="EnemyAiRunTimeAt"/>. Its hooks are in <see cref="Hooks"/> with the mask <see cref="EnemyAiMask"/>.
@@ -852,12 +859,12 @@ internal static class FeatPatch
 
     public const int EnemyAiTargeting = 0x1, EnemyAiSurround = 0x2, EnemyAiAlarm = 0x4,
                      EnemyAiCasters = 0x8, EnemyAiBrutes = 0x10, EnemyAiDrow = 0x20,
-                     EnemyAiRegroup = 0x40, EnemyAiArchers = 0x80, EnemyAiParts = 0xFF,
-                     EnemyAiMask = 0x8000;
+                     EnemyAiRegroup = 0x40, EnemyAiArchers = 0x80, EnemyAiBosses = 0x100,
+                     EnemyAiParts = 0x1FF, EnemyAiMask = 0x8000;
 
     /// <summary>The ninth data block with Improved Enemy AI off (its run-time fields zero).</summary>
     public const string Data9CommonBase64 =
-        "RkVBORgAAAAAAAAAAAAAAGQAAAAAABBASOH6PgAA8EEAAEhDAADAQQAAQEEAAKBBAABAQgAAAEAyAAAAAADIQwAAyEP0AQAAAAB6RAAAAAAAAIA/"
+        "RkVBORkAAAAAAAAAAAAAAGQAAAAAABBASOH6PgAA8EEAAEhDAADAQQAAQEEAAKBBAABAQgAAAEAyAAAAAADIQwAAyEP0AQAAAAB6RAAAAAAAAIA/"
         + "AAAAAPQENT/0BDU/AAAAAAAAgD/0BDW/9AQ1PwAAgL8AAAAA9AQ1v/QENb8AAAAAAACAv/QENT/0BDW/gIMxABCGMQB4iDEA2JAxAIB9MQAIvTEA"
         + "cLcxAECuMQBQujEAwCIxAIAlMQBgkzEACEkxAHgrMQBgvzEA4DIxAEAyMQCQdjEAKEExAIA+MQDoijEAkDcxADA7MQD4SzEAqEwxAGiNMQBonTEA"
         + "iHkxALh/MQAIyDEAIEUxAPiXMQAAAAAAFwQcSgAQIADIAAAAAADhQwAANENAAAAACgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -874,21 +881,21 @@ internal static class FeatPatch
     /// The tenth data block (since version 22, at the start of the pool's stretch 53, marked "FEAA" and the
     /// version): the wounded monsters' numbers (40% of their health, the kinds, 200 frames back, a friend within
     /// 400, 24 behind it, 16 from their place, a record stale after 1500 frames), the same
-    /// whether Improved Enemy AI is on or off, with (run time, zero in the file) their 16 records; then (since version 23,
-    /// the block 0x2B0 bytes since then) the archers' numbers: one shot in 4 special, each shooter's
-    /// list, the arrows' kinds and Hail's turn, then (run time) Hail's keeping. <see cref="Data10RunTime"/>: the run-time
-    /// stretches (start, end).
+    /// whether Improved Enemy AI is on or off, with (run time, zero in the file) their 16 records; then (since version 23)
+    /// the archers' numbers: one shot in 4 special, each shooter's list, the arrows' kinds and Hail's turn, then (run
+    /// time) Hail's keeping; then (since version 25, run time) the bosses' word: 1 while Ilivarra raises her second skeleton.
+    /// The block is 0x2B4 bytes. <see cref="Data10RunTime"/>: the run-time stretches (start, end).
     /// </summary>
-    public const int Data10Va = 0x0020FCE0, Data10Size = 0x2B0;
+    public const int Data10Va = 0x0020FCE0, Data10Size = 0x2B4;
 
     /// <summary>The tenth block's run-time stretches (start, end): zero in the file.</summary>
-    public static readonly (int Start, int End)[] Data10RunTime = { (0x40, 0x240), (0x284, 0x2B0) };
+    public static readonly (int Start, int End)[] Data10RunTime = { (0x40, 0x240), (0x284, 0x2B0), (0x2B0, 0x2B4) };
 
     public const string Data10Mark = "FEAA";
 
     /// <summary>The tenth data block as the patch writes it.</summary>
     public const string Data10Base64 =
-        "RkVBQRgAAAAoAAAACMALJMgAAAAAAMhDAADAQQAAgEHcBQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "RkVBQRkAAAAoAAAACMALJMgAAAAAAMhDAADAQQAAgEHcBQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -896,7 +903,7 @@ internal static class FeatPatch
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAEAAAAAAAAA"
         + "AwABAwAAAAAEAAECBAAAAAIAAQAAAAAAAQAgAAUAAAQGAIAAAwAAAAIAAAC+FHs/wsVHPgAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-        + "AAAAAAAAAAAAAAAAAAAAAA==";
+        + "AAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 
     /// <summary>
     /// The orbs' fan (the data block has them, from the template): 200 a second, 12 degrees between neighbouring
@@ -942,7 +949,7 @@ internal static class FeatPatch
     /// records): every spell's own settings at their defaults, the names of the icons, the HUD lines' keys.
     /// </summary>
     public const string DataCommonBase64 =
-        "RkVBVBgAAAAAAAAAAAAAAAAAAAA4BwAA6DYcAAAAAACamZk/AAAAQAAAwEEAALRDAIA7RQAAAEIAAwMFBQUAAAAAAAAAAQAAAAEBAgIDAAAAAgME"
+        "RkVBVBkAAAAAAAAAAAAAAAAAAAA4BwAA6DYcAAAAAACamZk/AAAAQAAAwEEAALRDAIA7RQAAAEIAAwMFBQUAAAAAAAAAAQAAAAEBAgIDAAAAAgME"
         + "BQYAAAAAAAAAAAAAaWNvbl94YW50YW1maXJlLnRleAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -1643,8 +1650,19 @@ internal static class FeatPatch
         (0x001BF004, 0x0C06FD68, 0x0C081D22, 0x100),
         (0x001BF9C0, 0x0C043C8C, 0x0C087284, 0x8000),
         (0x001BF9E0, 0xAE030038, 0x0808728A, 0x8000),
+        (0x001D0830, 0x24630096, 0x08081CF4, 0x8000),
+        (0x001D0C00, 0x244201F4, 0x0806EC36, 0x8000),
+        (0x001D97C0, 0x80830294, 0x080813AA, 0x8000),
+        (0x001D97C4, 0x54600006, 0x00000000, 0x8000),
         (0x001DA950, 0x0C043C8C, 0x0C040AD9, 0x8000),
         (0x001DBFE0, 0x24630064, 0x08081392, 0x8000),
+        (0x001DDFA0, 0x24840064, 0x08083094, 0x8000),
+        (0x001DE078, 0x0C04B4F6, 0x08083FE5, 0x8000),
+        (0x001DE178, 0x8E2202E0, 0x080836E4, 0x8000),
+        (0x001E6648, 0x284201C2, 0x0C0433CD, 0x8000),
+        (0x001E6774, 0x8642015A, 0x0C0433CC, 0x8000),
+        (0x001E7B60, 0x10000049, 0x08084391, 0x8000),
+        (0x001E7C84, 0x246300C8, 0x0808438F, 0x8000),
         (0x0030A104, 0x001663F8, 0x001D32D8, 0xC),
         (0x0030A11C, 0x0015C2F0, 0x002089C0, 0x8),
         (0x0031AE64, 0x001D9FB0, 0x001B8DA0, 0x8000),
@@ -1838,6 +1856,7 @@ internal static class FeatPatch
         (0x00129C10, 0x0000482D),
         (0x00129C18, 0x0000502D),
         (0x00129C1C, 0xDFBF0070),
+        (0x0012D3D8, 0x27BDFD80),
         (0x0012D4E8, 0x8C820008),
         (0x0012E330, 0x27BDFFD0),
         (0x0012EC10, 0x3C080023),
@@ -1852,6 +1871,7 @@ internal static class FeatPatch
         (0x0013FA60, 0x00822021),
         (0x0013FA64, 0x03E00008),
         (0x0013FA68, 0x8C820004),
+        (0x0013FEA0, 0xDC830008),
         (0x00147800, 0x27BDFE30),
         (0x00148C20, 0x27BDFA90),
         (0x0014CE88, 0x27BDFB20),
@@ -2139,6 +2159,38 @@ internal static class FeatPatch
         (0x001BF9E8, 0xDFB400C0),
         (0x001CFAE8, 0x27BDFFD0),
         (0x001CFB00, 0x0C04B676),
+        (0x001D0828, 0x8E220240),
+        (0x001D082C, 0x00001810),
+        (0x001D0834, 0x00431021),
+        (0x001D0838, 0x100003E8),
+        (0x001D083C, 0xAE2202A0),
+        (0x001D0BAC, 0x8E280240),
+        (0x001D0BFC, 0x00001010),
+        (0x001D0C04, 0x01021021),
+        (0x001D0C08, 0x100001DE),
+        (0x001D0C0C, 0xAE2202A4),
+        (0x001D4AD8, 0xAE0002BC),
+        (0x001D4AE0, 0xAE0002C0),
+        (0x001D5250, 0x8C44000C),
+        (0x001D5260, 0xFE420148),
+        (0x001D5DC0, 0xAE40017C),
+        (0x001D62F4, 0x0C0765F0),
+        (0x001D7398, 0x0C0765F0),
+        (0x001D78E0, 0x0C0765F0),
+        (0x001D97C8, 0x24020001),
+        (0x001D97CC, 0x8C82017C),
+        (0x001D97D0, 0x00021043),
+        (0x001D97D4, 0x38420001),
+        (0x001D97D8, 0x03E00008),
+        (0x001D97DC, 0x30420001),
+        (0x001D97E0, 0x14620003),
+        (0x001D97E4, 0x8C82017C),
+        (0x001D97E8, 0x1000FFFB),
+        (0x001D97EC, 0x38420001),
+        (0x001D97F0, 0x00021083),
+        (0x001D97F4, 0x38420001),
+        (0x001D97F8, 0x03E00008),
+        (0x001D97FC, 0x30420001),
         (0x001DA02C, 0x86230174),
         (0x001DA24C, 0x8E220290),
         (0x001DA250, 0x1440001C),
@@ -2149,6 +2201,77 @@ internal static class FeatPatch
         (0x001DBFE4, 0x00431021),
         (0x001DBFE8, 0xAE4202A0),
         (0x001DBFEC, 0x84C40090),
+        (0x001DDF98, 0x8E220240),
+        (0x001DDF9C, 0x00002010),
+        (0x001DDFA4, 0x00441021),
+        (0x001DDFA8, 0xAE220298),
+        (0x001DE058, 0x3C0143FA),
+        (0x001DE05C, 0x44816000),
+        (0x001DE07C, 0x02C0202D),
+        (0x001DE080, 0x28420005),
+        (0x001DE084, 0x10400045),
+        (0x001DE088, 0x8F86A49C),
+        (0x001DE08C, 0x3C130019),
+        (0x001DE090, 0x3673660D),
+        (0x001DE094, 0x3C123C6E),
+        (0x001DE098, 0x00D33018),
+        (0x001DE09C, 0x3652F35F),
+        (0x001DE0A0, 0x6A270017),
+        (0x001DE0A4, 0x6E270010),
+        (0x001DE0A8, 0x8E280018),
+        (0x001DE0AC, 0xB3A70057),
+        (0x001DE0B0, 0xB7A70050),
+        (0x001DE0B4, 0xAFA80058),
+        (0x001DE0B8, 0x0220202D),
+        (0x001DE0BC, 0x27A50050),
+        (0x001DE0C0, 0x3C0141F0),
+        (0x001DE0C4, 0x4481A800),
+        (0x001DE0C8, 0x00D23021),
+        (0x001DE0CC, 0x00D31818),
+        (0x001DE0D0, 0x00063403),
+        (0x001DE0D4, 0x00721021),
+        (0x001DE0D8, 0x00023C02),
+        (0x001DE0DC, 0xAF82A49C),
+        (0x001DE0E0, 0x0C04635C),
+        (0x001DE0E4, 0x30E70001),
+        (0x001DE0E8, 0x0040802D),
+        (0x001DE0EC, 0x0C04C3CC),
+        (0x001DE0F0, 0x0200202D),
+        (0x001DE0F4, 0x46150002),
+        (0x001DE0F8, 0xC6340010),
+        (0x001DE0FC, 0x0200202D),
+        (0x001DE100, 0x0C04C3A6),
+        (0x001DE104, 0x4600A500),
+        (0x001DE108, 0x46150002),
+        (0x001DE10C, 0xC6210014),
+        (0x001DE110, 0xC6220018),
+        (0x001DE114, 0x240402A0),
+        (0x001DE118, 0xE7B40050),
+        (0x001DE11C, 0x46000840),
+        (0x001DE120, 0xE7A20058),
+        (0x001DE124, 0x0C04BB04),
+        (0x001DE128, 0xE7A10054),
+        (0x001DE12C, 0x0040202D),
+        (0x001DE130, 0x10800011),
+        (0x001DE134, 0x8F82A49C),
+        (0x001DE138, 0x27A50060),
+        (0x001DE13C, 0x86260034),
+        (0x001DE140, 0x0000382D),
+        (0x001DE144, 0x00531818),
+        (0x001DE148, 0x6BA80057),
+        (0x001DE14C, 0x6FA80050),
+        (0x001DE150, 0x8FA90058),
+        (0x001DE154, 0xB3A80067),
+        (0x001DE158, 0xB7A80060),
+        (0x001DE15C, 0xAFA90068),
+        (0x001DE160, 0x00721021),
+        (0x001DE164, 0x00024402),
+        (0x001DE168, 0xAF82A49C),
+        (0x001DE16C, 0x31080003),
+        (0x001DE170, 0x0C068A82),
+        (0x001DE174, 0x25080001),
+        (0x001DE17C, 0x8E230240),
+        (0x001DE180, 0x0043102A),
         (0x001DEDE8, 0x27BDFF40),
         (0x001DEDF4, 0x0080882D),
         (0x001DEE10, 0x10A0000B),
@@ -2177,6 +2300,21 @@ internal static class FeatPatch
         (0x001E47A4, 0x14400006),
         (0x001E47AC, 0x8E420044),
         (0x001E47B0, 0x284201F5),
+        (0x001E5874, 0x8E420290),
+        (0x001E58DC, 0x8E420290),
+        (0x001E663C, 0x8642015A),
+        (0x001E664C, 0xE7B50058),
+        (0x001E6698, 0x1040000A),
+        (0x001E6778, 0x284201C2),
+        (0x001E677C, 0x10400008),
+        (0x001E7B54, 0x8E020240),
+        (0x001E7B5C, 0x00001810),
+        (0x001E7B64, 0x24630096),
+        (0x001E7C78, 0x8E020240),
+        (0x001E7C80, 0x00001810),
+        (0x001E7C88, 0x00431021),
+        (0x001E7C8C, 0x1000001E),
+        (0x001E7C90, 0xAE020290),
         (0x001E8320, 0x27BDFFB0),
         (0x001E8380, 0x0C04B200),
         (0x001E8384, 0x0000382D),
@@ -2391,12 +2529,12 @@ internal static class FeatPatch
     public const uint TripBase = 0x0A000000;
 
     /// <summary>
-    /// An earlier version with Improved Enemy AI (18 and 22, which WorldExplorer wrote, and the monster stages' test versions
-    /// 19 to 21 and 23): its eight spell blocks where version 24's are, with version 24's layout, so its settings are read
-    /// where version 24 keeps them; its ninth block (<see cref="Data9Size"/> bytes, here with the AI off: on and its parts
-    /// where version 24 has them; <see cref="AiParts"/> all of that version's); its tenth block where version 24's is
-    /// (<see cref="Data10Size"/> bytes, the same whether the AI is on or off; 22 and 23 only, else 0 bytes). A file of one may
-    /// have the AI alone. Its hooks (the spells' masks as version 24's, <see cref="EnemyAiMask"/> the AI's), its code's pieces
+    /// An earlier version with Improved Enemy AI (18, 22 and 24, which WorldExplorer wrote, and the monster stages' test
+    /// versions 19 to 21 and 23): its eight spell blocks where version 25's are, with version 25's layout, so its settings are
+    /// read where version 25 keeps them; its ninth block (<see cref="Data9Size"/> bytes, here with the AI off: on and its parts
+    /// where version 25 has them; <see cref="AiParts"/> all of that version's); its tenth block where version 25's is
+    /// (<see cref="Data10Size"/> bytes, the same whether the AI is on or off; 22 to 24 only, else 0 bytes). A file of one may
+    /// have the AI alone. Its hooks (the spells' masks as version 25's, <see cref="EnemyAiMask"/> the AI's), its code's pieces
     /// with their SHA-256, its vtable copies and its cast table's place.
     /// </summary>
     public sealed record EarlierAiVersion(int Version, string Test, int AiParts, int CastTableVa,
@@ -2404,9 +2542,124 @@ internal static class FeatPatch
                                           string CodeSha256, (int Va, int GameVa, (int At, uint Word)[] Words)[] VTables,
                                           int Data9Size, string Data9Base64, int Data10Size, string Data10Base64);
 
-    /// <summary>Versions 23, 22, 21, 20, 19 and 18, the newest first.</summary>
+    /// <summary>Versions 24, 23, 22, 21, 20, 19 and 18, the newest first.</summary>
     public static readonly EarlierAiVersion[] EarlierAiVersions =
     {
+        new(24, "Improved Enemy AI with eight parts in two cards, as WorldExplorer wrote it", 0xFF, 0x00207A10,
+            new (int Va, uint Game, uint Patched, int Spells)[]
+            {
+            (0x0010F4AC, 0x1462000B, 0x0808236C, 0x480),
+            (0x0010F648, 0x12000207, 0x0806E55C, 0x1480),
+            (0x001109C0, 0x14620004, 0x080666D9, 0x80),
+            (0x001182C0, 0x27BDFE80, 0x0804F4F9, 0x8000),
+            (0x001182C4, 0xFFB00150, 0x00000000, 0x8000),
+            (0x001185D8, 0x27BDFFA0, 0x08084328, 0x8000),
+            (0x001185DC, 0xFFB40040, 0x00000000, 0x8000),
+            (0x0011B758, 0x0100F809, 0x0C083132, 0x600),
+            (0x0011B7D8, 0xDFB10030, 0x08081ED7, 0x4000),
+            (0x0011C168, 0x27BDFF20, 0x08084061, 0x8000),
+            (0x0011C16C, 0xFFB20070, 0x00000000, 0x8000),
+            (0x00129540, 0x27BDFFB0, 0x08084280, 0x8000),
+            (0x00129544, 0xFFB30030, 0x00000000, 0x8000),
+            (0x00129778, 0x27BDFFF0, 0x0804F486, 0x8000),
+            (0x0012977C, 0x68C20007, 0x00000000, 0x8000),
+            (0x00129C14, 0x0C047E0E, 0x0C083060, 0x8000),
+            (0x0015E220, 0xC661002C, 0x0C059B8A, 0x480),
+            (0x0015E424, 0x2C420003, 0x2C420004, 0x80),
+            (0x0015E43C, 0x54620078, 0x08072EC6, 0x400),
+            (0x0015E50C, 0x10000013, 0x0804AFD1, 0x480),
+            (0x0015F160, 0x0C043C8C, 0x0C08207D, 0x1000),
+            (0x0015F278, 0x0C043C8C, 0x0C08207D, 0x1000),
+            (0x0015F354, 0x0C043C8C, 0x0C08207D, 0x1000),
+            (0x00161EF8, 0x2C830017, 0x2C83002A, 0x7FFF),
+            (0x00161F00, 0x3C020030, 0x3C020020, 0x7FFF),
+            (0x00161F08, 0x24427BC0, 0x24427A10, 0x7FFF),
+            (0x001676E4, 0x0C05AA52, 0x0C04F3F6, 0x20),
+            (0x00167AFC, 0x0240282D, 0x0C04A712, 0x18),
+            (0x0016DD2C, 0x0C04EB96, 0x0C0836C2, 0x80),
+            (0x0016DD44, 0x0C04EB96, 0x0C04C150, 0x7FFF),
+            (0x0017A4BC, 0x0C05ED8E, 0x0C07A156, 0x7FFF),
+            (0x0017B594, 0x0C059CE4, 0x0C068A6C, 0x20),
+            (0x0017E52C, 0x14830009, 0x0804625E, 0x7FCE),
+            (0x0017EA44, 0x8C440000, 0x0C083175, 0x7FCE),
+            (0x0017EAB4, 0x8C440000, 0x0C083175, 0x7FCE),
+            (0x0018331C, 0x0C058ADE, 0x0C070DBA, 0x7FFF),
+            (0x0019A464, 0x24020014, 0x0808139F, 0x8000),
+            (0x0019F8F4, 0x0C043C8C, 0x0C040ADB, 0x8000),
+            (0x001A1134, 0x24630032, 0x08081378, 0x8000),
+            (0x001A3B9C, 0x0C043C8C, 0x0C040AD7, 0x8000),
+            (0x001B177C, 0x3C030031, 0x8E230038, 0x1),
+            (0x001B1784, 0x24636798, 0x24630080, 0x1),
+            (0x001BCBFC, 0x24630096, 0x08081385, 0x8000),
+            (0x001BED7C, 0x0C04C3CC, 0x0C0822B4, 0x100),
+            (0x001BED94, 0x0C04C3A6, 0x0C0822BA, 0x100),
+            (0x001BEFD0, 0x24040058, 0x24040060, 0x100),
+            (0x001BF004, 0x0C06FD68, 0x0C081D22, 0x100),
+            (0x001BF9C0, 0x0C043C8C, 0x0C087284, 0x8000),
+            (0x001BF9E0, 0xAE030038, 0x0808728A, 0x8000),
+            (0x001DA950, 0x0C043C8C, 0x0C040AD9, 0x8000),
+            (0x001DBFE0, 0x24630064, 0x08081392, 0x8000),
+            (0x0030A104, 0x001663F8, 0x001D32D8, 0xC),
+            (0x0030A11C, 0x0015C2F0, 0x002089C0, 0x8),
+            (0x0031AE64, 0x001D9FB0, 0x001B8DA0, 0x8000),
+            (0x0031B794, 0x001DB590, 0x001B8DAC, 0x8000)
+            },
+            new (int Va, int Length)[]
+            {
+            (0x00102910, 0x264), (0x00102D80, 0x280), (0x0010C338, 0x394), (0x0010CD50, 0x1E0),
+            (0x00118978, 0x3F0), (0x00129318, 0x21C), (0x00129C48, 0x11C), (0x0012A710, 0x190),
+            (0x0012BAE8, 0x4A8), (0x0012CD30, 0x350), (0x0012F790, 0x278), (0x00130540, 0x1C4),
+            (0x00131170, 0x148), (0x00132018, 0x154), (0x00132D90, 0x64C), (0x00134CE0, 0x118),
+            (0x00134F18, 0x1B0), (0x0013CDF8, 0x208), (0x0013D218, 0x214), (0x00166E28, 0x198),
+            (0x0016ACB8, 0x1C4), (0x00191A20, 0x2F8), (0x00196AB8, 0x144), (0x00198968, 0x13C),
+            (0x00199A60, 0x138), (0x001A29B0, 0x50), (0x001AE930, 0xF4), (0x001B8DA0, 0x170),
+            (0x001B9570, 0x114), (0x001B9E68, 0xE4), (0x001BAFF8, 0xE0), (0x001C36E8, 0x188),
+            (0x001CBA38, 0x10C), (0x001D32D8, 0x144), (0x001E8558, 0x234), (0x001FF340, 0x198),
+            (0x00204DE0, 0xC8), (0x002068C8, 0x1F0), (0x002071C0, 0x210), (0x00207488, 0xAC),
+            (0x00207AB8, 0x13C), (0x00208160, 0x1B8), (0x002089C0, 0x90), (0x00208AD0, 0x40),
+            (0x00208DB0, 0x80), (0x0020ACB0, 0x80), (0x0020C180, 0xD0), (0x0020C4C8, 0x14C),
+            (0x0020DA88, 0x108), (0x0020E928, 0x210), (0x0020F958, 0x64), (0x00210058, 0x240),
+            (0x00210A00, 0x204), (0x00210CA0, 0x19C), (0x0021BEE8, 0xE0), (0x0021CA10, 0x58)
+            },
+            "0bb2852e3c90e76264c7b4ac761d54b30c8d8d6266bf0abd51b3532395f402be",
+            new (int Va, int GameVa, (int At, uint Word)[] Words)[]
+            {
+            (0x001A9A40, 0x00316718, new (int, uint)[] {  }),
+            (0x001A9AC0, 0x00316798, new (int, uint)[] { (0x24, 0x00196AB8), (0x3C, 0x0012E418) }),
+            (0x00208CB0, 0x0031B650, new (int, uint)[] { (0x0C, 0x00208288), (0x24, 0x0010CD50) }),
+            (0x00207540, 0x0031B5D0, new (int, uint)[] { (0x0C, 0x00207274) }),
+            (0x0020C100, 0x0031C3C8, new (int, uint)[] { (0x3C, 0x0012F998) }),
+            (0x0020AC30, 0x00316798, new (int, uint)[] { (0x24, 0x0012A710), (0x3C, 0x0012E418) }),
+            (0x00208D30, 0x00317470, new (int, uint)[] { (0x0C, 0x0010C634), (0x24, 0x001FF40C) }),
+            (0x001A28B0, 0x0031B530, new (int, uint)[] { (0x0C, 0x0020ACB0), (0x24, 0x00102D80) }),
+            (0x001A2930, 0x0031B5B0, new (int, uint)[] {  }),
+            (0x0020C080, 0x00313140, new (int, uint)[] { (0x24, 0x0016ACB8) }),
+            (0x00208A50, 0x00319CE8, new (int, uint)[] { (0x24, 0x00191BC4), (0x2C, 0x00206990), (0x3C, 0x002068C8) }),
+            (0x0021C990, 0x00305888, new (int, uint)[] { (0x24, 0x0021CA40), (0x2C, 0x0020F958) })
+            },
+            0x3A0,
+            "RkVBORgAAAAAAAAAAAAAAGQAAAAAABBASOH6PgAA8EEAAEhDAADAQQAAQEEAAKBBAABAQgAAAEAyAAAAAADIQwAAyEP0AQAAAAB6RAAAAAAAAIA/"
+            + "AAAAAPQENT/0BDU/AAAAAAAAgD/0BDW/9AQ1PwAAgL8AAAAA9AQ1v/QENb8AAAAAAACAv/QENT/0BDW/gIMxABCGMQB4iDEA2JAxAIB9MQAIvTEA"
+            + "cLcxAECuMQBQujEAwCIxAIAlMQBgkzEACEkxAHgrMQBgvzEA4DIxAEAyMQCQdjEAKEExAIA+MQDoijEAkDcxADA7MQD4SzEAqEwxAGiNMQBonTEA"
+            + "iHkxALh/MQAIyDEAIEUxAPiXMQAAAAAAFwQcSgAQIADIAAAAAADhQwAANENAAAAACgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAA==",
+            0x2B0,
+            "RkVBQRgAAAAoAAAACMALJMgAAAAAAMhDAADAQQAAgEHcBQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAEAAAAAAAAA"
+            + "AwABAwAAAAAEAAECBAAAAAIAAQAAAAAAAQAgAAUAAAQGAIAAAwAAAAIAAAC+FHs/wsVHPgAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            + "AAAAAAAAAAAAAAAAAAAAAA=="),
         new(23, "the test of Improved Enemy AI with the archers (the lizardmen's spears flew straight)", 0xFF, 0x00207A10,
             new (int Va, uint Game, uint Patched, int Spells)[]
             {
@@ -3004,9 +3257,9 @@ internal static class FeatPatch
     };
 
     /// <summary>
-    /// Version 17 (shatter-test1: all fifteen, Shatter the newest; its eight data blocks where version 24's are, with version
-    /// 24's layout, so its settings are read where version 24 keeps them; no ninth block, no Improved Enemy AI): its hooks
-    /// (and which of its spells need each, the same masks as version 24's), its code's pieces with their SHA-256, its vtable
+    /// Version 17 (shatter-test1: all fifteen, Shatter the newest; its eight data blocks where version 25's are, with version
+    /// 25's layout, so its settings are read where version 25 keeps them; no ninth block, no Improved Enemy AI): its hooks
+    /// (and which of its spells need each, the same masks as version 25's), its code's pieces with their SHA-256, its vtable
     /// copies and its cast table's place.
     /// </summary>
     public const int V17Version = 17, V17CastTableVa = 0x001C36F0;
