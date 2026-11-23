@@ -7,8 +7,8 @@
              mc:Ignorable="d" d:DesignWidth="1060" d:DesignHeight="560"
              d:DataContext="{d:DesignInstance Type=local:EnhancementsModel}">
     <!-- The Enhancements tab of Executable Tuning. DataContext: EnhancementsModel; each spell's card: SpellCard; the
-         Enemy AI part's cards, below a separator after the heroes' feats: two EnemyAiCards (SmarterEnemies,
-         EnemiesUseFeats) and the Aggressive Bosses placeholder (BossesCard, AggressiveBosses). -->
+         Enemy AI part's cards, below a separator after the heroes' feats: three EnemyAiCards (SmarterEnemies,
+         EnemiesUseFeats, AggressiveBosses). -->
     <UserControl.Resources>
         <Style x:Key="Help" TargetType="TextBlock">
             <Setter Property="TextWrapping" Value="Wrap" />
@@ -143,7 +143,7 @@
             </Border>
         </DataTemplate>
 
-        <!-- an Enemy AI card (Smarter Enemies, Enemies Use Feats): its tick box and title, then its status and what it does -->
+        <!-- an Enemy AI card (Smarter Enemies, Enemies Use Feats, Aggressive Bosses): its tick box and title, then its status and what it does -->
         <DataTemplate DataType="{x:Type local:EnemyAiCard}">
             <Border Style="{StaticResource Card}" Margin="0,4,0,8" Padding="14,8">
                 <Expander IsExpanded="False">
@@ -154,22 +154,6 @@
                     <StackPanel>
                         <TextBlock Style="{StaticResource Help}" Margin="6,0,0,0" Text="{Binding Status}" />
                         <TextBlock Style="{StaticResource Help}" Margin="6,0,0,0" Text="{Binding Description}" />
-                    </StackPanel>
-                </Expander>
-            </Border>
-        </DataTemplate>
-
-        <!-- the Aggressive Bosses placeholder: a tick box that can't be ticked yet -->
-        <DataTemplate DataType="{x:Type local:BossesCard}">
-            <Border Style="{StaticResource Card}" Margin="0,4,0,8" Padding="14,8">
-                <Expander IsExpanded="False">
-                    <Expander.Header>
-                        <CheckBox Content="{Binding Title, Mode=OneWay}" FontWeight="SemiBold"
-                                  IsChecked="{Binding On, Mode=OneWay}" IsEnabled="False" ToolTip="{Binding Description}" />
-                    </Expander.Header>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource Help}" Margin="6,0,0,0" Text="{Binding Status, Mode=OneWay}" />
-                        <TextBlock Style="{StaticResource Help}" Margin="6,0,0,0" Text="{Binding Description, Mode=OneWay}" />
                     </StackPanel>
                 </Expander>
             </Border>
@@ -190,7 +174,7 @@
             <!-- every card on the tab, the heroes' feats and the monsters' -->
             <WrapPanel Margin="0,2,0,2">
                 <ToggleButton Content="{Binding AllText}" IsChecked="{Binding AllOn, Mode=TwoWay}" IsEnabled="{Binding Usable}" Margin="0,0,12,4"
-                              ToolTip="Ticks every card on the tab: the new feats, Smarter Enemies and Enemies Use Feats (Aggressive Bosses isn't ready yet). Each keeps the settings shown on its card (unticked cards show the tested settings). Once every card is ticked it reads Disable all, and unticks them all." />
+                              ToolTip="Ticks every card on the tab: the new feats, Smarter Enemies, Enemies Use Feats and Aggressive Bosses. Each keeps the settings shown on its card (unticked cards show the tested settings). Once every card is ticked it reads Disable all, and unticks them all." />
             </WrapPanel>
 
             <TextBlock Text="NEW FEATS: SPELLS BORROWED FROM THE GAME'S MONSTERS, AND THE GAME'S OWN CUT FEATS" Style="{StaticResource Heading}" Margin="0,8,0,6" />
@@ -211,7 +195,7 @@
             <Separator Height="1" Margin="0,18,0,2" />
 
             <TextBlock Text="ENEMY AI" Style="{StaticResource Heading}" />
-            <TextBlock Style="{StaticResource Help}" Text="Changes to how the game's monsters fight. Each card is turned on or off by itself, with or without the new feats and the other card, and taking one out puts the game's own code back exactly." />
+            <TextBlock Style="{StaticResource Help}" Text="Changes to how the game's monsters fight. Each card is turned on or off by itself, with or without the new feats and the other cards, and taking one out puts the game's own code back exactly." />
             <ContentControl Content="{Binding SmarterEnemies}" Focusable="False" />
             <ContentControl Content="{Binding EnemiesUseFeats}" Focusable="False" />
             <ContentControl Content="{Binding AggressiveBosses}" Focusable="False" />

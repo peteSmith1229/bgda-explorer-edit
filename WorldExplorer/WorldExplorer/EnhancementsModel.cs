@@ -741,10 +741,11 @@ public sealed class SpellCard : ObservableObject
 }
 
 /// <summary>
-/// One of the Enemy AI cards (below the heroes' feats): Smarter Enemies or Enemies Use Feats. Each is on or off, with no
-/// settings, and puts in its own four of Improved Enemy AI's eight parts (<see cref="Parts"/>); the two go in together or
-/// alone. A file featpatch.py gave only some of a card's parts keeps them when it is saved with the box ticked; an earlier
-/// version that had all of its version's parts is brought up to date with all eight.
+/// One of the Enemy AI cards (below the heroes' feats): Smarter Enemies, Enemies Use Feats or Aggressive Bosses. Each is on
+/// or off, with no settings, and puts in its own of Improved Enemy AI's nine parts (<see cref="Parts"/>: four, four and
+/// one); they go in together or alone. A file featpatch.py gave only some of a card's parts keeps them when it is saved with
+/// the box ticked; an earlier version that had all of its version's parts is brought up to date with Smarter Enemies' and
+/// Enemies Use Feats' eight (the bosses, which no earlier version has, go in only when their card is ticked).
 /// </summary>
 public sealed class EnemyAiCard : ObservableObject
 {
@@ -793,7 +794,7 @@ public sealed class EnemyAiCard : ObservableObject
     /// <summary>Saving takes it out.</summary>
     public bool TakingOut => Usable && InFile && !_on;
 
-    /// <summary>The parts saving puts in for it: the file's own when it has some (featpatch.py's choice of fewer kept), else all four.</summary>
+    /// <summary>The parts saving puts in for it: the file's own when it has some (featpatch.py's choice of fewer kept), else all of its parts.</summary>
     internal int PartsToSave => !_on ? 0 : InFile ? Loaded : Parts;
 
     /// <summary>What is in the file and what saving does with it, in a sentence or two.</summary>
@@ -807,7 +808,7 @@ public sealed class EnemyAiCard : ObservableObject
                 if (!_on) return $"Taken out when you save ({BgdaExecutable.EnemyAiPartNames(Loaded)}): the monsters behave as the game's own do again.";
                 if (_owner.State == BorrowedSpellsState.Outdated)
                     return Loaded == Parts
-                        ? "In, as an earlier version (see above): saving brings it up to date with all four of its parts."
+                        ? "In, as an earlier version (see above): saving brings it up to date with all of its parts."
                         : $"In, as an earlier version (see above), with {BgdaExecutable.EnemyAiPartNames(Loaded)} only " +
                           "(featpatch.py's choice): saving brings it up to date and keeps it so.";
                 return Loaded == Parts
@@ -816,7 +817,7 @@ public sealed class EnemyAiCard : ObservableObject
             }
 
             return _on
-                ? "Goes in when you save. It works with or without the new feats, the other Enemy AI card and three players."
+                ? "Goes in when you save. It works with or without the new feats, the other Enemy AI cards and three players."
                 : "Not in this executable. Tick the box to put it in.";
         }
     }
@@ -834,25 +835,6 @@ public sealed class EnemyAiCard : ObservableObject
         OnPropertyChanged(nameof(Status));
         OnPropertyChanged(nameof(Changed));
     }
-}
-
-/// <summary>
-/// The Aggressive Bosses card (Enemy AI): a placeholder for the bosses' patch to come. Its tick box is shown but can't be
-/// ticked, and it changes nothing.
-/// </summary>
-public sealed class BossesCard
-{
-    public string Title => "Aggressive Bosses";
-
-    /// <summary>What it will do.</summary>
-    public string Description =>
-        "Coming soon: the bosses (Xantam, Karne, Ilivarra, Sessth, the dragon and Eldrith) fight harder, attacking more often " +
-        "and using more of their feats. Improved Enemy AI leaves them as the game made them until then.";
-
-    public string Status => "Not ready yet: there is nothing to put in.";
-
-    /// <summary>Never ticked: there is nothing to put in yet.</summary>
-    public bool On => false;
 }
 
 public sealed class EnhancementsModel : ObservableObject
@@ -883,8 +865,8 @@ public sealed class EnhancementsModel : ObservableObject
             "once in 10 seconds. Wounded ones regroup: a kobold, kobold shaman, gnoll, bugbear, lizardman, ogre, thief or wolf " +
             "left with 40% or less of its health falls back behind its nearest friend, turns to face the hero and waits there " +
             "about 4 seconds (shamans cast and ogres throw from there), then comes back to fight; one struck on the way, or with " +
-            "no friend near, fights on. Bosses, gas spores, ghosts and the town's people don't change. It works with or without " +
-            "the new feats, Enemies Use Feats and three players.");
+            "no friend near, fights on. The bosses (see Aggressive Bosses), gas spores, ghosts and the town's people don't " +
+            "change. It works with or without the new feats, the other Enemy AI cards and three players.");
         EnemiesUseFeats = new EnemyAiCard(this, "Enemies Use Feats", BgdaExecutable.EnemyAiFeats,
             "the monsters use their feats in the four ways below.",
             "The monsters use their feats, in four ways. Casters cast more: kobold shamans, lizardman shamans and drow " +
@@ -898,10 +880,20 @@ public sealed class EnhancementsModel : ObservableObject
             "lizardmen a Flaming, Ice, Shocking or Exploding spear, still thrown in the spear's arc; kobolds a Flaming or Ice " +
             "spear. Each hits as hard as the shooter's own shot and looks and sounds as Vahn's does: Flaming sets you alight, Ice " +
             "slows you, Shocking sparks on you, Hail is three arrows in a fan, and Exploding bursts and hurts everyone near it, " +
-            "monsters too. The lizardmen's firebombs stay the game's own. Bosses, gas spores, ghosts and the town's people don't " +
-            "change. It works with or without the new feats, Smarter Enemies and three players.");
-        EnemyAiCards = new[] { SmarterEnemies, EnemiesUseFeats };
-        AggressiveBosses = new BossesCard();
+            "monsters too. The lizardmen's firebombs stay the game's own. The bosses (see Aggressive Bosses), gas spores, ghosts " +
+            "and the town's people don't change. It works with or without the new feats, the other Enemy AI cards and three " +
+            "players.");
+        AggressiveBosses = new EnemyAiCard(this, "Aggressive Bosses", BgdaExecutable.EnemyAiBosses,
+            "Xantam, Ilivarra, the dragon and Eldrith fight harder in the ways below.",
+            "Four of the bosses fight harder. Xantam attacks twice as often, and from the start of the fight his fire beams are " +
+            "green and his fire trails home in on you (the game's only once he is below 450 health). Ilivarra casts her spells " +
+            "twice as often, and raises her skeletons two at a time, while 8 or fewer creatures are near her, the heroes and she " +
+            "among them (the game's one at a time, while 4 or fewer). The dragon's buffets that knock you back, and the falling " +
+            "ice after them, come twice as often. Eldrith gets her weapon back 5 seconds after she throws it (a bolt, or in her " +
+            "last form a rain of them), once in each of her forms, so she throws it twice as often; it simply reappears in her " +
+            "hand, as it does when she changes form. Karne and Sessth fight as the game made them. It works with or without the " +
+            "new feats, the other Enemy AI cards and three players.");
+        EnemyAiCards = new[] { SmarterEnemies, EnemiesUseFeats, AggressiveBosses };
         Groups = HeroOrder.Select(h => new SpellGroup(h, Spells.Where(c => c.Info.Hero == h)
                                                            .OrderBy(c => c.Info.Title, StringComparer.CurrentCultureIgnoreCase).ToList()))
                           .Where(g => g.Cards.Count > 0).ToList();
@@ -916,8 +908,7 @@ public sealed class EnhancementsModel : ObservableObject
 
     /// <summary>
     /// The Enable all / Disable all toggle at the top of the tab: true when every card is ticked, the fifteen spells' and the
-    /// two Enemy AI cards' (Aggressive Bosses has nothing to tick yet). Setting it ticks or unticks them all; each card keeps
-    /// the settings in its boxes.
+    /// three Enemy AI cards'. Setting it ticks or unticks them all; each card keeps the settings in its boxes.
     /// </summary>
     public bool AllOn
     {
@@ -944,11 +935,11 @@ public sealed class EnhancementsModel : ObservableObject
     /// <summary>The Enemies Use Feats card (the Enemy AI part of the tab): casters cast more, brutes knock you back, drow blink, archers use Vahn's arrows.</summary>
     public EnemyAiCard EnemiesUseFeats { get; }
 
-    /// <summary>Both Enemy AI cards, Smarter Enemies first.</summary>
+    /// <summary>The three Enemy AI cards as the tab shows them: Smarter Enemies, Enemies Use Feats, Aggressive Bosses.</summary>
     public IReadOnlyList<EnemyAiCard> EnemyAiCards { get; }
 
-    /// <summary>The Aggressive Bosses card (the Enemy AI part of the tab): a placeholder, nothing to tick yet.</summary>
-    public BossesCard AggressiveBosses { get; }
+    /// <summary>The Aggressive Bosses card (the Enemy AI part of the tab): Xantam, Ilivarra, the dragon and Eldrith fight harder.</summary>
+    public EnemyAiCard AggressiveBosses { get; }
 
     /// <summary>Improved Enemy AI's parts in the executable as it was loaded or last saved (0: not in).</summary>
     internal int LoadedEnemyAi { get; private set; }
@@ -1017,7 +1008,7 @@ public sealed class EnhancementsModel : ObservableObject
     }
 
     /// <summary>
-    /// Writes the spells (<paramref name="spells"/> from <see cref="ReadSpells"/>) and Improved Enemy AI (both Enemy AI cards'
+    /// Writes the spells (<paramref name="spells"/> from <see cref="ReadSpells"/>) and Improved Enemy AI (the three Enemy AI cards'
     /// parts) into the executable as the tab says: put in, updated, their settings changed, or taken out. Throws
     /// InvalidOperationException when the file can't take them.
     /// </summary>

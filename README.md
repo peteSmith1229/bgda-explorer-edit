@@ -157,7 +157,7 @@ Alliance II files are read with the Dark Alliance formats for now.
     again. Each rank's percentage (1 to 200) and time (0.1 to 25.5 seconds) can be set. Its HUD line shows them.
 
   Below them, after a separator, the **Enemy AI** part has three cards, each a tick box of its own (with or
-  without any of the feats, and with or without the other card). **Smarter Enemies**:
+  without any of the feats, and with or without the other cards). **Smarter Enemies**:
   - Smarter targeting: a monster goes for the nearest hero it may chase (the game picks one by the monster's
     number, wherever the others are), turns on a hero who hurt it in the last 2 seconds if that hero isn't much
     further off, and switches to a hero who comes much nearer than the one it is after. With one player this part
@@ -190,13 +190,24 @@ Alliance II files are read with the Dark Alliance formats for now.
     arrows in a fan, and Exploding bursts and hurts everyone near it, monsters too. The lizardmen's firebombs stay
     the game's own.
 
-  **Aggressive Bosses** is a placeholder for a patch to come (the bosses fighting harder); it can't be ticked yet.
+  **Aggressive Bosses**:
+  - Xantam attacks twice as often, and from the start of the fight his fire beams are green and his fire trails
+    home in on the heroes (the game's only once he is below 450 health);
+  - Ilivarra casts twice as often, and raises her skeletons two at a time while 8 or fewer creatures are near her,
+    the heroes and she among them (the game's one at a time, while 4 or fewer);
+  - the dragon's buffets that knock the heroes back, and the falling ice after them, come twice as often;
+  - Eldrith gets her thrown weapon back 5 seconds after a throw (a bolt, or her last form's rain of them), once in
+    each of her forms, so she throws it twice as often; it reappears in her hand, as it does when she changes form.
 
-  The two cards change the game's 32 ordinary kinds of monster; bosses, gas spores, ghosts, guards, cats, rats and
-  the town's people are left as they are; no monster's health or damage changes. Ticked, each goes in with its four
-  parts; a file featpatch.py gave fewer keeps them, and an executable with an earlier version of Improved Enemy AI
-  (its first three parts, the casters', brutes', drow's or archers' test, or the single seven-part card) is brought
-  up to date when it is saved, with all eight parts (both cards) when it had all of its own.
+  Karne and Sessth fight as the game made them.
+
+  Smarter Enemies and Enemies Use Feats change the game's 32 ordinary kinds of monster, and Aggressive Bosses four
+  of the six bosses; gas spores, ghosts, guards, cats, rats and the town's people are left as they are, and no
+  monster's health or damage changes. Ticked, each card goes in with its parts (four, four and one); a file
+  featpatch.py gave fewer keeps them, and an executable with an earlier version of Improved Enemy AI (its first
+  three parts, the casters', brutes', drow's or archers' test, the single seven-part card or the two cards before
+  the bosses) is brought up to date when it is saved, with Smarter Enemies and Enemies Use Feats (all eight older
+  parts) when it had all of its own; Aggressive Bosses goes in only when it is ticked.
 
   They go into game code nothing ever runs (about 32 KB of it, the same in the stock executable and every
   three-player build, so three players can still be turned on or off), the borrowed spells' names and
