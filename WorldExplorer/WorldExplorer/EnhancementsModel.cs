@@ -745,7 +745,8 @@ public sealed class SpellCard : ObservableObject
 /// or off, with no settings, and puts in its own of Improved Enemy AI's nine parts (<see cref="Parts"/>: four, four and
 /// one); they go in together or alone. A file featpatch.py gave only some of a card's parts keeps them when it is saved with
 /// the box ticked; an earlier version that had all of its version's parts is brought up to date with Smarter Enemies' and
-/// Enemies Use Feats' eight (the bosses, which no earlier version has, go in only when their card is ticked).
+/// Enemies Use Feats' eight, and the bosses when it had them (version 25's four; before it, they go in only when their
+/// card is ticked).
 /// </summary>
 public sealed class EnemyAiCard : ObservableObject
 {
@@ -884,15 +885,25 @@ public sealed class EnhancementsModel : ObservableObject
             "and the town's people don't change. It works with or without the new feats, the other Enemy AI cards and three " +
             "players.");
         AggressiveBosses = new EnemyAiCard(this, "Aggressive Bosses", BgdaExecutable.EnemyAiBosses,
-            "Xantam, Ilivarra, the dragon and Eldrith fight harder in the ways below.",
-            "Four of the bosses fight harder. Xantam attacks twice as often, and from the start of the fight his fire beams are " +
-            "green and his fire trails home in on you (the game's only once he is below 450 health). Ilivarra casts her spells " +
-            "twice as often, and raises her skeletons two at a time, while 8 or fewer creatures are near her, the heroes and she " +
-            "among them (the game's one at a time, while 4 or fewer). The dragon's buffets that knock you back, and the falling " +
-            "ice after them, come twice as often. Eldrith gets her weapon back 5 seconds after she throws it (a bolt, or in her " +
-            "last form a rain of them), once in each of her forms, so she throws it twice as often; it simply reappears in her " +
-            "hand, as it does when she changes form. Karne and Sessth fight as the game made them. It works with or without the " +
-            "new feats, the other Enemy AI cards and three players.");
+            "all six bosses fight harder in the ways below.",
+            "All six bosses fight harder. Xantam attacks twice as often; from the start of the fight his fire beams are " +
+            "green and his fire trails home in on you (the game's only once he is below 450 health); and his volleys are " +
+            "bigger: ten Magic Missiles in a wider fan (the game's five), four Ball Lightnings (two) and five orbs (three). " +
+            "Karne throws a fan of three knives, and about every other throw is one of Vahn's: Flaming, Ice or Shock, which " +
+            "burns, chills and slows, or shocks you (his extra knife when he is badly hurt stays single). Ilivarra casts her " +
+            "spells twice as often, and raises her skeletons two at a time, while 8 or fewer creatures are near her, the " +
+            "heroes and she among them (the game's one at a time, while 4 or fewer). Sessth casts the lizardman shaman's " +
+            "spells while he chases you, one every 3 to 6 seconds (Otiluke's bolt, a fireball, Melf's acid arrow or three " +
+            "Magic Missiles), and every 5 to 10 seconds of the fight puts the monsters' poison gas on his target (it spares " +
+            "him and his lizardmen). The dragon's buffets that knock you back, and the falling ice after them, come twice " +
+            "as often, and every 6 to 12 seconds, with a hero near its head, a ring of frost bursts from it: a little cold " +
+            "damage, and every hero in it chilled, blue and slower for about 3 seconds. Eldrith gets her weapon back 5 " +
+            "seconds after she throws it (a bolt, or in her last form a rain of them), once in each of her forms, so she " +
+            "throws it twice as often (it simply reappears in her hand, as it does when she changes form); every 15 to 25 " +
+            "seconds of the fight she casts Antimagic Field (fire, cold, lightning and magic don't hurt her for 6 seconds; " +
+            "weapons still do), and every 12 to 20 seconds, with a hero close to her, Blade Barrier (spinning axes round her " +
+            "for 10 seconds that hurt whoever is next to her). It works with or without the new feats, the other Enemy AI " +
+            "cards and three players.");
         EnemyAiCards = new[] { SmarterEnemies, EnemiesUseFeats, AggressiveBosses };
         Groups = HeroOrder.Select(h => new SpellGroup(h, Spells.Where(c => c.Info.Hero == h)
                                                            .OrderBy(c => c.Info.Title, StringComparer.CurrentCultureIgnoreCase).ToList()))
@@ -938,7 +949,7 @@ public sealed class EnhancementsModel : ObservableObject
     /// <summary>The three Enemy AI cards as the tab shows them: Smarter Enemies, Enemies Use Feats, Aggressive Bosses.</summary>
     public IReadOnlyList<EnemyAiCard> EnemyAiCards { get; }
 
-    /// <summary>The Aggressive Bosses card (the Enemy AI part of the tab): Xantam, Ilivarra, the dragon and Eldrith fight harder.</summary>
+    /// <summary>The Aggressive Bosses card (the Enemy AI part of the tab): all six bosses fight harder.</summary>
     public EnemyAiCard AggressiveBosses { get; }
 
     /// <summary>Improved Enemy AI's parts in the executable as it was loaded or last saved (0: not in).</summary>
