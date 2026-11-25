@@ -201,11 +201,12 @@ internal partial class FileTreeViewContextManager
 
     private void Recolour(YakFile yak, int entry, int? child)
     {
-        var window = new ArmourRecolourWindow(yak, entry, child ?? 0, child == null) { Owner = _window };
+        var window = new ArmourRecolourWindow(yak, entry, child ?? 0, child == null, ViewModel.World?.DataPath) { Owner = _window };
         if (window.ShowDialog() != true) return;
         foreach (var (c, tex) in window.Results) yak.SetChild(entry, c, yak.GetChild(entry, c).Vif, tex);
         EditApplied();
-        ViewModel.Notifications.Success("Recoloured", $"{CountOf(window.Results.Count, "character")} of entry {entry}. {PendingYak}");
+        var notes = window.Notes.Count > 0 ? string.Join(" ", window.Notes) + " " : "";
+        ViewModel.Notifications.Success("Recoloured", $"{CountOf(window.Results.Count, "character")} of entry {entry}. {notes}{PendingYak}");
         ReselectArmour(yak, entry);
     }
 
@@ -218,17 +219,16 @@ internal partial class FileTreeViewContextManager
         foreach (var c in window.Characters)
         {
             var current = yak.GetChild(entry, c);
-            try
+            // the same bytes the window's preview showed
+            var (vif, problem) = window.ResultFor(c);
+            if (problem != null)
             {
-                // the same bytes the window's preview showed
-                var vif = new ArmorModel(current.Vif).Reshaped(window.ScaleX, window.ScaleY, window.ScaleZ, window.Inflate);
-                yak.SetChild(entry, c, vif, current.Tex);
-                done++;
+                problems.Add($"{ArmorYakInfo.Characters[c]}: {problem}");
+                continue;
             }
-            catch (ArgumentException ex)
-            {
-                problems.Add($"{ArmorYakInfo.Characters[c]}: {ex.Message}");
-            }
+
+            yak.SetChild(entry, c, vif, current.Tex);
+            done++;
         }
 
         EditApplied();

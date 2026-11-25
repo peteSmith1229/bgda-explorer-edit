@@ -224,11 +224,46 @@ public class ArmorYakTests
             Assert.That(ArmorModel.Problem(scaled.Data), Is.Null);
         }
 
-        // nothing within Reshape's sliders (50-250 %, -1..4 units) leaves the header's ±127-unit box; past them the
-        // human's clothes body at 250 % pushed out 12 units does, and is refused
+        // nothing within Reshape's sliders (50-250 %, -1..4 units) leaves the header's ±127-unit box (all 708 pieces
+        // checked at the extremes); past them the human's clothes body at 250 % pushed out 16 units does, and is refused
         var body = new ArmorModel(yak.GetChild(0, 0).Vif);
         Assert.That(body.Reshaped(2.5, 2.5, 2.5, 4), Is.Not.EqualTo(body.Data));
-        Assert.Throws<ArgumentException>(() => body.Reshaped(2.5, 2.5, 2.5, 12));
+        Assert.That(body.Reshaped(2.5, 2.5, 2.5, 12), Is.Not.EqualTo(body.Data));
+        Assert.Throws<ArgumentException>(() => body.Reshaped(2.5, 2.5, 2.5, 16));
+    }
+
+    [Test]
+    public void ABodyOrHelmet_IsScaledAsOnePiece_AndAPairSideBySide()
+    {
+        var yak = Open();
+        foreach (var entry in new[] { 19, 25 }) // plate body, plate helmet (human): one piece across the middle
+        {
+            var m = new ArmorModel(yak.GetChild(entry, 0).Vif);
+            var before = m.GetPositions();
+            var after = m.ScaledPairs(1.5, 1, 1);
+            var (min, max) = Box(before);
+            var (newMin, newMax) = Box(after);
+            Assert.That(newMax[0] - newMin[0], Is.EqualTo(1.5 * (max[0] - min[0])).Within(0.01), $"entry {entry}");
+            // the middle stays joined: what was on the centre line is still on it (the piece is symmetric)
+            for (var v = 0; v < m.VertexCount; v++)
+            {
+                if (Math.Abs(before[3 * v]) < 0.01) Assert.That(Math.Abs(after[3 * v]), Is.LessThan(0.25), $"entry {entry}, vertex {v}");
+            }
+        }
+
+        // a pair of gloves (human plate gloves): each glove about its own centre, so the gap between them grows too
+        var gloves = new ArmorModel(yak.GetChild(23, 0).Vif);
+        var g0 = gloves.GetPositions();
+        var g1 = gloves.ScaledPairs(1.5, 1, 1);
+        double Side(double[] p, bool left, bool max) =>
+            Enumerable.Range(0, p.Length / 3).Where(v => g0[3 * v] < 0 == left).Select(v => p[3 * v]).Aggregate(max ? Math.Max : Math.Min);
+        foreach (var left in new[] { true, false })
+        {
+            Assert.That(Side(g1, left, true) - Side(g1, left, false),
+                Is.EqualTo(1.5 * (Side(g0, left, true) - Side(g0, left, false))).Within(0.01));
+            Assert.That((Side(g1, left, true) + Side(g1, left, false)) / 2,
+                Is.EqualTo((Side(g0, left, true) + Side(g0, left, false)) / 2).Within(0.01));
+        }
     }
 
     [Test]
@@ -347,6 +382,116 @@ public class ArmorYakTests
         Assert.That(ArmorWearer.HairShownWith(59), Is.True);  // an added entry: its slot is the item's
         Assert.That(ArmorWearer.FromArchive(0, File.ReadAllBytes(Path.Combine(dir, "ELF.LMP")), out var wrong), Is.Null);
         Assert.That(wrong, Does.Contain("man.vif"));
+    }
+
+    [Test]
+    public void TheElfsClothes_AreHerOwnBody_AndRecolourAndReshapeLeaveItAlone()
+    {
+        var yak = Open();
+        var wearers = Enumerable.Range(0, 4).Select(Wearer).ToArray();
+
+        // only the elf's clothes body (entry 0) and gloves (entry 2) are partly the wearer's own body
+        for (var c = 0; c < 4; c++)
+        {
+            for (var e = 0; e < yak.EntryCount; e++)
+            {
+                if (c == 1 && e is 0 or 2) continue;
+                var child = yak.GetChild(e, c);
+                Assert.That(wearers[c].OwnParts(child.Vif, child.Tex).Any, Is.False, $"entry {e}, child {c}");
+            }
+        }
+
+        var clothes = yak.GetChild(0, 1);
+        var own = wearers[1].OwnParts(clothes.Vif, clothes.Tex);
+        Assert.That(own.TriangleCount, Is.EqualTo(2636)); // face, scalp, neck, chest, upper arms, thighs
+        Assert.That(own.VertexCount, Is.EqualTo(2251));
+        Assert.That(own.TexelCount, Is.EqualTo(11514));
+        var gloves = yak.GetChild(2, 1);
+        Assert.That(wearers[1].OwnParts(gloves.Vif, gloves.Tex).TriangleCount, Is.EqualTo(322)); // her fingers
+
+        // her own texels are in the copy of elf.tex (390 × 162) at the top left of the clothes' 511 × 330, but for 13:
+        // a flat skin swatch at (507, 0) and three triangles at the leotard's neckline that are her skin's colour
+        var texture = new ArmorTexture(clothes.Tex);
+        Assert.That(Enumerable.Range(0, own.Texels.Length)
+            .Count(i => own.Texels[i] && !(i % texture.Width < 390 && i / texture.Width < 162)), Is.EqualTo(13));
+
+        // recolouring keeps her own texels' colours exactly and gives the clothes the new ones: her skin shares 111 colours
+        // with the clothes' painted skin tones and the palette has too few free entries to copy them all, so the nearest
+        // new clothing colours share entries (within 16 of 255, nearly all exact); the gloves have room for exact copies
+        byte[] Green(byte[] palette) => ArmorTexture.HueShift(palette, 120);
+        var before = texture.ToRgba();
+        var target = Green(texture.GetPalette());
+        var indices = texture.GetIndices();
+        var recoloured = new ArmorTexture(clothes.Tex);
+        Assert.That(recoloured.Recolour(Green, own.Texels, own.Others), Is.EqualTo((111, 0, true)));
+        Assert.That(ArmorTexture.Problem(recoloured.Data), Is.Null);
+        var after = recoloured.ToRgba();
+        var errors = new List<int>();
+        for (var i = 0; i < own.Texels.Length; i++)
+        {
+            if (own.Texels[i])
+            {
+                Assert.That(after.AsSpan(4 * i, 4).SequenceEqual(before.AsSpan(4 * i, 4)), Is.True, $"own texel {i}");
+            }
+            else if (own.Others[i])
+            {
+                errors.Add(Enumerable.Range(0, 3).Max(k => Math.Abs(after[4 * i + k] - target[4 * indices[i] + k])));
+                Assert.That(after[4 * i + 3], Is.EqualTo(ArmorTexture.PngAlpha(target[4 * indices[i] + 3])), $"alpha {i}");
+            }
+        }
+
+        Assert.That(errors.Max(), Is.LessThanOrEqualTo(16));
+        Assert.That(errors.Count(x => x <= 2), Is.GreaterThan(errors.Count * 95 / 100));
+        var glovesTexture = new ArmorTexture(gloves.Tex);
+        var glovesOwn = wearers[1].OwnParts(gloves.Vif, gloves.Tex);
+        var glovesTarget = Green(glovesTexture.GetPalette());
+        var glovesIndices = glovesTexture.GetIndices();
+        Assert.That(glovesTexture.Recolour(Green, glovesOwn.Texels, glovesOwn.Others), Is.EqualTo((3, 0, false)));
+        var glovesAfter = glovesTexture.ToRgba();
+        for (var i = 0; i < glovesIndices.Length; i++)
+        {
+            if (!glovesOwn.Others[i]) continue;
+            Assert.That(glovesAfter.AsSpan(4 * i, 3).SequenceEqual(glovesTarget.AsSpan(4 * glovesIndices[i], 3)), Is.True);
+        }
+
+        // with nothing kept it is the plain palette change
+        var plain = new ArmorTexture(clothes.Tex);
+        Assert.That(plain.Recolour(Green, null), Is.EqualTo((0, 0, false)));
+        var reference = new ArmorTexture(clothes.Tex);
+        reference.SetPalette(Green(reference.GetPalette()));
+        Assert.That(plain.Data, Is.EqualTo(reference.Data));
+
+        // reshaping leaves her own vertices where they are and changes the clothes, still joined to her
+        var model = new ArmorModel(clothes.Vif);
+        var start = model.GetPositions();
+        var reshaped = new ArmorModel(model.Reshaped(1.3, 1.3, 1.1, 1, own.Vertices));
+        Assert.That(ArmorModel.Problem(reshaped.Data), Is.Null);
+        var end = reshaped.GetPositions();
+        var moved = 0;
+        for (var v = 0; v < model.VertexCount; v++)
+        {
+            var same = start[3 * v] == end[3 * v] && start[3 * v + 1] == end[3 * v + 1] && start[3 * v + 2] == end[3 * v + 2];
+            if (own.Vertices[v]) Assert.That(same, Is.True, $"own vertex {v}");
+            else if (!same) moved++;
+        }
+
+        Assert.That(moved, Is.GreaterThan(1000));
+
+        // each bit of her clothes changes where it is: the wraps on her forearms stay round them (1.3 units further out)
+        // rather than moving out with the whole piece (5.9 units, off her arms)
+        double Reach(double[] p) => Enumerable.Range(0, model.VertexCount).Where(v => !own.Vertices[v]).Max(v => Math.Abs(p[3 * v]));
+        Assert.That(Reach(end) - Reach(start), Is.LessThan(3.0));
+        Assert.That(model.Reshaped(1.3, 1.3, 1.1, 1, new bool[model.VertexCount]),
+            Is.EqualTo(model.Reshaped(1.3, 1.3, 1.1, 1)));
+    }
+
+    /// <summary>Character <paramref name="child"/>'s own models, from its archive next to Test_files/ARMOR.YAK.</summary>
+    private ArmorWearer Wearer(int child)
+    {
+        var (archive, _, _) = ArmorWearer.Files(child);
+        var path = Path.Combine(Path.GetDirectoryName(ArmorYakPath())!, archive);
+        if (!File.Exists(path)) Assert.Ignore($"Test_files/{archive} was not found next to ARMOR.YAK.");
+        return ArmorWearer.FromArchive(child, File.ReadAllBytes(path), out _)!;
     }
 
     private static (double[] Min, double[] Max) Box(double[] p)

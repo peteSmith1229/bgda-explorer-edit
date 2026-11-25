@@ -72,6 +72,10 @@
 
             <TextBlock Text="Characters" Style="{StaticResource Text.Section}" />
             <WrapPanel x:Name="characterPanel" />
+            <CheckBox x:Name="keepBox" Content="Keep the character's own skin, face and hair still" IsChecked="True"
+                      Margin="0,10,0,0" Visibility="Collapsed" />
+            <TextBlock x:Name="keepText" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,2,0,0"
+                       Visibility="Collapsed" />
             <TextBlock x:Name="sizeText" Style="{StaticResource Text.Secondary}" Margin="0,10,0,0" />
         </StackPanel>
 

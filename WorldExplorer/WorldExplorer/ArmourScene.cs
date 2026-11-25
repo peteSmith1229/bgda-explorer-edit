@@ -97,6 +97,42 @@ internal static class ArmourScene
         return parts;
     }
 
+    /// <summary>
+    /// For each character (0-3), the parts of its piece of <paramref name="entry"/> that are its own skin, face and hair
+    /// (<see cref="ArmorOwnParts"/>: most of the elf's clothes body, her clothes gloves' fingers), or null when its
+    /// wearer can't be found, so nothing can be kept.
+    /// </summary>
+    public static ArmorOwnParts?[] OwnParts(YakFile yak, int entry, string? yakFolder)
+    {
+        var own = new ArmorOwnParts?[4];
+        for (var c = 0; c < 4; c++)
+        {
+            if (Find(c, yakFolder, out _) is not { } wearer) continue;
+            var child = yak.GetChild(entry, c);
+            try
+            {
+                own[c] = wearer.Models.OwnParts(child.Vif, child.Tex);
+            }
+            catch (ArgumentException)
+            {
+                // a piece the library can't read keeps nothing; Recolour and Reshape report it themselves
+            }
+        }
+
+        return own;
+    }
+
+    /// <summary>"Part of this piece is the elf's own body (2,636 triangles: face, skin and hair)…", or null for none.</summary>
+    public static string? OwnPartsText(ArmorOwnParts?[] own)
+    {
+        var parts = Enumerable.Range(0, own.Length).Where(c => own[c] is { Any: true })
+            .Select(c => $"the {ArmorYakInfo.Characters[c].ToLowerInvariant()}'s ({own[c]!.TriangleCount:N0} triangles)").ToList();
+        return parts.Count == 0
+            ? null
+            : $"Part of this piece is the character's own body: its face, skin and hair, for {string.Join(" and ", parts)}. " +
+              "In the game they look as they do on the character, so they're best left as they are.";
+    }
+
     /// <summary>The Details line about the wearer.</summary>
     public static string Describe(Wearer? wearer, int entry, string? problem, bool shown) =>
         !shown ? "Wearer: not drawn (the figure button at the top right of the model view draws it)"

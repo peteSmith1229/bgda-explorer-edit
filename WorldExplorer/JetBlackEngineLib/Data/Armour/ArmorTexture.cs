@@ -232,6 +232,133 @@ public sealed class ArmorTexture
 
     // ───────────────────────────── as a picture ─────────────────────────────
 
+    /// <summary>
+    /// Recolours the texture: <paramref name="recolour"/> gets the palette (256 × RGBA) and gives the new one. Texels in
+    /// <paramref name="keep"/> (the wearer's own skin, face and hair: <see cref="ArmorOwnParts.Texels"/>) keep their
+    /// colours and those in <paramref name="change"/> (<see cref="ArmorOwnParts.Others"/>; null: all the rest) take the
+    /// new ones; texels in neither, which nothing draws, may do either. A colour shared by kept and changed texels is
+    /// copied into a palette entry neither uses, and only the copy changes. If too few entries are free (Requantized),
+    /// the kept colours still stay exactly as they are and the nearest new colours share entries (merged by how many
+    /// texels use them, never across see-through levels).
+    /// Returns how many colours were split (or merged) and how many changed texels fall outside the stored rectangles.
+    /// </summary>
+    public (int Split, int Lost, bool Requantized) Recolour(Func<byte[], byte[]> recolour, bool[]? keep,
+        bool[]? change = null)
+    {
+        var palette = GetPalette();
+        var recoloured = recolour(palette);
+        if (recoloured.Length != 1024) throw new ArgumentException("A palette is 256 × 4 bytes.");
+        if (keep == null || !keep.Any(k => k))
+        {
+            SetPalette(recoloured);
+            return (0, 0, false);
+        }
+
+        if (keep.Length != Width * Height || change != null && change.Length != keep.Length)
+        {
+            throw new ArgumentException($"{keep.Length} flags for a {Width}x{Height} texture.");
+        }
+
+        bool Changing(int i) => !keep[i] && (change == null || change[i]);
+        var indices = GetIndices();
+        var kept = new bool[256];
+        var others = new bool[256];
+        for (var i = 0; i < indices.Length; i++)
+        {
+            if (keep[i]) kept[indices[i]] = true;
+            else if (Changing(i)) others[indices[i]] = true;
+        }
+
+        bool Changes(int e) => !palette.AsSpan(4 * e, 4).SequenceEqual(recoloured.AsSpan(4 * e, 4));
+        var shared = Enumerable.Range(0, 256).Where(e => kept[e] && others[e] && Changes(e)).ToList();
+        var free = new Queue<int>(Enumerable.Range(0, 256).Where(e => !kept[e] && !others[e]));
+        if (shared.Count > free.Count)
+        {
+            // no room to give every shared colour its own copy: the kept colours stay exactly as they are, and the new
+            // colours of the changing texels share the other entries, the nearest of them merged (same alpha only)
+            var changingEntries = Enumerable.Range(0, 256).Where(e => others[e]).ToList();
+            var weight = new long[256];
+            for (var i = 0; i < indices.Length; i++)
+            {
+                if (Changing(i)) weight[indices[i]]++;
+            }
+
+            var slots = Enumerable.Range(0, 256).Where(e => !kept[e]).ToList();
+            var clusters = changingEntries.Select(e => (Members: new List<int> { e }, Colour: recoloured.AsSpan(4 * e, 4).ToArray(),
+                Weight: weight[e])).ToList();
+            while (clusters.Count > slots.Count)
+            {
+                var best = (A: -1, B: -1, D: long.MaxValue);
+                for (var x = 0; x < clusters.Count; x++)
+                {
+                    for (var y = x + 1; y < clusters.Count; y++)
+                    {
+                        var (cx, cy) = (clusters[x].Colour, clusters[y].Colour);
+                        if (cx[3] != cy[3]) continue;
+                        long d = 0;
+                        for (var ch = 0; ch < 3; ch++) d += (long)(cx[ch] - cy[ch]) * (cx[ch] - cy[ch]);
+                        d *= Math.Min(clusters[x].Weight, clusters[y].Weight);
+                        if (d < best.D) best = (x, y, d);
+                    }
+                }
+
+                if (best.A < 0) break; // nothing left that shares an alpha
+                var (ca, cb) = (clusters[best.A], clusters[best.B]);
+                var total = Math.Max(1, ca.Weight + cb.Weight);
+                var merged = new byte[4];
+                for (var ch = 0; ch < 3; ch++) merged[ch] = (byte)((ca.Colour[ch] * ca.Weight + cb.Colour[ch] * cb.Weight + total / 2) / total);
+                merged[3] = ca.Colour[3];
+                clusters[best.A] = (ca.Members.Concat(cb.Members).ToList(), merged, ca.Weight + cb.Weight);
+                clusters.RemoveAt(best.B);
+            }
+
+            if (clusters.Count > slots.Count)
+            {
+                throw new InvalidOperationException("Too many see-through levels to keep the wearer's own colours.");
+            }
+
+            var merges = changingEntries.Count - clusters.Count;
+            var quantized = (byte[])palette.Clone();
+            var slotOf = new Dictionary<int, int>();
+            for (var k = 0; k < clusters.Count; k++)
+            {
+                Buffer.BlockCopy(clusters[k].Colour, 0, quantized, 4 * slots[k], 4);
+                foreach (var e in clusters[k].Members) slotOf[e] = slots[k];
+            }
+
+            SetPalette(quantized);
+            for (var i = 0; i < indices.Length; i++)
+            {
+                if (Changing(i)) indices[i] = (byte)slotOf[indices[i]];
+            }
+
+            return (merges, SetIndices(indices), true);
+        }
+
+        var result = (byte[])palette.Clone();
+        for (var e = 0; e < 256; e++)
+        {
+            if (others[e] && !kept[e]) Buffer.BlockCopy(recoloured, 4 * e, result, 4 * e, 4);
+        }
+
+        var copyOf = new Dictionary<int, int>();
+        foreach (var e in shared)
+        {
+            var copy = free.Dequeue();
+            copyOf[e] = copy;
+            Buffer.BlockCopy(recoloured, 4 * e, result, 4 * copy, 4);
+        }
+
+        SetPalette(result);
+        if (copyOf.Count == 0) return (0, 0, false);
+        for (var i = 0; i < indices.Length; i++)
+        {
+            if (Changing(i) && copyOf.TryGetValue(indices[i], out var copy)) indices[i] = (byte)copy;
+        }
+
+        return (copyOf.Count, SetIndices(indices), false);
+    }
+
     /// <summary>PS2 alpha (0 solid .. 0x80 see-through) → PNG alpha (255 .. 0).</summary>
     public static byte PngAlpha(int ps2) => (byte)(255 - (int)Math.Round(Math.Min(ps2, 128) * 255 / 128.0));
 
