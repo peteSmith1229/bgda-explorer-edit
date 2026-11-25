@@ -284,7 +284,9 @@ internal partial class FileTreeViewContextManager
         yak.RemoveLastAddedEntry();
         if (node.Parent is YakTreeViewModel root)
         {
-            if (ReferenceEquals(ViewModel.SelectedNode, node) || ViewModel.SelectedNode?.Parent == node) root.IsSelected = true;
+            if (ReferenceEquals(ViewModel.SelectedNode, node) ||
+                ViewModel.SelectedNode is TreeViewItemViewModel { Parent: var parent } && ReferenceEquals(parent, node))
+                root.IsSelected = true;
             root.SyncEntries();
         }
 

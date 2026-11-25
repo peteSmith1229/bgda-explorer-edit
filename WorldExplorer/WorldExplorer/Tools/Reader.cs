@@ -265,7 +265,7 @@ public class Reader : IDisposable
                 input.Position = 0;
 
                 var testPreamble = new byte[preamble.Length];
-                input.Read(testPreamble, 0, testPreamble.Length);
+                input.ReadExactly(testPreamble, 0, testPreamble.Length);
                 input.Position = 0;
 
                 // Find testPreamble in preamble
