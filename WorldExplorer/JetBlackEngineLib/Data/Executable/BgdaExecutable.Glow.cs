@@ -10,7 +10,9 @@
 // Every item gets the two layers of the table at 0x002A79B8 (the ENCHANT GLOW colours); only
 // their alpha changes: 64 and 72 times f = min(1, 0.6 + 0.025 x power). The draw copies the
 // colours as each model is drawn, so they can be chosen item by item. Worn body armour, helmets,
-// gloves and boots never glow on a character: their models (ARMOR.YAK) can't take a glow.
+// gloves and boots glow on a character only when their ARMOR.YAK model has the glow flag 0x20
+// (ArmorModel.GlowFlag): no shipped piece has it, and a piece given it glows (confirmed in the
+// game on leatherarmor+1).
 //
 // GLOW. Glow styles replace FUN_00174A50 with GLOW: its first two words become
 // "j 0x001633F8; nop", and GLOW goes in FUN_001633F8, the debug starting kit nothing calls.

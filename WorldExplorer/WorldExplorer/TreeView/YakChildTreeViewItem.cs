@@ -53,7 +53,7 @@ public class YakChildTreeViewItem : TreeViewItemViewModel
             var read = ArmorYakInfo.ReadSize(Value.Length);
             var capacity = ArmorYakInfo.Capacity(ArmorYakInfo.SlotOf(EntryIndex));
             return $"{FileSizeConverter.Format(Value.Length)} of {FileSizeConverter.Format(capacity)}" +
-                   (read > capacity ? " — too big" : "");
+                   (read > capacity ? " — too big" : "") + (ArmorModel.GlowsIn(Value.Vif) ? " · glows" : "");
         }
     }
 

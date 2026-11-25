@@ -487,7 +487,7 @@
                                      ToolTip="Item text as the shops use it, such as longsword+2+ice: how it would glow, and why." />
                             <TextBlock Style="{StaticResource Help}" VerticalAlignment="Center" Margin="12,0,0,0" Text="{Binding GlowTryResult}" />
                         </DockPanel>
-                        <TextBlock Style="{StaticResource Help}" Margin="0,10,0,0" Text="Where the glow shows: weapons and shields in a character's hands, the turning models in the shop and inventory lists, and items lying in the level. Worn body armour, helmets, gloves and boots never glow on a character (their models can't take a glow), only in the lists. Next to an item on the ground, the game's white pick-up pulse shows instead." />
+                        <TextBlock Style="{StaticResource Help}" Margin="0,10,0,0" Text="Where the glow shows: weapons and shields in a character's hands, the turning models in the shop and inventory lists, and items lying in the level. Worn body armour, helmets, gloves and boots glow on a character only when their ARMOR.YAK piece has the enchant glow switched on (none does in the game's file: open ARMOR.YAK, right-click an entry › Glow When Enchanted); in the lists they glow as other items do. Next to an item on the ground, the game's white pick-up pulse shows instead." />
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

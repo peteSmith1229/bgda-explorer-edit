@@ -3,7 +3,7 @@
 // (FUN_0013F5F8 → FUN_0013C920) with the wearer's bone matrices.
 //
 // Header: +0x00 u64 hidden body parts (bit n hides mesh n of the wearer's model), +0x10
-// u16 flags (0x01; 0x10 the metal sets; 0x20 would ask for the enchant glow), +0x12 mesh
+// u16 flags (0x01; 0x10 the metal sets; 0x20 the enchant glow, as held items have), +0x12 mesh
 // count, +0x13 attach bone (-1), +0x18 ALPHA_1, +0x20 ALPHA_2's FIX, +0x28 mesh offsets
 // (relocated on load), +0x30 s8 bounding box (min x, y, z, max x, y, z in units), +0x40
 // eight s8 sample points (purpose unknown, kept following their vertices).
@@ -55,6 +55,24 @@ public sealed class ArmorModel
 
     public ushort Flags => BitConverter.ToUInt16(Data, 0x10);
     public int VertexCount => Chunks.Sum(c => c.VertexCount);
+
+    /// <summary>
+    /// The enchant glow flag in <see cref="Flags"/>. FUN_0013C4B8 draws the glow over a model with it whenever the glow
+    /// chooser (FUN_00174A50) picked one for the item: power (FUN_00174098) above 0 and not Flaming or Flaming Burst,
+    /// or the item's glow style with GLOW. Every EQUIPMNT.LMP model has it; no shipped ARMOR.YAK model does, and
+    /// worn pieces glow with it (confirmed in the game: leatherarmor+1, entry 4).
+    /// </summary>
+    public const ushort GlowFlag = 0x20;
+
+    /// <summary>Whether the piece glows when the item worn is enchanted (<see cref="GlowFlag"/>).</summary>
+    public bool Glows
+    {
+        get => (Flags & GlowFlag) != 0;
+        set => BitConverter.TryWriteBytes(Data.AsSpan(0x10, 2), (ushort)(value ? Flags | GlowFlag : Flags & ~GlowFlag));
+    }
+
+    /// <summary><see cref="Glows"/> for a model's bytes without parsing them.</summary>
+    public static bool GlowsIn(byte[] vif) => vif.Length >= 0x12 && (BitConverter.ToUInt16(vif, 0x10) & GlowFlag) != 0;
 
     /// <summary>The VU program of the first chunk: 66 (cloth, leather) or 68 (the metal sets).</summary>
     public int Program => Chunks.Count > 0 ? Chunks[0].Program : 0;

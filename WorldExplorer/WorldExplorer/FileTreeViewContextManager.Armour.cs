@@ -1,8 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // The explorer's Armour actions for ARMOR.YAK (Dark Alliance): export and import a
 // child's texture (PNG) and shape (OBJ), recolour, reshape, choose the body parts it
-// hides, copy an entry as a new look, and put children back as they were. Every edit
-// is pending until the YAK is saved (File › Save, or the YAK's own menu).
+// hides, switch the enchant glow on or off, copy an entry as a new look, and put
+// children back as they were. Every edit is pending until the YAK is saved (File ›
+// Save, or the YAK's own menu).
 // ═══════════════════════════════════════════════════════════════════════════════
 using JetBlackEngineLib;
 using JetBlackEngineLib.Data.Armour;
@@ -45,6 +46,9 @@ internal partial class FileTreeViewContextManager
         Add("Export as PNG and OBJ…", "Icon.Export", () => ExportArmour(yak, e));
         Add("Recolour…", "Icon.Theme", () => Recolour(yak, e, null));
         Add("Reshape…", "Icon.View.Model", () => Reshape(yak, e, null));
+        var allGlow = Enumerable.Range(0, 4).All(c => ArmorModel.GlowsIn(yak.GetChild(e, c).Vif));
+        Add(allGlow ? "Stop the Enchant Glow" : "Glow When Enchanted", "Icon.Light",
+            () => SetGlow(yak, e, Enumerable.Range(0, 4).ToArray(), !allGlow));
         if (e < yak.OriginalEntryCount && Enumerable.Range(0, 4).Any(c => yak.IsChildEdited(e, c)))
         {
             Add("Revert to the Original", "Icon.Undo", () => RevertArmour(node, yak, e, null));
@@ -64,6 +68,9 @@ internal partial class FileTreeViewContextManager
         Add("Recolour…", "Icon.Theme", () => Recolour(yak, node.EntryIndex, node.ChildIndex));
         Add("Reshape…", "Icon.View.Model", () => Reshape(yak, node.EntryIndex, node.ChildIndex));
         Add("Hidden Body Parts…", "Icon.View.Skeleton", () => EditHiddenParts(node));
+        var glows = ArmorModel.GlowsIn(node.Value.Vif);
+        Add(glows ? "Stop the Enchant Glow" : "Glow When Enchanted", "Icon.Light",
+            () => SetGlow(yak, node.EntryIndex, new[] { node.ChildIndex }, !glows));
         if (node.EntryIndex < yak.OriginalEntryCount && yak.IsChildEdited(node.EntryIndex, node.ChildIndex))
         {
             AddSeparator();
@@ -242,6 +249,40 @@ internal partial class FileTreeViewContextManager
         EditApplied();
         ViewModel.Notifications.Success($"{node.Label} now hides: {ArmorYakInfo.MaskText(window.Mask, node.ChildIndex)}", PendingYak);
         Reselect(node);
+    }
+
+    /// <summary>
+    /// Switches the enchant glow (<see cref="ArmorModel.GlowFlag"/>) on or off for these characters of an entry: worn,
+    /// the piece then glows as an enchanted weapon does. Children already as asked are left alone.
+    /// </summary>
+    private void SetGlow(YakFile yak, int entry, IReadOnlyList<int> children, bool on)
+    {
+        var changed = 0;
+        foreach (var c in children)
+        {
+            var child = yak.GetChild(entry, c);
+            var model = new ArmorModel(child.Vif);
+            if (model.Glows == on) continue;
+            model.Glows = on;
+            yak.SetChild(entry, c, model.Data, child.Tex);
+            changed++;
+        }
+
+        if (changed == 0) return;
+        EditApplied();
+        var who = children.Count == 1 ? ArmorYakInfo.Characters[children[0]] : CountOf(changed, "character");
+        if (on)
+        {
+            var note = ArmorYakInfo.GlowNote(entry) is { } n ? n + ". " : "";
+            ViewModel.Notifications.Success($"Entry {entry} glows when enchanted ({who})",
+                $"Worn, it glows as an enchanted weapon does when the item has power. {note}{PendingYak}");
+        }
+        else
+        {
+            ViewModel.Notifications.Info($"Entry {entry} no longer glows ({who})", PendingYak);
+        }
+
+        ReselectArmour(yak, entry);
     }
 
     // ───────────────────────────── entries ─────────────────────────────
