@@ -133,22 +133,28 @@ public partial class MainWindow : Window
     {
         foreach (var viewport in Viewports)
         {
-            viewport.ResetCameraGesture = null;
-            viewport.ResetCameraKeyGesture = null;
-            viewport.RotateGesture = new MouseGesture(MouseAction.LeftClick);
-            viewport.PanGesture = new MouseGesture(MouseAction.MiddleClick);
-
-            viewport.PreviewMouseDown += (s, ev) =>
-            {
-                if (ev.ChangedButton == MouseButton.Middle && ev.ClickCount > 1)
-                {
-                    var v = (HelixViewport3D)s;
-                    v.SetView(new Point3D(0, -100, 0), new Vector3D(0, 100, 0),
-                        new Vector3D(0, 0, 1), 1000);
-                    ev.Handled = true;
-                }
-            };
+            SetupViewport(viewport);
         }
+    }
+
+    /// <summary>The mouse controls every 3D view shares: left-drag turns, middle-drag pans, double middle-click resets.</summary>
+    internal static void SetupViewport(HelixViewport3D viewport)
+    {
+        viewport.ResetCameraGesture = null;
+        viewport.ResetCameraKeyGesture = null;
+        viewport.RotateGesture = new MouseGesture(MouseAction.LeftClick);
+        viewport.PanGesture = new MouseGesture(MouseAction.MiddleClick);
+
+        viewport.PreviewMouseDown += (s, ev) =>
+        {
+            if (ev.ChangedButton == MouseButton.Middle && ev.ClickCount > 1)
+            {
+                var v = (HelixViewport3D)s;
+                v.SetView(new Point3D(0, -100, 0), new Vector3D(0, 100, 0),
+                    new Vector3D(0, 0, 1), 1000);
+                ev.Handled = true;
+            }
+        };
     }
 
     /// <summary>Points the viewports' overlay text at the theme colours.</summary>
@@ -254,7 +260,7 @@ public partial class MainWindow : Window
         FrameBounds(viewport, bounds);
     }
 
-    private static void FrameBounds(HelixViewport3D viewport, Rect3D bounds)
+    internal static void FrameBounds(HelixViewport3D viewport, Rect3D bounds)
     {
         if (viewport.Camera is not ProjectionCamera cam) return;
 

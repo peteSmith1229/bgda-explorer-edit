@@ -556,4 +556,17 @@ public sealed class ArmorModel
 
         return p;
     }
+
+    /// <summary>
+    /// The model's bytes scaled (<see cref="ScaledPairs"/>), then pushed out along the scaled model's normals
+    /// (<see cref="Inflated"/>): what WorldExplorer's Reshape writes, and what its preview shows. This model is
+    /// left as it is. Throws <see cref="ArgumentException"/> when the result doesn't fit the format.
+    /// </summary>
+    public byte[] Reshaped(double scaleX, double scaleY, double scaleZ, double inflate)
+    {
+        var result = new ArmorModel(Data);
+        result.EditPositions(ScaledPairs(scaleX, scaleY, scaleZ));
+        if (inflate != 0) result.EditPositions(result.Inflated(inflate));
+        return result.Data;
+    }
 }

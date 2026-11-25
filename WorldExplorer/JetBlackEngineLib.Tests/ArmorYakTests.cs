@@ -190,6 +190,32 @@ public class ArmorYakTests
     }
 
     [Test]
+    public void Reshaped_IsWhatTheStepsWrite_AndLeavesTheModelAlone()
+    {
+        var yak = Open();
+        foreach (var (entry, c) in new[] { (2, 0), (19, 1), (25, 2) }) // clothes gloves, plate body, plate helmet
+        {
+            var vif = yak.GetChild(entry, c).Vif;
+            var m = new ArmorModel(vif);
+            Assert.That(m.Reshaped(1, 1, 1, 0), Is.EqualTo(vif));
+
+            // the steps Reshape ran before Reshaped existed (and make_test.py's gloves)
+            var scaled = new ArmorModel(vif);
+            scaled.EditPositions(m.ScaledPairs(1.2, 0.9, 1.1));
+            scaled.EditPositions(scaled.Inflated(0.5));
+            Assert.That(m.Reshaped(1.2, 0.9, 1.1, 0.5), Is.EqualTo(scaled.Data));
+            Assert.That(m.Data, Is.EqualTo(vif));
+            Assert.That(ArmorModel.Problem(scaled.Data), Is.Null);
+        }
+
+        // nothing within Reshape's sliders (50-250 %, -1..4 units) leaves the header's ±127-unit box; past them the
+        // human's clothes body at 250 % pushed out 12 units does, and is refused
+        var body = new ArmorModel(yak.GetChild(0, 0).Vif);
+        Assert.That(body.Reshaped(2.5, 2.5, 2.5, 4), Is.Not.EqualTo(body.Data));
+        Assert.Throws<ArgumentException>(() => body.Reshaped(2.5, 2.5, 2.5, 12));
+    }
+
+    [Test]
     public void TheFirstTestFile_IsMadeByteForByte()
     {
         // armoryak.py's make_test.py: entry 0 palette, entry 1 pixels, entry 2 shape, for children 0-2
