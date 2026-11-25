@@ -715,6 +715,8 @@ public class MainWindowViewModel : ObservableObject
 
     private void DispatchSelection(object? node)
     {
+        // the model view's figure button (draw armour on its wearer) is for ARMOR.YAK pieces only
+        _modelViewModel.CanShowWearer = node is YakChildTreeViewItem { YakFile.EngineVersion: EngineVersion.DarkAlliance };
         switch (node)
         {
             case null:
@@ -2001,7 +2003,7 @@ public class MainWindowViewModel : ObservableObject
     // YAK / HDR-DAT children
     // ─────────────────────────────────────────────────────────────────────────
 
-    private void OnYakChildElementSelected(YakChildTreeViewItem childEntry)
+    private void OnYakChildElementSelected(YakChildTreeViewItem childEntry, bool resetCamera = true)
     {
         // The child as it is now, with any edit (Armour menu), not the bytes the file was opened with.
         var child = childEntry.Value;
@@ -2014,10 +2016,41 @@ public class MainWindowViewModel : ObservableObject
             child.Vif,
             SelectedNodeImage?.PixelWidth ?? 0,
             SelectedNodeImage?.PixelHeight ?? 0));
-        _modelViewModel.VifModel = model;
 
-        var facts = childEntry.YakFile.EngineVersion == EngineVersion.DarkAlliance ? ArmourFacts(childEntry) : null;
-        ShowModelWithLog(log, childEntry.Label + " of " + (childEntry.Parent as YakTreeViewItem)?.Label, facts);
+        string? facts = null;
+        if (childEntry.YakFile.EngineVersion == EngineVersion.DarkAlliance)
+        {
+            // Armour: drawn on the character's own body and hair (the model view's figure button)
+            ArmourScene.Wearer? wearer = null;
+            string? problem = null;
+            if (ArmourScene.ShowWearer) wearer = ArmourScene.Find(childEntry.ChildIndex, World?.DataPath, out problem);
+            if (wearer != null)
+            {
+                var parts = new List<(Model, BitmapSource?)> { (model, SelectedNodeImage) };
+                parts.AddRange(ArmourScene.Parts(wearer, childEntry.EntryIndex, child.Vif));
+                _modelViewModel.SetCompositeModel(parts);
+            }
+            else
+            {
+                _modelViewModel.VifModel = model;
+            }
+
+            facts = ArmourFacts(childEntry) + "\n" +
+                    ArmourScene.Describe(wearer, childEntry.EntryIndex, problem, ArmourScene.ShowWearer) + ".";
+        }
+        else
+        {
+            _modelViewModel.VifModel = model;
+        }
+
+        ShowModelWithLog(log, childEntry.Label + " of " + (childEntry.Parent as YakTreeViewItem)?.Label, facts,
+            resetCamera);
+    }
+
+    /// <summary>Draws the selected armour piece again (its wearer switched on or off), keeping the camera.</summary>
+    internal void RefreshArmourModel()
+    {
+        if (SelectedNode is YakChildTreeViewItem child) OnYakChildElementSelected(child, resetCamera: false);
     }
 
     /// <summary>What ARMOR.YAK says about the child: its slot and buffer, size, texture, model and hidden body parts.</summary>
@@ -2074,7 +2107,7 @@ public class MainWindowViewModel : ObservableObject
         ShowModelWithLog(log, childEntry.Label + " of " + (childEntry.Parent as HdrDatTreeViewItem)?.Label);
     }
 
-    private void ShowModelWithLog(StringLogger log, string title, string? facts = null)
+    private void ShowModelWithLog(StringLogger log, string title, string? facts = null, bool resetCamera = true)
     {
         var decodeLog = log.ToString();
         LogText = facts != null
@@ -2083,7 +2116,7 @@ public class MainWindowViewModel : ObservableObject
         DetailsTitle = facts != null ? "Armour" : "Decoder log";
 
         MainWindow.SetViewportText(ContentView.Model, title, "");
-        RequestCameraReset(ContentView.Model);
+        if (resetCamera) RequestCameraReset(ContentView.Model);
 
         var views = new List<ContentView> { ContentView.Model };
         if (SelectedNodeImage != null) views.Add(ContentView.Texture);

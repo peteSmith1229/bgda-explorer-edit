@@ -211,7 +211,7 @@ internal partial class FileTreeViewContextManager
 
     private void Reshape(YakFile yak, int entry, int? child)
     {
-        var window = new ArmourReshapeWindow(yak, entry, child) { Owner = _window };
+        var window = new ArmourReshapeWindow(yak, entry, child, ViewModel.World?.DataPath) { Owner = _window };
         if (window.ShowDialog() != true) return;
         var problems = new List<string>();
         var done = 0;

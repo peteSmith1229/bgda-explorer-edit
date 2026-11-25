@@ -28,6 +28,7 @@ public class ArmorYakTests
     private const string SecondTestFileMd5 = "263fd9ff4b56c38b6b716218251dd858";
 
     private byte[]? _stock;
+    private string? _stockPath;
 
     [OneTimeSetUp]
     public void FindArmorYak()
@@ -38,7 +39,16 @@ public class ArmorYakTests
             dir = dir.Parent;
         }
 
-        if (dir != null) _stock = File.ReadAllBytes(Path.Combine(dir.FullName, "Test_files", "ARMOR.YAK"));
+        if (dir == null) return;
+        _stockPath = Path.Combine(dir.FullName, "Test_files", "ARMOR.YAK");
+        _stock = File.ReadAllBytes(_stockPath);
+    }
+
+    /// <summary>Test_files/ARMOR.YAK's path; the character archives (HUMAN.LMP ...) are looked for next to it.</summary>
+    private string ArmorYakPath()
+    {
+        Stock();
+        return _stockPath!;
     }
 
     private byte[] Stock()
@@ -289,6 +299,61 @@ public class ArmorYakTests
         Assert.That(ArmorYakInfo.GlowNote(20), Is.Null);
         Assert.That(ArmorYakInfo.GlowNote(19), Does.Contain("without a +N"));
         Assert.That(ArmorYakInfo.GlowNote(59), Does.Contain("added entry"));
+    }
+
+    [Test]
+    public void TheWearers_AreTheCharactersOwnModels_InTheArmoursPose()
+    {
+        var yak = Open();
+        var dir = Path.GetDirectoryName(ArmorYakPath())!;
+        for (var c = 0; c < 4; c++)
+        {
+            var (archive, _, _) = ArmorWearer.Files(c);
+            var path = Path.Combine(dir, archive);
+            if (!File.Exists(path)) Assert.Ignore($"Test_files/{archive} was not found next to ARMOR.YAK.");
+            var wearer = ArmorWearer.FromArchive(c, File.ReadAllBytes(path), out var problem);
+            Assert.That(problem, Is.Null);
+            Assert.That(wearer, Is.Not.Null);
+
+            // one hidden-body-parts bit per body mesh, as the names have; the elf's ponytail hides her scalp
+            Assert.That(wearer!.BodyMeshCount, Is.EqualTo(ArmorYakInfo.BodyParts(c).Count));
+            Assert.That(wearer.HairHides, Is.EqualTo(c == 1 ? 0x2UL : 0UL));
+
+            // every piece the character wears sits on that body (the same bind pose): within 4 units of its box
+            var (min, max) = Box(new ArmorModel(wearer.BodyVif).GetPositions());
+            for (var e = 0; e < yak.EntryCount; e++)
+            {
+                var (pmin, pmax) = Box(new ArmorModel(yak.GetChild(e, c).Vif).GetPositions());
+                for (var a = 0; a < 3; a++)
+                {
+                    Assert.That(min[a] - pmin[a], Is.LessThan(4.0), $"{archive}, entry {e}, axis {a}");
+                    Assert.That(pmax[a] - max[a], Is.LessThan(4.0), $"{archive}, entry {e}, axis {a}");
+                }
+            }
+        }
+
+        // ... which tells the characters apart: the human's plate helmet sits far above the dwarf
+        var dwarf = ArmorWearer.FromArchive(2, File.ReadAllBytes(Path.Combine(dir, "DWARF.LMP")), out _)!;
+        Assert.That(Box(new ArmorModel(yak.GetChild(25, 0).Vif).GetPositions()).Max[2] -
+                    Box(new ArmorModel(dwarf.BodyVif).GetPositions()).Max[2], Is.GreaterThan(20.0));
+
+        // the human's clothes leave the eyes, scalp, ears, upper arms, hands, feet, neck and face showing
+        var human = ArmorWearer.FromArchive(0, File.ReadAllBytes(Path.Combine(dir, "HUMAN.LMP")), out _)!;
+        var clothes = new ArmorModel(yak.GetChild(0, 0).Vif).HiddenBodyParts;
+        Assert.That(human.VisibleMeshes(clothes, hair: true), Is.EqualTo(new[] { 0, 2, 3, 5, 6, 8, 9, 10 }));
+        Assert.That(human.Describe(true), Does.Contain("HUMAN.LMP man.vif"));
+        Assert.That(ArmorWearer.HairShownWith(19), Is.True);  // plate body
+        Assert.That(ArmorWearer.HairShownWith(25), Is.False); // plate helmet
+        Assert.That(ArmorWearer.HairShownWith(59), Is.True);  // an added entry: its slot is the item's
+        Assert.That(ArmorWearer.FromArchive(0, File.ReadAllBytes(Path.Combine(dir, "ELF.LMP")), out var wrong), Is.Null);
+        Assert.That(wrong, Does.Contain("man.vif"));
+    }
+
+    private static (double[] Min, double[] Max) Box(double[] p)
+    {
+        var n = p.Length / 3;
+        return (Enumerable.Range(0, 3).Select(a => Enumerable.Range(0, n).Min(i => p[3 * i + a])).ToArray(),
+            Enumerable.Range(0, 3).Select(a => Enumerable.Range(0, n).Max(i => p[3 * i + a])).ToArray());
     }
 
     /// <summary>armoryak.py's make_test.py: entry 0 palette, entry 1 pixels, entry 2 shape, for children 0-2.</summary>
