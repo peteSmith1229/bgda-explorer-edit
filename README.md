@@ -204,26 +204,36 @@ Alliance II files are read with the Dark Alliance formats for now.
     the game's own.
 
   **Aggressive Bosses**:
-  - Xantam attacks twice as often, and from the start of the fight his fire beams are green and his fire trails
-    home in on the heroes (the game's only once he is below 450 health);
+  - Xantam attacks twice as often; from the start of the fight his fire beams are green and his fire trails home in
+    on the heroes (the game's only once he is below 450 health); and his volleys are bigger: ten Magic Missiles in a
+    wider fan (the game's five), four Ball Lightnings (two) and five orbs (three);
+  - Karne throws a fan of three knives (Hail's spread), and one throw in two is one of Vahn's: Flaming, Ice or Shock,
+    with the archers' damage kinds (his extra knife when he is badly hurt stays single);
   - Ilivarra casts twice as often, and raises her skeletons two at a time while 8 or fewer creatures are near her,
     the heroes and she among them (the game's one at a time, while 4 or fewer);
-  - the dragon's buffets that knock the heroes back, and the falling ice after them, come twice as often;
+  - Sessth casts the lizardman shaman's spells while he chases a hero, one every 3 to 6 seconds (Otiluke's bolt, a
+    fireball, Melf's acid arrow or three Magic Missiles, with the shaman's damage), and every 5 to 10 seconds of the
+    fight puts the monsters' poison gas on his target (radius 40, 5 seconds; it spares him and his lizardmen);
+  - the dragon's buffets that knock the heroes back, and the falling ice after them, come twice as often, and every
+    6 to 12 seconds, with a hero within 110 of its head, a ring of frost (Shatter's) bursts from it: 3 to 6 cold
+    damage, and every hero in it chilled (blue and slower for about 3 seconds);
   - Eldrith gets her thrown weapon back 5 seconds after a throw (a bolt, or her last form's rain of them), once in
-    each of her forms, so she throws it twice as often; it reappears in her hand, as it does when she changes form.
+    each of her forms, so she throws it twice as often (it reappears in her hand, as it does when she changes form);
+    every 15 to 25 seconds of the fight she casts Antimagic Field (fire, cold, lightning and magic don't hurt her for
+    6 seconds), and every 12 to 20 seconds, with a hero close to her, Blade Barrier (spinning axes round her for 10
+    seconds that hurt whoever is next to her), with Kromlech's sounds (Ilivarra's aren't loaded in her level).
 
-  Karne and Sessth fight as the game made them.
+  Smarter Enemies and Enemies Use Feats change the game's 32 ordinary kinds of monster, and Aggressive Bosses the
+  six bosses; gas spores, ghosts, guards, cats, rats and the town's people are left as they are, and no monster's
+  health or damage changes. Ticked, each card goes in with its parts (four, four and one); a file featpatch.py gave
+  fewer keeps them, and an executable with an earlier version of Improved Enemy AI (its first three parts, the
+  casters', brutes', drow's or archers' test, the single seven-part card, the two cards before the bosses, or the
+  three cards with four of the bosses) is brought up to date when it is saved, with Smarter Enemies and Enemies Use
+  Feats (all eight older parts) when it had all of its own, and Aggressive Bosses when it had the bosses; before
+  them, Aggressive Bosses goes in only when it is ticked.
 
-  Smarter Enemies and Enemies Use Feats change the game's 32 ordinary kinds of monster, and Aggressive Bosses four
-  of the six bosses; gas spores, ghosts, guards, cats, rats and the town's people are left as they are, and no
-  monster's health or damage changes. Ticked, each card goes in with its parts (four, four and one); a file
-  featpatch.py gave fewer keeps them, and an executable with an earlier version of Improved Enemy AI (its first
-  three parts, the casters', brutes', drow's or archers' test, the single seven-part card or the two cards before
-  the bosses) is brought up to date when it is saved, with Smarter Enemies and Enemies Use Feats (all eight older
-  parts) when it had all of its own; Aggressive Bosses goes in only when it is ticked.
-
-  They go into game code nothing ever runs (about 32 KB of it, the same in the stock executable and every
-  three-player build, so three players can still be turned on or off), the borrowed spells' names and
+  They go into game code nothing ever runs (about 40 KB of it in 99 stretches, the same in the stock executable and
+  every three-player build, so three players can still be turned on or off), the borrowed spells' names and
   descriptions (in all five languages) into `GTEXT.LMP` and their HUD icons into `ICONS.LMP`, each saved after
   the executable. Unticking one puts the game's own code back exactly. A file with an earlier test version
   (Kromlech's spells, Power Attack, Sorcerer's Blood, either Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison
