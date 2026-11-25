@@ -102,6 +102,20 @@ public sealed class ArmorWearer
         return Enumerable.Range(0, BodyMeshCount).Where(i => (hidden >> i & 1) == 0).ToList();
     }
 
+    private ArmorModel? _body;
+    private ArmorTexture? _bodyTexture;
+
+    /// <summary>
+    /// The parts of a piece worn by this character that are its own skin, face and hair (see <see cref="ArmorOwnParts"/>):
+    /// none for most pieces; most of the elf's clothes body and her clothes gloves' fingers.
+    /// </summary>
+    public ArmorOwnParts OwnParts(byte[] pieceVif, byte[] pieceTex)
+    {
+        _body ??= new ArmorModel(BodyVif);
+        _bodyTexture ??= new ArmorTexture(BodyTex);
+        return ArmorOwnParts.Find(new ArmorModel(pieceVif), new ArmorTexture(pieceTex), _body, _bodyTexture);
+    }
+
     /// <summary>"the human's own model (HUMAN.LMP man.vif) and hair": for the Details view.</summary>
     public string Describe(bool hair)
     {

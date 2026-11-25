@@ -29,6 +29,7 @@ public partial class ArmourReshapeWindow : Window
     private readonly YakFile _yak;
     private readonly int _entry;
     private readonly string? _dataFolder;
+    private readonly ArmorOwnParts?[] _own;
     private Rect3D _pieceBounds = Rect3D.Empty;
     private readonly CheckBox[] _characters = new CheckBox[4];
     private readonly BitmapSource?[] _textures = new BitmapSource?[4];
@@ -54,6 +55,7 @@ public partial class ArmourReshapeWindow : Window
         _yak = yak;
         _entry = entry;
         _dataFolder = dataFolder;
+        _own = ArmourScene.OwnParts(yak, entry, dataFolder);
         InitializeComponent();
         ThemeManager.Attach(this);
 
@@ -79,6 +81,15 @@ public partial class ArmourReshapeWindow : Window
         wearerBox.IsChecked = ArmourScene.ShowWearer;
         wearerBox.Checked += (_, _) => ShowPreview(frame: false);
         wearerBox.Unchecked += (_, _) => ShowPreview(frame: false);
+
+        if (ArmourScene.OwnPartsText(_own) is { } ownText)
+        {
+            keepText.Text = ownText + " Ticked, the clothes change around them and stay joined to them.";
+            keepBox.Visibility = Visibility.Visible;
+            keepText.Visibility = Visibility.Visible;
+            keepBox.Checked += (_, _) => Update();
+            keepBox.Unchecked += (_, _) => Update();
+        }
 
         MainWindow.SetupViewport(viewport);
         viewport.SetResourceReference(HelixToolkit.Wpf.HelixViewport3D.CoordinateSystemLabelForegroundProperty,
@@ -110,13 +121,19 @@ public partial class ArmourReshapeWindow : Window
         return string.Format(CultureInfo.CurrentCulture, "{0:0.0} × {1:0.0} × {2:0.0}", size[0], size[1], size[2]);
     }
 
-    /// <summary>Character <paramref name="c"/>'s model as Reshape would write it with the sliders as they are.</summary>
+    /// <summary>
+    /// Character <paramref name="c"/>'s model as Reshape writes it with the sliders as they are (the character's own
+    /// skin, face and hair kept still when ticked), or its model as it is with why it can't be reshaped.
+    /// </summary>
+    public (byte[] Vif, string? Problem) ResultFor(int c) => Reshape(c);
+
     private (byte[] Vif, string? Problem) Reshape(int c)
     {
         var vif = _yak.GetChild(_entry, c).Vif;
+        var keep = keepBox.IsChecked == true ? _own[c]?.Vertices : null;
         try
         {
-            return (new ArmorModel(vif).Reshaped(ScaleX, ScaleY, ScaleZ, Inflate), null);
+            return (new ArmorModel(vif).Reshaped(ScaleX, ScaleY, ScaleZ, Inflate, keep), null);
         }
         catch (ArgumentException ex)
         {

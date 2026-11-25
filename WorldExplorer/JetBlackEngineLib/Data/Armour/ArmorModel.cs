@@ -527,17 +527,45 @@ public sealed class ArmorModel
     }
 
     /// <summary>
-    /// New positions with each side of a mirrored pair (x &lt; 0 and x ≥ 0: gloves, boots) scaled about its own
-    /// centre; a body or helmet has one side. <paramref name="factor"/> is x, y, z (x left-right, z up).
+    /// New positions scaled by x, y, z (x left-right, z up) about the piece's centre, or, for a pair (gloves, boots: no
+    /// triangle crosses x = 0), each side (x &lt; 0 and x ≥ 0) about its own centre. Every shipped body and helmet has
+    /// triangles across the middle, and no boots or gloves do; a body's separate parts (pauldrons) move with it.
     /// </summary>
-    public double[] ScaledPairs(double fx, double fy, double fz)
+    public double[] ScaledPairs(double fx, double fy, double fz) => ScaledPairs(fx, fy, fz, null);
+
+    /// <summary>
+    /// <see cref="ScaledPairs(double, double, double)"/> leaving the vertices in <paramref name="keep"/> where they are
+    /// (the wearer's own: <see cref="ArmorOwnParts.Vertices"/>). Then each separate bit of the rest (joined by
+    /// triangles not through kept vertices: the elf's leotard, each wrap round an arm or a shin) is scaled about its own
+    /// centre, so it changes where it is, round the skin it was on.
+    /// </summary>
+    public double[] ScaledPairs(double fx, double fy, double fz, bool[]? keep)
     {
         var p = GetPositions();
         var output = (double[])p.Clone();
         var f = new[] { fx, fy, fz };
-        foreach (var negative in new[] { true, false })
+        bool Left(int v) => p[3 * v] < 0;
+        var triangles = GetTriangles();
+        List<List<int>> parts;
+        if (keep != null && keep.Any(k => k))
         {
-            var rows = Enumerable.Range(0, VertexCount).Where(i => negative ? p[3 * i] < 0 : p[3 * i] >= 0).ToList();
+            parts = Islands(triangles, v => !keep[v]);
+        }
+        else if (triangles.Any(t => Left(t.A) != Left(t.B) || Left(t.B) != Left(t.C)))
+        {
+            parts = new List<List<int>> { Enumerable.Range(0, VertexCount).ToList() };
+        }
+        else
+        {
+            parts = new List<List<int>>
+            {
+                Enumerable.Range(0, VertexCount).Where(Left).ToList(),
+                Enumerable.Range(0, VertexCount).Where(v => !Left(v)).ToList()
+            };
+        }
+
+        foreach (var rows in parts)
+        {
             if (rows.Count == 0) continue;
             for (var axis = 0; axis < 3; axis++)
             {
@@ -549,6 +577,31 @@ public sealed class ArmorModel
         }
 
         return output;
+    }
+
+    /// <summary>
+    /// The vertices where <paramref name="include"/> is true, in groups joined by triangles whose corners are all
+    /// included (a vertex and its welded copies are one).
+    /// </summary>
+    private List<List<int>> Islands(List<(int A, int B, int C, int Chunk, int SA, int SB, int SC)> triangles, Func<int, bool> include)
+    {
+        var weld = WeldGroups(out var groupCount);
+        var parent = Enumerable.Range(0, groupCount).ToArray();
+        int Root(int g)
+        {
+            while (parent[g] != g) g = parent[g] = parent[parent[g]];
+            return g;
+        }
+
+        foreach (var t in triangles)
+        {
+            if (!include(t.A) || !include(t.B) || !include(t.C)) continue;
+            var (a, b, c) = (Root(weld[t.A]), Root(weld[t.B]), Root(weld[t.C]));
+            parent[b] = a;
+            parent[Root(c)] = a;
+        }
+
+        return Enumerable.Range(0, VertexCount).Where(include).GroupBy(v => Root(weld[v])).Select(g => g.ToList()).ToList();
     }
 
     /// <summary>New positions pushed out along the (welded, averaged) normals by <paramref name="distance"/> units.</summary>
@@ -580,11 +633,31 @@ public sealed class ArmorModel
     /// (<see cref="Inflated"/>): what WorldExplorer's Reshape writes, and what its preview shows. This model is
     /// left as it is. Throws <see cref="ArgumentException"/> when the result doesn't fit the format.
     /// </summary>
-    public byte[] Reshaped(double scaleX, double scaleY, double scaleZ, double inflate)
+    public byte[] Reshaped(double scaleX, double scaleY, double scaleZ, double inflate) =>
+        Reshaped(scaleX, scaleY, scaleZ, inflate, null);
+
+    /// <summary>
+    /// <see cref="Reshaped(double, double, double, double)"/> leaving the vertices in <paramref name="keep"/> where they
+    /// are: the wearer's own skin, face and hair (<see cref="ArmorOwnParts.Vertices"/>) stay as they are while the
+    /// clothes around them change, and stay joined to them.
+    /// </summary>
+    public byte[] Reshaped(double scaleX, double scaleY, double scaleZ, double inflate, bool[]? keep)
     {
+        if (keep != null && keep.Length != VertexCount) throw new ArgumentException($"{keep.Length} flags for {VertexCount} vertices.");
         var result = new ArmorModel(Data);
-        result.EditPositions(ScaledPairs(scaleX, scaleY, scaleZ));
-        if (inflate != 0) result.EditPositions(result.Inflated(inflate));
+        result.EditPositions(ScaledPairs(scaleX, scaleY, scaleZ, keep));
+        if (inflate == 0) return result.Data;
+        var pushed = result.Inflated(inflate);
+        if (keep != null)
+        {
+            var now = result.GetPositions();
+            for (var i = 0; i < keep.Length; i++)
+            {
+                if (keep[i]) Array.Copy(now, 3 * i, pushed, 3 * i, 3);
+            }
+        }
+
+        result.EditPositions(pushed);
         return result.Data;
     }
 }
