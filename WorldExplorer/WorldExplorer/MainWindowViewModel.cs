@@ -16,6 +16,7 @@
 
 using JetBlackEngineLib;
 using JetBlackEngineLib.Data.Animation;
+using JetBlackEngineLib.Data.Armour;
 using JetBlackEngineLib.Data.CutScenes;
 using JetBlackEngineLib.Data.DataContainers;
 using JetBlackEngineLib.Data.Models;
@@ -818,6 +819,39 @@ public class MainWindowViewModel : ObservableObject
                 overview.Facts.Add(new("Assets resolved", World.AssetIndex.Count.ToString("N0")));
                 overview.Note = "Entities are grouped by category. Selecting one previews its meshes and " +
                                 "shows its record in Details.";
+                break;
+            }
+            case YakTreeViewModel yakNode:
+            {
+                var yak = yakNode.YakFile;
+                if (yakNode.HasDummyChild) yakNode.ForceLoadChildren();
+                if (World != null) overview.Facts.Add(new("Location", World.FilePath));
+                overview.Facts.Add(new("Entries", yak.EntryCount.ToString("N0")));
+                if (yak.EngineVersion == EngineVersion.DarkAlliance)
+                {
+                    overview.Facts.Add(new("Room for", Plural.Of(ArmorYakInfo.MaxEntries - yak.EntryCount, "more entry", "more entries")));
+                    try
+                    {
+                        var problems = YakFile.Problems(yak.Write());
+                        overview.Facts.Add(new("Checks", problems.Count == 0 ? "Fine for the game" : Plural.Of(problems.Count, "problem")));
+                        foreach (var problem in problems.Take(5)) overview.Facts.Add(new("Problem", problem));
+                    }
+                    catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+                    {
+                        overview.Facts.Add(new("Checks", ex.Message));
+                    }
+
+                    if (yak.HasUnsavedChanges)
+                    {
+                        overview.PendingChanges.Add(Plural.Of(yak.CountUnsavedChanges(), "unsaved change"));
+                    }
+
+                    overview.Note = "Each entry is a piece of armour; an item's model picks it, and the next entry is its " +
+                                    "enchanted look. Right-click a character's child to export or import its texture " +
+                                    "(PNG) or shape (OBJ), recolour it, reshape it or choose the body parts it hides; " +
+                                    "right-click an entry to copy it as a new look.";
+                }
+
                 break;
             }
             case DdfCategoryTreeViewModel category:
@@ -1969,20 +2003,57 @@ public class MainWindowViewModel : ObservableObject
 
     private void OnYakChildElementSelected(YakChildTreeViewItem childEntry)
     {
-        if (childEntry.Value == null) return;
-        SelectedNodeImage = DecodeTexture(childEntry.YakFile.FileData.AsSpan()[(childEntry.Value.TextureOffset + childEntry.Value.VifOffset)..]);
+        // The child as it is now, with any edit (Armour menu), not the bytes the file was opened with.
+        var child = childEntry.Value;
+        SelectedNodeImage = DecodeTexture(child.Tex);
         StringLogger log = new();
         _modelViewModel.Texture = SelectedNodeImage;
         _modelViewModel.AnimData = null;
         Model model = new(VifDecoder.Decode(
             log,
-            childEntry.YakFile.FileData.AsSpan()
-                .Slice(childEntry.Value.VifOffset, childEntry.Value.TextureOffset),
+            child.Vif,
             SelectedNodeImage?.PixelWidth ?? 0,
             SelectedNodeImage?.PixelHeight ?? 0));
         _modelViewModel.VifModel = model;
 
-        ShowModelWithLog(log, childEntry.Label + " of " + (childEntry.Parent as YakTreeViewItem)?.Label);
+        var facts = childEntry.YakFile.EngineVersion == EngineVersion.DarkAlliance ? ArmourFacts(childEntry) : null;
+        ShowModelWithLog(log, childEntry.Label + " of " + (childEntry.Parent as YakTreeViewItem)?.Label, facts);
+    }
+
+    /// <summary>What ARMOR.YAK says about the child: its slot and buffer, size, texture, model and hidden body parts.</summary>
+    private static string ArmourFacts(YakChildTreeViewItem node)
+    {
+        var child = node.Value;
+        var slot = ArmorYakInfo.SlotOf(node.EntryIndex);
+        var capacity = ArmorYakInfo.Capacity(slot);
+        var read = ArmorYakInfo.ReadSize(child.Length);
+        var text = new StringBuilder();
+        text.AppendLine($"Entry {node.EntryIndex}: {ArmorYakInfo.EntryName(node.EntryIndex)}, worn by the {ArmorYakInfo.Characters[node.ChildIndex].ToLowerInvariant()}");
+        text.AppendLine(slot == ArmorSlot.Unknown
+            ? $"Added entry: the item pointing at it decides the slot. {read:N0} bytes are read; the body buffer holds {capacity:N0}."
+            : $"Slot: {slot.ToString().ToLowerInvariant()}. {read:N0} bytes are read into a {capacity:N0}-byte buffer" +
+              (read > capacity ? " — TOO BIG: it would overwrite the next buffer." : "."));
+        try
+        {
+            var m = new ArmorModel(child.Vif);
+            var t = new ArmorTexture(child.Tex);
+            text.AppendLine($"Model: {m.VertexCount:N0} vertices in {m.Chunks.Count} chunks, VU program {m.Program}" +
+                            ((m.Flags & 0x10) != 0 ? " (metal)" : ""));
+            text.AppendLine($"Texture: {t.Width}×{t.Height}, 256 colours" +
+                            (t.Coverage().All(x => x) ? "" : "; only the parts the model uses are stored"));
+            text.AppendLine($"Hides the wearer's: {ArmorYakInfo.MaskText(m.HiddenBodyParts, node.ChildIndex)}");
+        }
+        catch (ArgumentException ex)
+        {
+            text.AppendLine($"Couldn't read the child: {ex.Message}");
+        }
+
+        if (node.ChildIndex == 3)
+        {
+            text.AppendLine("Class 3: the game's file fills this child with copies of the dwarf's models.");
+        }
+
+        return text.ToString().TrimEnd();
     }
 
     private void OnHdrDatChildElementSelected(HdrDatChildTreeViewItem childEntry)
@@ -2002,11 +2073,13 @@ public class MainWindowViewModel : ObservableObject
         ShowModelWithLog(log, childEntry.Label + " of " + (childEntry.Parent as HdrDatTreeViewItem)?.Label);
     }
 
-    private void ShowModelWithLog(StringLogger log, string title)
+    private void ShowModelWithLog(StringLogger log, string title, string? facts = null)
     {
         var decodeLog = log.ToString();
-        LogText = decodeLog.Length > 0 ? decodeLog : null;
-        DetailsTitle = "Decoder log";
+        LogText = facts != null
+            ? decodeLog.Length > 0 ? facts + "\n\nDecoder log\n" + decodeLog : facts
+            : decodeLog.Length > 0 ? decodeLog : null;
+        DetailsTitle = facts != null ? "Armour" : "Decoder log";
 
         MainWindow.SetViewportText(ContentView.Model, title, "");
         RequestCameraReset(ContentView.Model);

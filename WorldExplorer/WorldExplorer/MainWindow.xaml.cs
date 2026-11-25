@@ -672,7 +672,8 @@ public partial class MainWindow : Window
     private void Save_CanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
         var world = ViewModel?.World;
-        e.CanExecute = world != null && (world.WorldGob != null || world.WorldLmp is { } lmp && lmp is not ClpFile);
+        e.CanExecute = world != null && (world.WorldGob != null || world.WorldLmp is { } lmp && lmp is not ClpFile ||
+                                         world.WorldYak != null);
     }
 
     private void Save_Executed(object sender, ExecutedRoutedEventArgs e) => SaveCurrent();
@@ -827,9 +828,76 @@ public partial class MainWindow : Window
         var world = ViewModel.World;
         if (world?.WorldGob != null) return SaveGob();
         if (world?.WorldLmp is { } lmp && lmp is not ClpFile) return SaveArchive(lmp);
+        if (world?.WorldYak != null) return SaveYak();
 
         ViewModel.Notifications.Info("Nothing to save", "This type of file is read-only in WorldExplorer.");
         return false;
+    }
+
+    /// <summary>
+    /// Saves the open YAK (ARMOR.YAK) with its edits. Children that kept their size stay where they were; ones that
+    /// grew, and added entries, go after the end. Problems the game would trip over (a piece bigger than its buffer)
+    /// are shown first. Saving over the open file marks it saved; anywhere else writes a copy.
+    /// </summary>
+    public bool SaveYak()
+    {
+        var world = ViewModel.World;
+        var yak = world?.WorldYak;
+        if (world == null || yak == null) return false;
+
+        byte[] data;
+        try
+        {
+            data = yak.Write();
+        }
+        catch (InvalidOperationException ex)
+        {
+            ViewModel.Notifications.Warning("Can't save", ex.Message);
+            return false;
+        }
+
+        if (yak.EngineVersion == JetBlackEngineLib.EngineVersion.DarkAlliance)
+        {
+            var problems = JetBlackEngineLib.Data.Textures.YakFile.Problems(data);
+            if (problems.Count > 0)
+            {
+                var answer = MessageBox.Show(this,
+                    "The game would have trouble with this file:\n\n" + string.Join("\n", problems.Take(8)) +
+                    (problems.Count > 8 ? $"\n… and {problems.Count - 8} more" : "") +
+                    "\n\nA piece bigger than its buffer overwrites the next one for players 1 and 2. Save anyway?",
+                    "Save " + yak.Name, MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+                if (answer != MessageBoxResult.Yes) return false;
+            }
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            FileName = yak.Name,
+            Filter = "YAK File|*.yak|All Files|*.*"
+        };
+        if (Directory.Exists(world.DataPath)) dialog.InitialDirectory = world.DataPath;
+        if (dialog.ShowDialog(this) != true) return false;
+
+        try
+        {
+            File.WriteAllBytes(dialog.FileName, data);
+            var savedOpenFile = IsOpenFile(dialog.FileName);
+            if (savedOpenFile) yak.MarkSaved();
+            UpdateTitle();
+            AnnounceSave(dialog.FileName, savedOpenFile);
+            if (data.Length != yak.FileData.Length)
+            {
+                ViewModel.Notifications.Info($"{yak.Name} is now {data.Length:N0} bytes",
+                    $"It was {yak.FileData.Length:N0}. Rebuild the ISO with it (the file no longer fits its old place).");
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            ReportError("Save failed", ex);
+            return false;
+        }
     }
 
     /// <summary>
@@ -1092,6 +1160,11 @@ public partial class MainWindow : Window
                     new RelayCommand(() => RunAction("Add archive", () => _contextManager.AddArchive(gob))));
                 yield return new OverviewAction("Export All Textures…", "Icon.Export",
                     new RelayCommand(() => RunAction("Export", () => _contextManager.BatchExportTextures(gob))));
+                break;
+
+            case YakTreeViewModel yakNode when world.WorldYak != null:
+                yield return new OverviewAction($"Save {yakNode.YakFile.Name}…", "Icon.Save",
+                    new RelayCommand(() => SaveYak()), IsPrimary: yakNode.YakFile.HasUnsavedChanges);
                 break;
 
             case LmpTreeViewModel archive:

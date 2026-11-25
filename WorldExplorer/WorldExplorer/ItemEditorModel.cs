@@ -1127,7 +1127,10 @@ public sealed class ItemRow : ObservableObject
             var looks = ItemBits.Looks(item.Flags);
             string Files(int m) => _owner.ModelAt(m) is { } model ? model.Vif : "?";
             var held = item.WornFromArmorYak
-                ? $"Worn: ARMOR.YAK entry {item.Model} (and {item.Model + 1} when enchanted)."
+                ? $"Worn: ARMOR.YAK entry {item.Model} (and {item.Model + 1} when enchanted)." +
+                  (item.Model + 1 >= BgdaExecutable.ArmorYakEntryCount
+                      ? " Entries from 59 on aren't in the game's own file: add them in the ARMOR.YAK explorer (right-click an entry › Copy as a New Look)."
+                      : "")
                 : looks == 1
                     ? $"Held: model {item.Model} ({Files(item.Model)})."
                     : $"Held: models {item.Model}–{item.Model + looks - 1} ({string.Join(", ", Enumerable.Range(item.Model, looks).Select(Files))}).";

@@ -44,7 +44,7 @@ namespace WorldExplorer;
 /// The explorer's right-click menu, plus the archive/entry actions it offers.
 /// The actions are public so the main menu and the Overview page reuse them.
 /// </summary>
-internal class FileTreeViewContextManager
+internal partial class FileTreeViewContextManager
 {
     private readonly ContextMenu _menu = new();
     private readonly System.Windows.Controls.TreeView _treeView;
@@ -110,6 +110,15 @@ internal class FileTreeViewContextManager
                 break;
             case LmpTreeViewModel archive:
                 BuildArchiveItems(archive);
+                break;
+            case YakTreeViewModel yakNode:
+                BuildYakItems(yakNode);
+                break;
+            case YakTreeViewItem yakEntry:
+                BuildYakEntryItems(yakEntry);
+                break;
+            case YakChildTreeViewItem yakChild:
+                BuildYakChildItems(yakChild);
                 break;
             case GobTreeViewModel:
                 if (ViewModel.World?.WorldGob is { } gob)

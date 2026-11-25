@@ -14,12 +14,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using JetBlackEngineLib;
+using JetBlackEngineLib.Data.Armour;
 using JetBlackEngineLib.Data.Textures;
+using WorldExplorer.Infrastructure;
 
 namespace WorldExplorer.TreeView;
 
 /// <summary>
-/// A simple model that displays a YAK file.
+/// A YAK file: one node per entry. For Dark Alliance (ARMOR.YAK) entries are named after the armour they hold.
 /// </summary>
 public class YakTreeViewModel : TreeViewItemViewModel
 {
@@ -30,21 +33,40 @@ public class YakTreeViewModel : TreeViewItemViewModel
         _yakFile = yakFile;
     }
 
+    public YakFile YakFile => _yakFile;
+
     public override NodeKind Kind => NodeKind.Archive;
 
     public override string KindDescription => "Archive (YAK)";
+
+    public override string? Detail => HasDummyChild ? null : Plural.Of(_yakFile.EntryCount, "entry", "entries");
+
+    public override bool IsModified => !HasDummyChild && _yakFile.HasUnsavedChanges;
 
     protected override bool SearchLoadsChildren => true;
 
     protected override void LoadChildren()
     {
-        _yakFile.ReadEntries();
-        var entries = _yakFile.Entries;
-        var i = 0;
-        foreach (var entry in entries)
+        for (var i = 0; i < _yakFile.EntryCount; i++)
         {
-            Children.Add(new YakTreeViewItem(this, _yakFile, entry, "Entry " + i));
-            ++i;
+            Children.Add(new YakTreeViewItem(this, _yakFile, i));
         }
     }
+
+    /// <summary>Adds nodes for entries added to the file, and drops nodes of entries taken out.</summary>
+    public void SyncEntries()
+    {
+        if (HasDummyChild) return;
+        while (Children.Count > _yakFile.EntryCount) Children.RemoveAt(Children.Count - 1);
+        for (var i = Children.Count; i < _yakFile.EntryCount; i++)
+        {
+            Children.Add(new YakTreeViewItem(this, _yakFile, i));
+        }
+
+        RaiseDetailChanged();
+    }
+
+    /// <summary>"Entry 19 · Plate body" for ARMOR.YAK, "Entry 19" otherwise.</summary>
+    public static string EntryLabel(YakFile yak, int entry) =>
+        yak.EngineVersion == EngineVersion.DarkAlliance ? $"Entry {entry} · {ArmorYakInfo.EntryName(entry)}" : $"Entry {entry}";
 }

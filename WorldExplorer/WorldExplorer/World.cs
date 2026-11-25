@@ -110,7 +110,8 @@ public class World
         if (WorldGob != null) _savedAddedArchives = AddedArchives().ToArray();
     }
 
-    public bool HasUnsavedChanges() => IsArchiveListUnsaved() || EditableArchives.Any(HasUnsavedChanges);
+    public bool HasUnsavedChanges() => IsArchiveListUnsaved() || EditableArchives.Any(HasUnsavedChanges) ||
+                                       WorldYak?.HasUnsavedChanges == true;
 
     /// <summary>The archives added to the GOB since it was opened.</summary>
     private IEnumerable<LmpFile> AddedArchives()
@@ -132,6 +133,7 @@ public class World
     public int CountUnsavedEntries()
     {
         var count = AddedArchives().Count(lmp => !_savedAddedArchives.Contains(lmp));
+        count += WorldYak?.CountUnsavedChanges() ?? 0;
         foreach (var lmp in EditableArchives)
         {
             if (!HasUnsavedChanges(lmp)) continue;

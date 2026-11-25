@@ -61,6 +61,17 @@ Alliance II files are read with the Dark Alliance formats for now.
   `Player2`, then `Player3`; a copy of anyone else keeps the name, and the name's list picks another
   character. `Player` and `Player2` stand in for players 1 and 2; with the ADRIANNA23 executable, `Player3`
   does for player 3 in three-player games.
+- **Edit worn armour** (Dark Alliance): open `ARMOR.YAK`. Each entry is a piece of armour (an item's model picks
+  it, and the next entry is its enchanted look), named in the explorer, with one child per character (human, elf,
+  dwarf, and a fourth the game fills with copies of the dwarf's). Right-click a child to export its texture as PNG
+  and import an edited one (same size, any colours), export its shape as OBJ and import it after moving vertices in
+  Blender (same vertices, same order), recolour it (turn a range of hues, with a preview), reshape it (scale, bulk
+  out) or choose which of the character's own body parts it hides (face, arms, legs…). Right-click an entry to do
+  the same for all its children, or Copy as a New Look: the game reads up to 85 entries, so 26 more fit, and the
+  Items tab can point an item at them. Details shows the piece's slot, size and buffer: the game reads a piece into
+  a fixed buffer (body 210 KB, boots and gloves 40 KB, helmet 26 KB) without checking, so Save warns about one that
+  doesn't fit. Saving keeps every piece where it was when it still fits; a file that grew must be rebuilt into the
+  ISO.
 - **Tools** for the selected game are in the Tools menu, the Tools drop-down on the toolbar and the start page. For
   Dark Alliance: Executable Tuning (the XP each of the 40 levels needs, starting stats, feats and spells, items,
   monster HP, three-player co-op and difficulty scaling, enhancements, saved to a copy of `SLES_506.72`), the Save

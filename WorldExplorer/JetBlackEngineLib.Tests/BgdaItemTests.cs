@@ -175,7 +175,10 @@ public class BgdaItemTests
         Assert.That(Problem(12, i => i.Stance = ItemStance.Bow), Does.Contain("bow"));
         Assert.That(Problem(0, i => i.Stance = ItemStance.OneHanded), Does.Contain("bow"));
         Assert.That(Problem(12, i => i.Model = 105), Does.Contain("look"));
-        Assert.That(Problem(51, i => i.Model = 59), Does.Contain("ARMOR.YAK"));
+        Assert.That(Problem(51, i => i.Model = 84), Does.Contain("ARMOR.YAK"));
+        Assert.That(Problem(51, i => i.Model = -1), Does.Contain("ARMOR.YAK"));
+        Assert.That(Problem(51, i => i.Model = 59), Is.Empty, "an entry added to ARMOR.YAK");
+        Assert.That(Problem(51, i => i.Model = 83), Is.Empty, "the last one with room for its enchanted look");
         Assert.That(Problem(51, i => i.Slot = ItemSlot.Helmet), Does.Contain("change slot"));
         Assert.That(Problem(55, i => i.Name = "fire ball"), Does.Contain("letters"));
         Assert.That(Problem(55, i => i.Name = "longsword"), Does.Contain("already"));

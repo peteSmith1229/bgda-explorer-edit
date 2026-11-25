@@ -14,32 +14,41 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+using JetBlackEngineLib;
+using JetBlackEngineLib.Data.Armour;
 using JetBlackEngineLib.Data.Textures;
+using System.Linq;
 
 namespace WorldExplorer.TreeView;
 
+/// <summary>An entry of a YAK file: its four children (one per character class).</summary>
 public class YakTreeViewItem : TreeViewItemViewModel
 {
-    private readonly YakEntry _entry;
-
     private readonly YakFile _yakFile;
 
-    public YakTreeViewItem(TreeViewItemViewModel parent, YakFile yakFile, YakEntry entry, string name)
-        : base(name, parent, true)
+    public YakTreeViewItem(TreeViewItemViewModel parent, YakFile yakFile, int entryIndex)
+        : base(YakTreeViewModel.EntryLabel(yakFile, entryIndex), parent, true)
     {
         _yakFile = yakFile;
-        _entry = entry;
+        EntryIndex = entryIndex;
     }
+
+    public YakFile YakFile => _yakFile;
+
+    public int EntryIndex { get; }
 
     public override NodeKind Kind => NodeKind.Folder;
 
+    public override string KindDescription => "Armour entry";
+
+    public override bool IsModified => Enumerable.Range(0, 4).Any(c => _yakFile.IsChildUnsaved(EntryIndex, c));
+
     protected override void LoadChildren()
     {
-        var i = 0;
-        foreach (var child in _entry.Children)
+        for (var c = 0; c < 4; c++)
         {
-            Children.Add(new YakChildTreeViewItem(this, _yakFile, child, _entry, "Child " + i));
-            ++i;
+            var name = _yakFile.EngineVersion == EngineVersion.DarkAlliance ? ArmorYakInfo.Characters[c] : "Child " + c;
+            Children.Add(new YakChildTreeViewItem(this, _yakFile, EntryIndex, c, name));
         }
     }
 }

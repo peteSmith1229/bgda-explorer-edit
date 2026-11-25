@@ -49,7 +49,7 @@ public class StringLogger : ILogger
         return logLevel >= _minLevel;
     }
 
-    public IDisposable BeginScope<TState>(TState state)
+    public IDisposable BeginScope<TState>(TState state) where TState : notnull
     {
         return new ScopeDisposable();
     }
@@ -70,7 +70,7 @@ public class NullLogger : ILogger
         return false;
     }
 
-    public IDisposable BeginScope<TState>(TState state)
+    public IDisposable BeginScope<TState>(TState state) where TState : notnull
     {
         return new ScopeDisposable();
     }
