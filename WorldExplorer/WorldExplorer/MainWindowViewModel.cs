@@ -2042,6 +2042,7 @@ public class MainWindowViewModel : ObservableObject
             text.AppendLine($"Texture: {t.Width}×{t.Height}, 256 colours" +
                             (t.Coverage().All(x => x) ? "" : "; only the parts the model uses are stored"));
             text.AppendLine($"Hides the wearer's: {ArmorYakInfo.MaskText(m.HiddenBodyParts, node.ChildIndex)}");
+            text.AppendLine($"Enchant glow: {ArmorYakInfo.GlowText(m.Glows, node.EntryIndex)}.");
         }
         catch (ArgumentException ex)
         {

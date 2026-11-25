@@ -88,6 +88,27 @@ public static class ArmorYakInfo
 
     public static ArmorSlot SlotOf(int entry) => ShippedEntry(entry)?.Slot ?? ArmorSlot.Unknown;
 
+    // The enchant glow (ArmorModel.GlowFlag). FUN_00174A50 picks a glow for an item when its power (FUN_00174098,
+    // ItemFormulas.Power: the +N, 7 more for an odd +N, and points for most modifiers) is above 0 and it isn't Flaming
+    // or Flaming Burst, at strength min(1, 0.6 + 0.025 x power). Worn, a piece shows it only when its model has the flag.
+
+    /// <summary>The enchant glow line of a piece's Details.</summary>
+    public static string GlowText(bool glows, int entry)
+    {
+        if (!glows) return "off, as on every shipped piece (right-click › Glow When Enchanted)";
+        return "on: worn, it glows as an enchanted weapon does when the item has power (a +N or most modifiers; not " +
+               "Flaming or Flaming Burst), brighter with more" + (GlowNote(entry) is { } note ? ". " + note : "");
+    }
+
+    /// <summary>When a glow on this entry shows less than on an enchanted look; null for an enchanted look.</summary>
+    public static string? GlowNote(int entry) => ShippedEntry(entry) switch
+    {
+        { Enchanted: true } => null,
+        null => "An added entry glows for whichever item points at it, when that item has power",
+        _ => "Items show this look only without a +N, so it glows only for one given another modifier with power " +
+             "(Frost, Shock, of Speed…)"
+    };
+
     /// <summary>"Plate body", "Plate body (enchanted)" or "Added entry".</summary>
     public static string EntryName(int entry)
     {

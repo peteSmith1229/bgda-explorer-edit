@@ -21,6 +21,12 @@ public class ArmorYakTests
     /// <summary>The first in-game test file (armour-yak/ARMOR.YAK, made by armoryak.py), confirmed by Pete.</summary>
     private const string TestFileMd5 = "ee1ea99b235597814fb23acb50751734";
 
+    /// <summary>
+    /// The second in-game test file (armour-yak-2/ARMOR.YAK, made by make_test2.py), confirmed by Pete: the enchant
+    /// glow on worn armour and two added entries.
+    /// </summary>
+    private const string SecondTestFileMd5 = "263fd9ff4b56c38b6b716218251dd858";
+
     private byte[]? _stock;
 
     [OneTimeSetUp]
@@ -218,8 +224,76 @@ public class ArmorYakTests
     [Test]
     public void TheFirstTestFile_IsMadeByteForByte()
     {
-        // armoryak.py's make_test.py: entry 0 palette, entry 1 pixels, entry 2 shape, for children 0-2
         var yak = Open();
+        MakeTheFirstTestFile(yak);
+        var written = yak.Write();
+        Assert.That(written.Length, Is.EqualTo(Stock().Length));
+        Assert.That(YakFile.Problems(written), Is.Empty);
+        Assert.That(Md5(written), Is.EqualTo(TestFileMd5));
+    }
+
+    [Test]
+    public void TheSecondTestFile_IsMadeByteForByte()
+    {
+        // make_test2.py, on top of the first: the enchanted leather body glows (entry 4, children 0-2), and entries 59
+        // and 60 are blackened copies of the plate body and its enchanted look
+        var yak = Open();
+        MakeTheFirstTestFile(yak);
+        for (var c = 0; c < 3; c++)
+        {
+            var leather = yak.GetChild(4, c);
+            var m = new ArmorModel(leather.Vif) { Glows = true };
+            yak.SetChild(4, c, m.Data, leather.Tex);
+        }
+
+        Assert.That(yak.AddEntries(19, 1), Is.EqualTo(59));
+        Assert.That(yak.AddEntries(20, 1), Is.EqualTo(60));
+        foreach (var e in new[] { 59, 60 })
+        {
+            for (var c = 0; c < 3; c++)
+            {
+                var plate = yak.GetChild(e, c);
+                var t = new ArmorTexture(plate.Tex);
+                t.SetPalette(ArmorTexture.HueShift(t.GetPalette(), 0, 0, 360, 0.0, 0.15, 0.45));
+                yak.SetChild(e, c, plate.Vif, t.Data);
+            }
+        }
+
+        var written = yak.Write();
+        Assert.That(written.Length, Is.EqualTo(11_162_192));
+        Assert.That(YakFile.Problems(written), Is.Empty);
+        Assert.That(Md5(written), Is.EqualTo(SecondTestFileMd5));
+    }
+
+    [Test]
+    public void TheGlow_IsOneBitOfTheFlags()
+    {
+        var yak = Open();
+        for (var e = 0; e < yak.EntryCount; e++)
+        {
+            for (var c = 0; c < 4; c++) Assert.That(ArmorModel.GlowsIn(yak.GetChild(e, c).Vif), Is.False, $"{e},{c}");
+        }
+
+        var vif = yak.GetChild(19, 0).Vif; // plate body, human: a metal piece
+        var m = new ArmorModel(vif);
+        Assert.That(m.Flags, Is.EqualTo(0x11));
+        m.Glows = true;
+        Assert.That(m.Flags, Is.EqualTo(0x31));
+        Assert.That(ArmorModel.GlowsIn(m.Data), Is.True);
+        Assert.That(Enumerable.Range(0, vif.Length).Where(i => vif[i] != m.Data[i]).ToArray(), Is.EqualTo(new[] { 0x10 }));
+        Assert.That(ArmorModel.Problem(m.Data), Is.Null);
+        m.Glows = false;
+        Assert.That(m.Data, Is.EqualTo(vif));
+
+        // a normal look shows only on items without a +N; an enchanted look needs no note
+        Assert.That(ArmorYakInfo.GlowNote(20), Is.Null);
+        Assert.That(ArmorYakInfo.GlowNote(19), Does.Contain("without a +N"));
+        Assert.That(ArmorYakInfo.GlowNote(59), Does.Contain("added entry"));
+    }
+
+    /// <summary>armoryak.py's make_test.py: entry 0 palette, entry 1 pixels, entry 2 shape, for children 0-2.</summary>
+    private static void MakeTheFirstTestFile(YakFile yak)
+    {
         var body = new (double Shift, double From, double To, double Sat, double Val)[]
         {
             (-105, 65, 135, 1.7, 1.15), (200, 45, 100, 1.1, 1.0), (-170, 180, 270, 1.2, 1.15)
@@ -242,11 +316,6 @@ public class ArmorYakTests
             m.EditPositions(m.ScaledPairs(1.0, 1.8, 1.8));
             yak.SetChild(2, c, m.Data, gloves.Tex);
         }
-
-        var written = yak.Write();
-        Assert.That(written.Length, Is.EqualTo(Stock().Length));
-        Assert.That(YakFile.Problems(written), Is.Empty);
-        Assert.That(Md5(written), Is.EqualTo(TestFileMd5));
     }
 
     /// <summary>make_test.py's harlequin: red and white diamonds over the boots' own shading.</summary>
