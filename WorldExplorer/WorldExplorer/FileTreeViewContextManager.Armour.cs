@@ -211,14 +211,11 @@ internal partial class FileTreeViewContextManager
         foreach (var c in window.Characters)
         {
             var current = yak.GetChild(entry, c);
-            var model = new ArmorModel(current.Vif);
             try
             {
-                var p = model.ScaledPairs(window.ScaleX, window.ScaleY, window.ScaleZ);
-                var scaled = new ArmorModel(model.Data);
-                scaled.EditPositions(p);
-                if (window.Inflate != 0) scaled.EditPositions(scaled.Inflated(window.Inflate));
-                yak.SetChild(entry, c, scaled.Data, current.Tex);
+                // the same bytes the window's preview showed
+                var vif = new ArmorModel(current.Vif).Reshaped(window.ScaleX, window.ScaleY, window.ScaleZ, window.Inflate);
+                yak.SetChild(entry, c, vif, current.Tex);
                 done++;
             }
             catch (ArgumentException ex)
