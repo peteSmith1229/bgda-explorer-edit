@@ -82,6 +82,8 @@
                 <ComboBox x:Name="previewBox" Width="120" VerticalAlignment="Center" />
                 <CheckBox x:Name="originalBox" Content="Show the original" Margin="16,0,0,0" VerticalAlignment="Center"
                           ToolTip="Show the piece as it is now, to compare (the camera stays where it is)" />
+                <CheckBox x:Name="wearerBox" Content="Show the wearer" Margin="16,0,0,0" VerticalAlignment="Center"
+                          ToolTip="Draw the character's own body and hair under the piece, without the parts it hides" />
             </StackPanel>
             <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,4,0,0"
                        Text="Drag to turn, scroll to zoom, middle-drag to pan." />

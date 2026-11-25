@@ -102,6 +102,36 @@ public class ModelViewModel : BaseViewModel
 
     public string PlayButtonLabel => _isPlaying ? "Pause" : "Play";
 
+    private bool _canShowWearer;
+
+    /// <summary>Whether the model shown is an ARMOR.YAK piece, which can be drawn on its wearer (the figure button).</summary>
+    public bool CanShowWearer
+    {
+        get => _canShowWearer;
+        set
+        {
+            if (_canShowWearer == value) return;
+            _canShowWearer = value;
+            OnPropertyChanged(nameof(CanShowWearer));
+        }
+    }
+
+    /// <summary>
+    /// Draw an armour piece on the character's own body and hair, without the parts the piece hides (remembered in
+    /// the settings). Changing it draws the selected piece again.
+    /// </summary>
+    public bool ShowWearer
+    {
+        get => ArmourScene.ShowWearer;
+        set
+        {
+            if (ArmourScene.ShowWearer == value) return;
+            ArmourScene.ShowWearer = value;
+            OnPropertyChanged(nameof(ShowWearer));
+            MainViewModel.RefreshArmourModel();
+        }
+    }
+
     public void TogglePlay() => IsPlaying = !_isPlaying;
 
     public WriteableBitmap? Texture { get; set; }

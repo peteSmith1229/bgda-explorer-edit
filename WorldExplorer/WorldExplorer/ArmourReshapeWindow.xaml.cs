@@ -21,12 +21,15 @@ namespace WorldExplorer;
 /// <summary>
 /// Scales an ARMOR.YAK entry's models (each side of a pair about its own centre) and pushes them out along their
 /// normals, for the ticked characters. Shows each model's size before and after, and a live 3D preview of one
-/// character's piece: the bytes <see cref="ArmorModel.Reshaped"/> gives, drawn the way the model view draws them.
+/// character's piece: the bytes <see cref="ArmorModel.Reshaped"/> gives, drawn the way the model view draws them,
+/// on the character's own body (<see cref="ArmourScene"/>).
 /// </summary>
 public partial class ArmourReshapeWindow : Window
 {
     private readonly YakFile _yak;
     private readonly int _entry;
+    private readonly string? _dataFolder;
+    private Rect3D _pieceBounds = Rect3D.Empty;
     private readonly CheckBox[] _characters = new CheckBox[4];
     private readonly BitmapSource?[] _textures = new BitmapSource?[4];
     private readonly bool[] _decoded = new bool[4];
@@ -45,10 +48,12 @@ public partial class ArmourReshapeWindow : Window
     public IEnumerable<int> Characters => Enumerable.Range(0, 4).Where(c => _characters[c].IsChecked == true);
 
     /// <param name="child">The character to tick and preview, or null (the entry's menu) for the human, elf and dwarf.</param>
-    public ArmourReshapeWindow(YakFile yak, int entry, int? child)
+    /// <param name="dataFolder">ARMOR.YAK's folder, where the characters' archives (HUMAN.LMP ...) are looked for.</param>
+    public ArmourReshapeWindow(YakFile yak, int entry, int? child, string? dataFolder)
     {
         _yak = yak;
         _entry = entry;
+        _dataFolder = dataFolder;
         InitializeComponent();
         ThemeManager.Attach(this);
 
@@ -71,6 +76,9 @@ public partial class ArmourReshapeWindow : Window
         previewBox.SelectionChanged += (_, _) => Update(frame: true);
         originalBox.Checked += (_, _) => ShowPreview(frame: false);
         originalBox.Unchecked += (_, _) => ShowPreview(frame: false);
+        wearerBox.IsChecked = ArmourScene.ShowWearer;
+        wearerBox.Checked += (_, _) => ShowPreview(frame: false);
+        wearerBox.Unchecked += (_, _) => ShowPreview(frame: false);
 
         MainWindow.SetupViewport(viewport);
         viewport.SetResourceReference(HelixToolkit.Wpf.HelixViewport3D.CoordinateSystemLabelForegroundProperty,
@@ -153,13 +161,26 @@ public partial class ArmourReshapeWindow : Window
         if (asItIs) vif = current.Vif;
         else (vif, problem) = reshaped ?? Reshape(c);
 
-        Model3D? content = null;
-        string? failure = null;
+        var content = new Model3DGroup();
+        string? failure = null, wearerProblem = null;
         try
         {
             var texture = Texture(c, current.Tex);
             var meshes = VifDecoder.Decode(new StringLogger(), vif, texture?.PixelWidth ?? 0, texture?.PixelHeight ?? 0);
-            content = Conversions.CreateModel3D(meshes, texture);
+            var piece = Conversions.CreateModel3D(meshes, texture);
+            content.Children.Add(piece);
+            _pieceBounds = piece.Bounds;
+            if (wearerBox.IsChecked == true)
+            {
+                // the character's own body (without what this piece hides) and hair, as the model view draws them
+                if (ArmourScene.Find(c, _dataFolder, out wearerProblem) is { } wearer)
+                {
+                    foreach (var (model, wearerTexture) in ArmourScene.Parts(wearer, _entry, vif))
+                    {
+                        content.Children.Add(Conversions.CreateModel3D(model.MeshList, wearerTexture));
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -167,7 +188,7 @@ public partial class ArmourReshapeWindow : Window
             failure = ex.Message;
         }
 
-        previewObject.Content = content ?? new Model3DGroup(); // empty: nothing drawn
+        previewObject.Content = content;
         if (frame) FramePreview();
 
         var state = failure != null ? $"{name}: the preview couldn't be drawn ({failure})."
@@ -175,6 +196,7 @@ public partial class ArmourReshapeWindow : Window
             : problem != null ? $"{name}: can't be reshaped this far ({problem}). Shown as it is now."
             : $"{name}: as Reshape will write it.";
         if (_characters[c].IsChecked != true) state += $" {name} isn't ticked, so Reshape leaves it as it is.";
+        if (wearerProblem != null) state += $" The wearer isn't drawn: {wearerProblem}.";
         previewText.Text = state;
     }
 
@@ -189,13 +211,10 @@ public partial class ArmourReshapeWindow : Window
         return bitmap;
     }
 
-    /// <summary>Points the camera at the piece shown, as the model view's Frame button does.</summary>
+    /// <summary>Points the camera at the piece (not its wearer), as the model view's Frame button does.</summary>
     private void FramePreview()
     {
-        if (previewObject.Content is { } content && !content.Bounds.IsEmpty)
-        {
-            MainWindow.FrameBounds(viewport, content.Bounds);
-        }
+        if (!_pieceBounds.IsEmpty) MainWindow.FrameBounds(viewport, _pieceBounds);
     }
 
     private void Frame_Click(object sender, RoutedEventArgs e) => FramePreview();

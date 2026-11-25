@@ -25,6 +25,10 @@
         <!-- View tools -->
         <Border Style="{StaticResource OverlayPanel}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12">
             <StackPanel Orientation="Horizontal">
+                <ToggleButton Style="{StaticResource ToggleButton.Subtle}" IsChecked="{Binding ShowWearer}"
+                              Visibility="{Binding CanShowWearer, Converter={StaticResource BoolToVisibility}}"
+                              controls:ControlAssist.Icon="{StaticResource Icon.View.Skeleton}"
+                              ToolTip="Show the wearer: the character's own body and hair under the armour, without the parts the piece hides" />
                 <ToggleButton x:Name="normalsBox" Style="{StaticResource ToggleButton.Subtle}"
                               controls:ControlAssist.Icon="{StaticResource Icon.Normals}" ToolTip="Show vertex normals"
                               Checked="normalsBox_IsCheckedChanged" Unchecked="normalsBox_IsCheckedChanged" />
