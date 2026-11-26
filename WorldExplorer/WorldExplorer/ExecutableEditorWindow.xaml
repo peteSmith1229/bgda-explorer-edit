@@ -287,6 +287,27 @@
                                 <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Height" />
                                 <TextBox Grid.Row="1" Grid.Column="3" x:Name="smHBox" Style="{StaticResource Field}" />
                             </Grid>
+
+                            <TextBlock Text="HUD LAYOUT (THREE PLAYERS)" Style="{StaticResource Heading}" />
+                            <TextBlock Style="{StaticResource Help}" Text="Moves and resizes each player's HUD in three-player games; one and two players keep the game's own layout. Health / mana / XP is the bar frame with the level-up icon; Potions / ammo is the potion and ammo symbols with their counts and the status icons; Gold is the gold total with its coin (picked-up gold flies to where it now is); Skills is the skill bar with the skill's name, energy and damage." />
+                            <CheckBox x:Name="hudLayoutCheck" Content="Custom HUD layout" FontWeight="SemiBold" ToolTipService.ShowOnDisabled="True"
+                                      Checked="HudLayoutCheck_Changed" Unchecked="HudLayoutCheck_Changed" />
+                            <TextBlock x:Name="hudLayoutStatus" Style="{StaticResource Help}" Margin="24,6,0,0" />
+                            <DataGrid x:Name="hudGrid" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                      CanUserSortColumns="False" HeadersVisibility="Column" HorizontalAlignment="Left" MinWidth="560"
+                                      Margin="0,4,0,0" PreviewMouseWheel="DifficultyGrid_PreviewMouseWheel">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Player" Binding="{Binding Player}" IsReadOnly="True" Width="80" />
+                                    <DataGridTextColumn Header="Part" Binding="{Binding Part}" IsReadOnly="True" Width="150" />
+                                    <DataGridTextColumn Header="X offset" Width="100"
+                                                        Binding="{Binding X, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <DataGridTextColumn Header="Y offset" Width="100"
+                                                        Binding="{Binding Y, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <DataGridTextColumn Header="Size %" Width="*"
+                                                        Binding="{Binding Size, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <TextBlock Style="{StaticResource Help}" Margin="0,6,0,0" Text="X and Y move a part from where the game puts it, in the game's 640 × 448 screen units (positive Y is down), from −640 to 640 and −448 to 448. Size, from 25 to 300 %, scales a part towards its player's corner: player 1's from the top-left of the screen, player 2's from the top-right and player 3's from the top centre (the skill bars from the matching bottom corner or centre), so a smaller HUD stays tucked into its place. 0, 0 and 100 everywhere is the game's own layout, except that player 3's potion, ammo and status icons, which the game draws off screen, sit under his panel." />
                             <Button Content="Restore three-player defaults" HorizontalAlignment="Left" Margin="0,10,0,0"
                                     Click="ThreePlayerDefaults_Click" />
                         </StackPanel>
