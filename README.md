@@ -241,10 +241,13 @@ Alliance II files are read with the Dark Alliance formats for now.
   saved, every spell keeping its settings.
 - **Place each player's HUD** on Executable Tuning's Three Players tab (Custom HUD layout): for every player, move
   and resize the health / mana / XP bars, the potion and ammo symbols (with the status icons), the gold total and
-  the skill bar in three-player games. X and Y move a part in the game's 640 × 448 screen units; Size (25 to
-  300 %) scales it towards its player's corner (player 1 top-left, player 2 top-right, player 3 top centre; the
-  skill bars from the bottom). With the box ticked, player 3's potion, ammo and status icons, which the game draws
-  off screen, sit under his panel. Clearing the box, or turning three players off, puts the game's own code back.
+  the skill bar in three-player games. X and Y move a part from where the game draws it, in the game's
+  640 × 448 screen units. The game puts player 3 in the middle and player 2 on the right; the defaults (player 2's
+  X −219 and player 3's 219, their gold −266 and 266) put player 2 in the middle and player 3 on the right, and
+  0, 0, 100 everywhere gives the game's places back. Size (25 to 300 %) scales a part towards its player's place
+  (player 1 the left edge, player 2 the centre, player 3 the right edge; the skill bars from the bottom, the rest
+  from the top). With the box ticked, player 3's potion, ammo and status icons, which the game draws off screen,
+  sit under his panel. Clearing the box, or turning three players off, puts the game's own code back.
 - **Pick colours** by clicking a colour box: a glow style's halo or core on the Glow tab, or a player's automap
   marker on the Three Players tab. Drag in the square and the hue bar, type red, green and blue or a `#RRGGBB`
   value, or click a ready-made colour; OK puts the colour in the red, green and blue boxes.
