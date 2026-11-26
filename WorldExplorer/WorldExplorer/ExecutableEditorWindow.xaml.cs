@@ -19,7 +19,9 @@
 // scaling for every player count (BgdaExecutable.ThreePlayer.cs / .Difficulty.cs).
 // With three players on, 'Custom HUD layout' puts in the HUD layout patch: each player's
 // health / mana / XP panel, potion / ammo icons, gold and skill bar moved and resized in
-// three-player games (BgdaExecutable.HudLayout.cs); clearing the box takes it out again.
+// three-player games (BgdaExecutable.HudLayout.cs); clearing the box takes it out again. Its grid
+// starts at the default layout (player 1 left, player 2 in the middle, player 3 right), which
+// 'Restore three-player defaults' brings back; 0, 0, 100 everywhere is the game's own places.
 // With three players on, a second box (ticked by default) also puts player 3 in the
 // game's own cutscenes when you save: only those cutscene entries of the game's GOB
 // files change (ThreePlayerCutscenes, found like GTEXT.LMP). Turning three players
@@ -809,14 +811,15 @@ public partial class ExecutableEditorWindow : Window
         {
             HudLayoutState.Unrecognized => detail,
             HudLayoutState.On when !want =>
-                "The HUD layout patch will be taken out when you save: the game's own layout comes back, with " +
-                "player 3's potion, ammo and status icons off screen again.",
+                "The HUD layout patch will be taken out when you save: the game's own layout comes back (player 3 " +
+                "in the middle, player 2 on the right), with player 3's potion, ammo and status icons off screen again.",
             HudLayoutState.On => detail,
             _ when want =>
                 "The HUD layout patch goes in when you save, with the layout below. It adds code the game copies " +
                 "into free memory when it starts; nothing else changes.",
-            _ => "The game's own HUD layout. The game draws player 3's potion, ammo and status icons off screen: " +
-                 "tick the box to bring them under his panel and to place each player's HUD."
+            _ => "The game's own HUD layout: player 1 left, player 3 in the middle, player 2 right, and player 3's " +
+                 "potion, ammo and status icons off screen. Tick the box for the layout below: by default player 1 " +
+                 "left, player 2 in the middle and player 3 right, with player 3's icons under his panel."
         };
         hudGrid.IsEnabled = want && state != HudLayoutState.Unrecognized;
     }
@@ -986,7 +989,8 @@ public partial class ExecutableEditorWindow : Window
     {
         ShowThreePlayerSettings(BgdaExecutable.DefaultThreePlayerSettings());
         CommitGrid(hudGrid);
-        foreach (var row in _hudRows) row.Show(HudPlacement.Default);
+        var hudDefault = HudLayout.Default;
+        foreach (var row in _hudRows) row.Show(hudDefault[row.PlayerIndex, row.PartKind]);
     }
 
     private void Marker_TextChanged(object sender, TextChangedEventArgs e) => UpdateMarkerSwatches();
