@@ -33,6 +33,8 @@
 //                       gold per drop, item chance, gold chance, Orb of Undeath divisor
 //   map markers         file 0x4FC180: one GS RGBA colour per player
 //   small map           file 0x4FC108 (x, y) / 0x4FC120 (width, height)
+// The HUD layout (BgdaExecutable.HudLayout.cs) is a separate patch that needs three players on; turning
+// three players off takes it out first.
 // ═══════════════════════════════════════════════════════════════════════════════
 using System;
 using System.Collections.Generic;
@@ -452,7 +454,8 @@ public partial class BgdaExecutable
 
     /// <summary>
     /// Removes the three-player patch (state must be On or Outdated): the stock bytes are
-    /// written back and the file returns to its stock length. Three-player settings are lost.
+    /// written back and the file returns to its stock length. Three-player settings are lost,
+    /// and the HUD layout (BgdaExecutable.HudLayout.cs) is taken out with it.
     /// Refused while items are added after the game's own: they use the room the patch frees.
     /// </summary>
     public void DisableThreePlayers()
@@ -467,6 +470,7 @@ public partial class BgdaExecutable
                 "they are kept where the stock game keeps the HUD's data. Remove them on the Items tab first.");
         }
 
+        RemoveHudLayoutForThreePlayersOff(); // its hooks would jump into memory a stock file doesn't fill
         if (state == ThreePlayerState.Outdated) UpgradeThreePlayers();
 
         var (runs, _, _) = Patch.Value;

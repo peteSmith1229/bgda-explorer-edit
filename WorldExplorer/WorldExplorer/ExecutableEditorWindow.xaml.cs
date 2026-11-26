@@ -17,6 +17,9 @@
 // updates an older three-player build (ADRIANNA25 to 19) to ADRIANNA26 on
 // save, edits its balance / marker colours / small map, and edits the difficulty
 // scaling for every player count (BgdaExecutable.ThreePlayer.cs / .Difficulty.cs).
+// With three players on, 'Custom HUD layout' puts in the HUD layout patch: each player's
+// health / mana / XP panel, potion / ammo icons, gold and skill bar moved and resized in
+// three-player games (BgdaExecutable.HudLayout.cs); clearing the box takes it out again.
 // With three players on, a second box (ticked by default) also puts player 3 in the
 // game's own cutscenes when you save: only those cutscene entries of the game's GOB
 // files change (ThreePlayerCutscenes, found like GTEXT.LMP). Turning three players
@@ -116,6 +119,36 @@ public partial class ExecutableEditorWindow : Window
         public string Damage { get => _damage; set => Set(ref _damage, value, nameof(Damage)); }
         public string Level { get => _level; set => Set(ref _level, value, nameof(Level)); }
         public string Boss { get => _boss; set => Set(ref _boss, value, nameof(Boss)); }
+
+        private void Set(ref string field, string value, string name)
+        {
+            if (field == value) return;
+            field = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+    }
+
+    /// <summary>A row of the HUD layout grid (Three Players tab): one part of one player's HUD.</summary>
+    public sealed class HudRow : INotifyPropertyChanged
+    {
+        public int PlayerIndex { get; init; }
+        public HudPart PartKind { get; init; }
+        public string Player => $"Player {PlayerIndex + 1}";
+        public string Part => BgdaExecutable.HudPartName(PartKind);
+
+        private string _x = "", _y = "", _size = "";
+        public string X { get => _x; set => Set(ref _x, value, nameof(X)); }
+        public string Y { get => _y; set => Set(ref _y, value, nameof(Y)); }
+        public string Size { get => _size; set => Set(ref _size, value, nameof(Size)); }
+
+        public void Show(HudPlacement p)
+        {
+            X = p.OffsetX.ToString(CultureInfo.InvariantCulture);
+            Y = p.OffsetY.ToString(CultureInfo.InvariantCulture);
+            Size = p.SizePercent.ToString(CultureInfo.InvariantCulture);
+        }
 
         private void Set(ref string field, string value, string name)
         {
@@ -228,6 +261,7 @@ public partial class ExecutableEditorWindow : Window
     private readonly DifficultyModel _difficultyModel = new();
     private readonly List<DifficultyRow> _difficultyRows;
     private readonly bool _difficultyEditable;
+    private readonly List<HudRow> _hudRows;
     private readonly ItemEditorModel _items;
     private readonly EnhancementsModel _enhancements;
 
@@ -352,6 +386,22 @@ public partial class ExecutableEditorWindow : Window
             : BgdaExecutable.DefaultThreePlayerSettings());
         threePlayerCutscenesCheck.ToolTip = CutscenesToolTip();
         RefreshCutscenes();
+
+        var hudState = _exe.GetHudLayoutState();
+        var hudLayout = hudState == HudLayoutState.On ? _exe.GetHudLayout() : HudLayout.Default;
+        _hudRows = new List<HudRow>();
+        for (var p = 0; p < HudLayout.Players; p++)
+        {
+            foreach (var part in HudLayout.Parts)
+            {
+                var row = new HudRow { PlayerIndex = p, PartKind = part };
+                row.Show(hudLayout[p, part]);
+                _hudRows.Add(row);
+            }
+        }
+
+        hudGrid.ItemsSource = _hudRows;
+        hudLayoutCheck.IsChecked = hudState == HudLayoutState.On;
         UpdateThreePlayerStatus();
 
         var difficultyState = _exe.GetDifficultyState();
@@ -390,6 +440,7 @@ public partial class ExecutableEditorWindow : Window
 
         var wantThreePlayers = threePlayerCheck.IsChecked == true;
         ThreePlayerSettings? threePlayerSettings;
+        HudLayout? hudLayout;
         DifficultyScaling? difficulty;
         IReadOnlyDictionary<BorrowedSpell, BorrowedSpellSettings> spells;
         try
@@ -397,6 +448,7 @@ public partial class ExecutableEditorWindow : Window
             // the Three Players and Enhancements tabs are only read and checked here; they are applied
             // once a file name has been chosen, so cancelling leaves the loaded executable as it was
             threePlayerSettings = wantThreePlayers ? ReadThreePlayerSettings() : null;
+            hudLayout = wantThreePlayers && hudLayoutCheck.IsChecked == true ? ReadHudLayout() : null;
             difficulty = _difficultyEditable ? ReadDifficulty() : null;
             spells = _enhancements.ReadSpells();
 
@@ -427,6 +479,7 @@ public partial class ExecutableEditorWindow : Window
             // version that needs three players is updated before they can be turned off
             _enhancements.ApplySpells(spells);
             ApplyThreePlayers(wantThreePlayers, threePlayerSettings);
+            if (wantThreePlayers) ApplyHudLayout(hudLayout);
             if (difficulty is not null) _exe.SetDifficultyScaling(difficulty);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
@@ -709,6 +762,71 @@ public partial class ExecutableEditorWindow : Window
         if (want && settings is not null) _exe.SetThreePlayerSettings(settings);
     }
 
+    /// <summary>Reads and checks the HUD layout grid (throws <see cref="ArgumentException"/>).</summary>
+    private HudLayout ReadHudLayout()
+    {
+        CommitGrid(hudGrid);
+        if (_exe.GetHudLayoutState(out var detail) == HudLayoutState.Unrecognized)
+            throw new InvalidOperationException("The HUD layout can't be set: " + detail);
+
+        int Whole(string text, string what)
+        {
+            if (!int.TryParse(text?.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var v))
+                throw new ArgumentException($"{what}: '{text}' is not a whole number.");
+            return v;
+        }
+
+        var layout = new HudLayout();
+        foreach (var row in _hudRows)
+        {
+            var what = $"{row.Player} {row.Part.ToLower(CultureInfo.InvariantCulture)}";
+            layout[row.PlayerIndex, row.PartKind] = new HudPlacement(
+                Whole(row.X, what + " X"), Whole(row.Y, what + " Y"), Whole(row.Size, what + " size"));
+        }
+
+        BgdaExecutable.ValidateHudLayout(layout);
+        return layout;
+    }
+
+    /// <summary>
+    /// With three players on: puts the HUD layout patch in with the grid's layout (box ticked), or takes it
+    /// out (box cleared). Turning three players off takes it out by itself.
+    /// </summary>
+    private void ApplyHudLayout(HudLayout? layout)
+    {
+        if (layout is not null) _exe.SetHudLayout(layout);
+        else if (_exe.GetHudLayoutState() == HudLayoutState.On) _exe.RemoveHudLayout();
+    }
+
+    private void UpdateHudStatus()
+    {
+        if (hudLayoutStatus is null || _hudRows is null) return; // still loading
+        var state = _exe.GetHudLayoutState(out var detail);
+        var want = hudLayoutCheck.IsChecked == true;
+        hudLayoutCheck.IsEnabled = state != HudLayoutState.Unrecognized;
+        hudLayoutCheck.ToolTip = state == HudLayoutState.Unrecognized ? detail : null;
+        hudLayoutStatus.Text = state switch
+        {
+            HudLayoutState.Unrecognized => detail,
+            HudLayoutState.On when !want =>
+                "The HUD layout patch will be taken out when you save: the game's own layout comes back, with " +
+                "player 3's potion, ammo and status icons off screen again.",
+            HudLayoutState.On => detail,
+            _ when want =>
+                "The HUD layout patch goes in when you save, with the layout below. It adds code the game copies " +
+                "into free memory when it starts; nothing else changes.",
+            _ => "The game's own HUD layout. The game draws player 3's potion, ammo and status icons off screen: " +
+                 "tick the box to bring them under his panel and to place each player's HUD."
+        };
+        hudGrid.IsEnabled = want && state != HudLayoutState.Unrecognized;
+    }
+
+    private void HudLayoutCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!IsInitialized) return;
+        UpdateHudStatus();
+    }
+
     private void UpdateThreePlayerStatus()
     {
         var state = _exe.GetThreePlayerState(out var detail);
@@ -723,11 +841,12 @@ public partial class ExecutableEditorWindow : Window
                 $"{(_items.AddedCount == 1 ? "" : "s")}: they use the room the three-player patch frees. Remove them there first.",
             ThreePlayerState.On or ThreePlayerState.Outdated when !want =>
                 "Three players will be turned off when you save: the original code is restored and the " +
-                "three-player settings below are discarded.",
+                "three-player settings below (the HUD layout too) are discarded.",
             _ => detail
         };
         threePlayerSettingsPanel.IsEnabled = want && state != ThreePlayerState.Unrecognized;
         UpdateCutsceneStatus();
+        UpdateHudStatus();
     }
 
     private void ThreePlayerCheck_Changed(object sender, RoutedEventArgs e)
@@ -863,8 +982,12 @@ public partial class ExecutableEditorWindow : Window
         }
     }
 
-    private void ThreePlayerDefaults_Click(object sender, RoutedEventArgs e) =>
+    private void ThreePlayerDefaults_Click(object sender, RoutedEventArgs e)
+    {
         ShowThreePlayerSettings(BgdaExecutable.DefaultThreePlayerSettings());
+        CommitGrid(hudGrid);
+        foreach (var row in _hudRows) row.Show(HudPlacement.Default);
+    }
 
     private void Marker_TextChanged(object sender, TextChangedEventArgs e) => UpdateMarkerSwatches();
 

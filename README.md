@@ -239,6 +239,12 @@ Alliance II files are read with the Dark Alliance formats for now.
   (Kromlech's spells, Power Attack, Sorcerer's Blood, either Xantam's Orbs, Inferno Arrow, Entangle, Insect Plague, Poison
   Gas Arrow, Dimension Door, Expert Focus, Phase Axe, Shatter, or Improved Enemy AI's) is brought up to date when it is
   saved, every spell keeping its settings.
+- **Place each player's HUD** on Executable Tuning's Three Players tab (Custom HUD layout): for every player, move
+  and resize the health / mana / XP bars, the potion and ammo symbols (with the status icons), the gold total and
+  the skill bar in three-player games. X and Y move a part in the game's 640 × 448 screen units; Size (25 to
+  300 %) scales it towards its player's corner (player 1 top-left, player 2 top-right, player 3 top centre; the
+  skill bars from the bottom). With the box ticked, player 3's potion, ammo and status icons, which the game draws
+  off screen, sit under his panel. Clearing the box, or turning three players off, puts the game's own code back.
 - **Pick colours** by clicking a colour box: a glow style's halo or core on the Glow tab, or a player's automap
   marker on the Three Players tab. Drag in the square and the hue bar, type red, green and blue or a `#RRGGBB`
   value, or click a ready-made colour; OK puts the colour in the red, green and blue boxes.
